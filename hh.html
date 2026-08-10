@@ -1,0 +1,3453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>⚡ 竞技场 - 生存射击</title>
+    <style>
+        /* ===== 全局重置 & 基础 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #ddd;
+        }
+        #app {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* ===== Arena 样式 (从原代码 style.textContent 提取) ===== */
+        .arena-root {
+            --text: #ddd;
+            --border: rgba(255, 255, 255, 0.2);
+            --accent: #88ddff;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #ddd;
+        }
+        .arena-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.7);
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            color: var(--text);
+            flex-shrink: 0;
+        }
+        .arena-title {
+            font-weight: 400;
+            color: #fff;
+            letter-spacing: 1px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .arena-stats {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #999;
+        }
+        .arena-stats span {
+            color: #ddd;
+            font-weight: 300;
+        }
+        .arena-canvas-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+            min-height: 0;
+        }
+        #arenaCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            cursor: crosshair;
+        }
+        .arena-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            backdrop-filter: blur(2px);
+        }
+        .arena-modal {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 24px 28px;
+            max-width: 480px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+        .arena-modal h2 {
+            margin: 0 0 4px 0;
+            color: #fff;
+            font-weight: 300;
+            letter-spacing: 2px;
+            font-size: 20px;
+        }
+        .arena-modal .sub {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .gun-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .gun-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #ddd;
+        }
+        .gun-card:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+            transform: scale(1.01);
+        }
+        .gun-card .icon {
+            font-size: 28px;
+            width: 40px;
+            text-align: center;
+        }
+        .gun-card .info {
+            flex: 1;
+        }
+        .gun-card .name {
+            font-weight: 400;
+            color: #fff;
+            font-size: 16px;
+        }
+        .gun-card .desc {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .gun-card .stats {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .gun-card .stats span {
+            color: #aaa;
+        }
+        .gun-card .badge {
+            padding: 2px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            font-size: 10px;
+            color: #888;
+        }
+        .gun-manage-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .manage-card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .manage-card .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .manage-card .header .name {
+            font-weight: 400;
+            color: #fff;
+            font-size: 15px;
+        }
+        .manage-card .header .actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .manage-card .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px 16px;
+            font-size: 11px;
+            color: #888;
+        }
+        .manage-card .details span {
+            color: #aaa;
+        }
+        .manage-card .details .label {
+            color: #666;
+        }
+        .manage-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            color: #aaa;
+            padding: 2px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .manage-btn:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .manage-btn.danger:hover {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+        }
+        .manage-btn.preview:hover {
+            border-color: #88ddff;
+            color: #88ddff;
+        }
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .form-row label {
+            font-size: 11px;
+            color: #888;
+        }
+        .form-row input,
+        .form-row select {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            padding: 4px 6px;
+            color: #ddd;
+            font-size: 13px;
+            outline: none;
+            transition: border 0.15s;
+        }
+        .form-row input:focus,
+        .form-row select:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .form-row select option {
+            background: #111;
+            color: #ddd;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 16px;
+        }
+        .arena-upgrade-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .arena-upgrade-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #ddd;
+            gap: 8px;
+        }
+        .arena-upgrade-item:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+            transform: scale(1.01);
+        }
+        .arena-upgrade-item .ug-label {
+            font-weight: 300;
+            color: #fff;
+        }
+        .arena-upgrade-item .ug-desc {
+            font-size: 12px;
+            color: #888;
+            text-align: right;
+        }
+        .arena-upgrade-item.rare {
+            border-color: #f1c40f;
+            background: rgba(241, 196, 15, 0.05);
+        }
+        .arena-upgrade-item.rare .ug-label {
+            color: #f1c40f;
+        }
+        .arena-gameover-stats {
+            text-align: left;
+            padding: 8px 0;
+            color: #aaa;
+        }
+        .arena-gameover-stats p {
+            margin: 6px 0;
+            font-size: 14px;
+        }
+        .arena-gameover-stats strong {
+            color: #fff;
+            font-weight: 300;
+        }
+        .arena-btn-primary {
+            margin-top: 12px;
+            padding: 8px 24px;
+            background: transparent;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: all .15s;
+            letter-spacing: 1px;
+        }
+        .arena-btn-primary:hover {
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .arena-btn-secondary {
+            padding: 4px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            background: transparent;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all .15s;
+        }
+        .arena-btn-secondary:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+        .arena-config {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.85);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 20;
+            backdrop-filter: blur(4px);
+        }
+        .arena-config-title {
+            font-weight: 300;
+            font-size: 14px;
+            color: #ccc;
+            letter-spacing: 1px;
+        }
+        .arena-config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .arena-config-item label {
+            font-size: 12px;
+            color: #888;
+        }
+        .arena-config-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 1px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1px solid #aaa;
+            cursor: pointer;
+        }
+        .arena-config-actions .arena-btn-secondary {
+            font-size: 11px;
+        }
+        #btnConfigToggle {
+            margin-left: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: transparent;
+            color: #888;
+            padding: 2px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all .15s;
+        }
+        #btnConfigToggle:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        /* 响应式微调 */
+        @media (max-width: 640px) {
+            .arena-header {
+                font-size: 11px;
+                padding: 4px 10px;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .arena-stats {
+                font-size: 10px;
+                flex-wrap: wrap;
+            }
+            .arena-modal {
+                padding: 16px 16px;
+                max-width: 95%;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .manage-card .details {
+                grid-template-columns: 1fr 1fr;
+            }
+            .gun-card {
+                padding: 10px 12px;
+                flex-wrap: wrap;
+            }
+            .arena-upgrade-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .arena-upgrade-item .ug-desc {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        // ================================================================
+        //  竞技场 - 完整游戏逻辑
+        //  原 module.exports.setup 内容，直接执行
+        // ================================================================
+
+        (function() {
+
+            /* ─── 常量 ───────────────────────────── */
+            const PLAYER_RADIUS = 14
+            const ENEMY_RADIUS = 16
+            const BOSS_RADIUS = 30
+            const MELEE_BOSS_RADIUS = 42
+            const MELEE_BOSS_WINDUP = 0.7
+            const MELEE_BOSS_RECOVER = 0.3
+            const MELEE_ATTACKS = {
+                fan: { radius: 220, halfAngle: Math.PI / 3 },
+                slam: { len: 200, halfW: 110 },
+                charge: { len: 420, halfW: 45 },
+                dash: { len: 600, halfW: 50 },
+            }
+            const MELEE_ATTACK_FX_LIFE = 0.28
+            const PROJECTILE_SPEED_BASE = 600
+            const ENEMY_PROJECTILE_SPEED = 250
+            const MAX_PIERCE = 5
+            const MAX_EXTRA_ATTACK = 5
+            const MAX_SPLIT_LEVEL = 3
+            const MAX_LIFE_STEAL = 2.0
+            const MAX_STEAL_LEVEL = 3
+            const STEAL_CHANCES = [0, 0.10, 0.25, 0.50]
+            const STEAL_ATK_BONUS = 0.5
+            const MAX_PARALLEL = 8
+            const MAX_SCATTER = 8
+            const MAX_RICOCHET = 3
+            const MAX_ATTACK_SPEED = 30
+            const MAX_BULLET_SPEED_MULT = 10.0
+            const EXTRA_BATCH_INTERVAL = 0.12
+            const TURN_SPEED = 0.12
+            const PARALLEL_STEP = 15
+            const SCATTER_STEP = 10 * Math.PI / 180
+            const STORAGE_KEY = 'toolhub_integration_arena'
+
+            /* ─── 容器 ────────────────────────────── */
+            const container = document.getElementById('app')
+            if (!container) throw new Error('#app 容器不存在')
+
+            /* ─── 音效系统 ────────────────────────── */
+            let audioCtx = null
+
+            function initAudio() {
+                if (!audioCtx) {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)()
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume()
+                }
+            }
+
+            function playShootSound(gun) {
+                try {
+                    initAudio()
+                    const duration = gun.shootDuration ?? 0.05
+                    const decay = gun.shootDecay ?? 6
+                    const volume = gun.shootVolume ?? 0.2
+
+                    const bufferSize = audioCtx.sampleRate * duration
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate)
+                    const data = buffer.getChannelData(0)
+                    for (let i = 0; i < bufferSize; i++) {
+                        const t = i / audioCtx.sampleRate
+                        const env = Math.exp(-t * decay)
+                        data[i] = (Math.random() * 2 - 1) * env * 0.6
+                    }
+                    const source = audioCtx.createBufferSource()
+                    source.buffer = buffer
+                    const gain = audioCtx.createGain()
+                    gain.gain.setValueAtTime(volume, audioCtx.currentTime)
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration)
+                    source.connect(gain)
+                    gain.connect(audioCtx.destination)
+                    source.start()
+                    source.stop(audioCtx.currentTime + duration)
+                } catch (_) {}
+            }
+
+            function playHitSound(gun) {
+                try {
+                    initAudio()
+                    const duration = gun.hitDuration ?? 0.2
+                    const decay = gun.hitDecay ?? 6
+                    const volume = gun.hitVolume ?? 0.4
+
+                    const bufferSize = audioCtx.sampleRate * duration
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate)
+                    const data = buffer.getChannelData(0)
+                    for (let i = 0; i < bufferSize; i++) {
+                        const t = i / audioCtx.sampleRate
+                        const env = Math.exp(-t * decay)
+                        data[i] = (Math.random() * 2 - 1) * env * 0.6
+                    }
+                    const source = audioCtx.createBufferSource()
+                    source.buffer = buffer
+                    const gain = audioCtx.createGain()
+                    gain.gain.setValueAtTime(volume, audioCtx.currentTime)
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration)
+                    source.connect(gain)
+                    gain.connect(audioCtx.destination)
+                    source.start()
+                    source.stop(audioCtx.currentTime + duration)
+                } catch (_) {}
+            }
+
+            function previewSound(gun) {
+                if (!gun) return
+                initAudio()
+                playShootSound(gun)
+                setTimeout(() => {
+                    playHitSound(gun)
+                }, 200)
+            }
+
+            function playDeathSound() {}
+            function playUpgradeSound() {}
+
+            /* ─── 枪械数据 ────────────────────────── */
+            let GUNS = [{
+                id: 'pistol',
+                name: '手枪',
+                desc: '平衡型，单发精准',
+                icon: '🔫',
+                color: '#88ddff',
+                bulletLength: 12,
+                bulletWidth: 1.5,
+                atk: 2,
+                range: 300,
+                attackSpeed: 1,
+                bulletSpeedMult: 1,
+                bulletCount: 1,
+                pierceCount: 0,
+                extraAttackCount: 0,
+                firePattern: 'single',
+                spreadAngle: 0,
+                burstCount: 0,
+                burstDelay: 0.06,
+                shootDuration: 0.05,
+                shootDecay: 6,
+                shootVolume: 0.2,
+                hitDuration: 0.2,
+                hitDecay: 6,
+                hitVolume: 0.4,
+            }, ]
+
+            function genId() {
+                return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+            }
+
+            /* ─── 状态 ───────────────────────────── */
+            const state = {
+                highestWave: 0,
+                highestKills: 0,
+
+                gameOver: false,
+                paused: false,
+                gamePaused: false,
+
+                selectedGun: null,
+
+                player: {
+                    x: 0,
+                    y: 0,
+                    radius: PLAYER_RADIUS,
+                    hp: 10,
+                    maxHp: 10,
+                    atk: 2,
+                    atkMultiplier: 1,
+                    speed: 150,
+                    range: 300,
+                    attackSpeed: 1,
+                    attackTimer: 0,
+                    level: 0,
+                    totalKills: 0,
+                    currentKills: 0,
+                    killsForNext: 5,
+                    pierceCount: 0,
+                    bulletCount: 1,
+                    bulletSpeedMult: 1,
+                    extraAttackCount: 0,
+                    _extraPending: 0,
+                    _extraTimer: 0,
+                    attackDirection: { x: 1, y: 0 },
+                    attackEffectTimer: 0,
+                    facingAngle: 0,
+                    targetAngle: 0,
+                    facingDir: { x: 1, y: 0 },
+                    gunColor: '#88ddff',
+                    bulletLength: 12,
+                    bulletWidth: 1.5,
+                    firePattern: 'single',
+                    spreadAngle: 0,
+                    burstCount: 0,
+                    burstDelay: 0.06,
+                    splitLevel: 0,
+                    lifeSteal: 0,
+                    stealLevel: 0,
+                    parallelCount: 0,
+                    scatterCount: 0,
+                    ricochetCount: 0,
+                    hurtFlashTimer: 0,
+                },
+
+                enemies: [],
+                projectiles: [],
+                enemyProjectiles: [],
+                particles: [],
+                dust: [],
+                floatTexts: [],
+                attackFx: [],
+                ghosts: [],
+                cannonballs: [],
+                explosions: [],
+                wave: 0,
+                targetX: 0,
+                targetY: 0,
+
+                _pendingBossRare: false,
+                _stars: null,
+
+                waveIdCounter: 0,
+                currentWaveId: 0,
+                waveSpawned: 0,
+                waveKilled: 0,
+            }
+
+            /* ─── 持久化 ──────────────────────────── */
+            function saveRecord() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        highestWave: state.highestWave,
+                        highestKills: state.highestKills,
+                    }))
+                } catch (_) { /* ignore */ }
+            }
+
+            /* ─── DOM 构建 ────────────────────────── */
+            const ui = document.createElement('div')
+            ui.className = 'arena-root'
+            ui.innerHTML = `
+            <div class="arena-header">
+              <span class="arena-title">⚡ 竞技场
+                <button id="btnConfigToggle" style="margin-left:6px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#888;padding:0 8px;border-radius:3px;cursor:pointer;font-size:12px;">⚙</button>
+              </span>
+              <span class="arena-stats">
+                总击杀 <span id="totalKillsDisplay">0</span> ｜ 波次 <span id="waveDisplay">0</span> ｜ 生命 <span id="hpDisplay">10</span>
+                <button id="btnFullscreenHud" title="全屏" style="margin-left:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#888;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:12px;">⛶</button>
+              </span>
+            </div>
+            <div class="arena-canvas-wrap">
+              <canvas id="arenaCanvas"></canvas>
+              <!-- 首页 -->
+              <div class="arena-overlay" id="homeOverlay">
+                <div class="arena-modal" style="max-width:640px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <h2 style="margin:0;">⚡ 选择枪械</h2>
+                    <div style="display:flex;gap:8px;">
+                      <button class="arena-btn-secondary" id="btnFullscreenHome" style="font-size:12px;">⛶ 全屏</button>
+                      <button class="arena-btn-secondary" id="btnManageGuns" style="font-size:12px;">⚙ 管理</button>
+                    </div>
+                  </div>
+                  <p class="sub" style="margin-top:0;">选择一种枪械开始战斗</p>
+                  <div class="gun-list" id="gunList"></div>
+                </div>
+              </div>
+              <!-- 管理界面 -->
+              <div class="arena-overlay" id="manageOverlay" style="display:none;">
+                <div class="arena-modal" style="max-width:720px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <h2 style="margin:0;">⚙ 枪械管理</h2>
+                    <button class="arena-btn-secondary" id="btnCloseManage">✕ 关闭</button>
+                  </div>
+                  <p class="sub">查看、新增、编辑或删除枪械配置</p>
+                  <div style="margin-bottom:12px;">
+                    <button class="arena-btn-primary" id="btnAddGun" style="font-size:13px;padding:4px 16px;">+ 新增枪械</button>
+                  </div>
+                  <div class="gun-manage-list" id="manageList"></div>
+                </div>
+              </div>
+              <!-- 编辑弹窗 -->
+              <div class="arena-overlay" id="editOverlay" style="display:none;">
+                <div class="arena-modal" style="max-width:520px;">
+                  <h2 id="editTitle">编辑枪械</h2>
+                  <form id="editForm" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></form>
+                  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+                    <button class="arena-btn-secondary" id="btnEditCancel">取消</button>
+                    <button class="arena-btn-primary" id="btnEditSave">保存</button>
+                  </div>
+                </div>
+              </div>
+              <!-- 暂停 -->
+              <div class="arena-overlay" id="pauseOverlay" style="display:none;">
+                <div class="arena-modal">
+                  <h2>⏸ 暂停</h2>
+                  <p class="sub">游戏已暂停</p>
+                  <div style="display:flex;gap:12px;justify-content:center;margin-top:12px;">
+                    <button class="arena-btn-primary" id="btnResume">▶ 继续</button>
+                    <button class="arena-btn-secondary" id="btnPauseHome">🏠 回到首页</button>
+                  </div>
+                </div>
+              </div>
+              <!-- 升级弹窗 -->
+              <div class="arena-overlay" id="upgradeOverlay" style="display:none;">
+                <div class="arena-modal">
+                  <h2>⬆ 升级</h2>
+                  <p class="sub">选择一项强化</p>
+                  <div class="arena-upgrade-list" id="upgradeList"></div>
+                </div>
+              </div>
+              <!-- 游戏结束 -->
+              <div class="arena-overlay" id="gameOverOverlay" style="display:none;">
+                <div class="arena-modal">
+                  <h2>💀 陨落</h2>
+                  <div class="arena-gameover-stats">
+                    <p>到达波次：<strong id="goWave">0</strong></p>
+                    <p>总击杀数：<strong id="goKills">0</strong></p>
+                    <p>🏆 最高波次：<strong id="goHighestWave">0</strong></p>
+                    <p>🏆 最高击杀：<strong id="goHighestKills">0</strong></p>
+                  </div>
+                  <button class="arena-btn-primary" id="btnRestart">↺ 重启</button>
+                </div>
+              </div>
+            </div>
+            <div class="arena-config" id="configPanel" style="display:none;">
+              <div class="arena-config-title">⚙ 引擎调校</div>
+              <div class="arena-config-item">
+                <label>速度倍率：<span id="speedMultVal">1.00</span></label>
+                <input type="range" id="speedMultSlider" min="0.5" max="2.0" step="0.05" value="1.0"/>
+              </div>
+              <div class="arena-config-item">
+                <label>敌人数偏移：<span id="countOffsetVal">0</span></label>
+                <input type="range" id="countOffsetSlider" min="-3" max="5" step="1" value="0"/>
+              </div>
+              <div class="arena-config-actions">
+                <button class="arena-btn-secondary" id="btnConfigClose">✕ 关闭</button>
+              </div>
+            </div>
+          `
+
+            container.appendChild(ui)
+
+            /* ─── DOM 引用 ───────────────────────── */
+            const $ = s => ui.querySelector(s)
+            const canvas = $('#arenaCanvas')
+            const ctx = canvas.getContext('2d')
+            const waveDisplay = $('#waveDisplay')
+            const totalKillsDisplay = $('#totalKillsDisplay')
+            const hpDisplay = $('#hpDisplay')
+            const homeOverlay = $('#homeOverlay')
+            const gunList = $('#gunList')
+            const manageOverlay = $('#manageOverlay')
+            const manageList = $('#manageList')
+            const editOverlay = $('#editOverlay')
+            const editForm = $('#editForm')
+            const editTitle = $('#editTitle')
+            const pauseOverlay = $('#pauseOverlay')
+            const btnResume = $('#btnResume')
+            const btnPauseHome = $('#btnPauseHome')
+            const btnManageGuns = $('#btnManageGuns')
+            const btnFullscreenHome = $('#btnFullscreenHome')
+            const btnFullscreenHud = $('#btnFullscreenHud')
+            const btnCloseManage = $('#btnCloseManage')
+            const btnAddGun = $('#btnAddGun')
+            const btnEditCancel = $('#btnEditCancel')
+            const btnEditSave = $('#btnEditSave')
+            const upgradeOverlay = $('#upgradeOverlay')
+            const upgradeList = $('#upgradeList')
+            const gameOverOverlay = $('#gameOverOverlay')
+            const goWave = $('#goWave')
+            const goKills = $('#goKills')
+            const goHighestWave = $('#goHighestWave')
+            const goHighestKills = $('#goHighestKills')
+            const btnRestart = $('#btnRestart')
+            const configPanel = $('#configPanel')
+            const speedMultSlider = $('#speedMultSlider')
+            const speedMultVal = $('#speedMultVal')
+            const countOffsetSlider = $('#countOffsetSlider')
+            const countOffsetVal = $('#countOffsetVal')
+            const btnConfigClose = $('#btnConfigClose')
+            const btnConfigToggle = $('#btnConfigToggle')
+
+            /* ─── 画布尺寸自适应 ─────────────────── */
+            let canvasW = 0,
+                canvasH = 0,
+                dpr = 1
+
+            function resizeCanvas() {
+                const rect = canvas.parentElement.getBoundingClientRect()
+                dpr = window.devicePixelRatio || 1
+                canvasW = rect.width
+                canvasH = rect.height
+                canvas.width = canvasW * dpr
+                canvas.height = canvasH * dpr
+                canvas.style.width = canvasW + 'px'
+                canvas.style.height = canvasH + 'px'
+                ctx.scale(dpr, dpr)
+
+                const p = state.player
+                if (state.gameOver) {
+                    p.x = canvasW / 2
+                    p.y = canvasH / 2
+                    state.targetX = canvasW / 2
+                    state.targetY = canvasH / 2
+                } else {
+                    const margin = 5
+                    p.x = Math.max(margin, Math.min(canvasW - margin, p.x))
+                    p.y = Math.max(margin, Math.min(canvasH - margin, p.y))
+                    state.targetX = Math.max(0, Math.min(canvasW, state.targetX))
+                    state.targetY = Math.max(0, Math.min(canvasH, state.targetY))
+                }
+
+                const maxRange = Math.min(canvasW, canvasH)
+                if (p.range > maxRange) p.range = maxRange
+
+                state._stars = null
+            }
+
+            let ro = new ResizeObserver(() => resizeCanvas())
+            ro.observe(canvas.parentElement)
+            setTimeout(resizeCanvas, 20)
+
+            /* ─── 工具函数 ────────────────────────── */
+            function dist(a, b) {
+                return Math.hypot(a.x - b.x, a.y - b.y)
+            }
+
+            function rand(min, max) { return Math.random() * (max - min) + min }
+
+            function randInt(min, max) { return Math.floor(rand(min, max + 1)) }
+
+            function clamp(v, min, max) { return Math.max(min, Math.min(max, v)) }
+
+            function angleDelta(a, b) {
+                let diff = b - a
+                while (diff > Math.PI) diff -= Math.PI * 2
+                while (diff < -Math.PI) diff += Math.PI * 2
+                return diff
+            }
+
+            /* ─── 生成敌人 ────────────────────────── */
+            function spawnEnemy(isBoss = false) {
+                const margin = 120
+                let x, y
+                const side = randInt(0, 3)
+                if (side === 0) { x = -margin;
+                    y = rand(0, canvasH) } else if (side === 1) { x = canvasW + margin;
+                    y = rand(0, canvasH) } else if (side === 2) { x = rand(0, canvasW);
+                    y = -margin } else { x = rand(0, canvasW);
+                    y = canvasH + margin }
+
+                const waveFactor = 1 + state.wave * 0.15
+                const speedBase = isBoss ? 40 : 40 + state.wave * 1.5
+                const speed = Math.min(speedBase, isBoss ? 120 : 220)
+                const hpBase = isBoss ? 30 : 3
+                const hp = Math.floor(hpBase * waveFactor) + (isBoss ? 0 : Math.floor(state.wave / 2))
+                const damageBase = isBoss ? 4 : 2
+                const damage = Math.floor(damageBase * (1 + state.wave * 0.1))
+                const radius = isBoss ? BOSS_RADIUS : ENEMY_RADIUS
+
+                let type = 'melee'
+                if (!isBoss) {
+                    type = Math.random() < 0.3 ? 'ranged' : 'melee'
+                }
+
+                state.enemies.push({
+                    x,
+                    y,
+                    radius,
+                    hp,
+                    maxHp: hp,
+                    speed,
+                    damage,
+                    isBoss,
+                    type,
+                    attackCooldown: 0,
+                    attackInterval: isBoss ? 1.2 : (type === 'ranged' ? 2.8 : 0.8),
+                    rangedCooldown: 0,
+                    preferredDist: 350,
+                    flashTimer: 0,
+                    waveId: state.currentWaveId,
+                    knockbackX: 0,
+                    knockbackY: 0,
+                })
+            }
+
+            function spawnBoss() { spawnEnemy(true) }
+
+            /* ─── 大型近战 Boss（独立类型） ───────── */
+            function spawnMeleeBoss() {
+                const margin = 120
+                let x, y
+                const side = randInt(0, 3)
+                if (side === 0) { x = -margin;
+                    y = rand(0, canvasH) } else if (side === 1) { x = canvasW + margin;
+                    y = rand(0, canvasH) } else if (side === 2) { x = rand(0, canvasW);
+                    y = -margin } else { x = rand(0, canvasW);
+                    y = canvasH + margin }
+
+                const waveFactor = 1 + state.wave * 0.15
+                const hp = Math.floor(80 * waveFactor)
+                const damage = Math.floor(6 * (1 + state.wave * 0.08))
+
+                state.enemies.push({
+                    x,
+                    y,
+                    radius: MELEE_BOSS_RADIUS,
+                    hp,
+                    maxHp: hp,
+                    speed: 30,
+                    damage,
+                    isBoss: true,
+                    isMeleeBoss: true,
+                    type: 'melee',
+                    attackCooldown: 0,
+                    attackInterval: 1.0,
+                    rangedCooldown: 0,
+                    preferredDist: 350,
+                    flashTimer: 0,
+                    waveId: state.currentWaveId,
+                    knockbackX: 0,
+                    knockbackY: 0,
+                    attackState: 'idle',
+                    attackTimer: 2.0,
+                    windupTimer: 0,
+                    recoverTimer: 0,
+                    attackAngle: 0,
+                    attackType: 'fan',
+                    dashLen: 0,
+                    dashTimer: 0,
+                    ghostTimer: 0,
+                })
+            }
+
+            /* ─── 大型近战 Boss 攻击命中判定 ─────── */
+            function meleeBossHitTest(e, p) {
+                const cosA = Math.cos(e.attackAngle),
+                    sinA = Math.sin(e.attackAngle)
+                const lx = (p.x - e.x) * cosA + (p.y - e.y) * sinA
+                const ly = -(p.x - e.x) * sinA + (p.y - e.y) * cosA
+                const pad = 10
+                if (e.attackType === 'fan') {
+                    const r = MELEE_ATTACKS.fan.radius + pad
+                    if (Math.hypot(lx, ly) > r) return false
+                    return Math.abs(Math.atan2(ly, lx)) <= MELEE_ATTACKS.fan.halfAngle + 0.15
+                } else if (e.attackType === 'slam') {
+                    const len = MELEE_ATTACKS.slam.len + pad
+                    const halfW = MELEE_ATTACKS.slam.halfW + pad
+                    return lx >= -pad && lx <= len && Math.abs(ly) <= halfW
+                } else {
+                    const len = MELEE_ATTACKS.charge.len + pad
+                    const halfW = MELEE_ATTACKS.charge.halfW + pad
+                    return lx >= -pad && lx <= len && Math.abs(ly) <= halfW
+                }
+            }
+
+            /* ─── 大型远程 Boss（独立类型） ───────── */
+            function spawnArtilleryBoss() {
+                const margin = 120
+                let x, y
+                const side = randInt(0, 3)
+                if (side === 0) { x = -margin;
+                    y = rand(0, canvasH) } else if (side === 1) { x = canvasW + margin;
+                    y = rand(0, canvasH) } else if (side === 2) { x = rand(0, canvasW);
+                    y = -margin } else { x = rand(0, canvasW);
+                    y = canvasH + margin }
+
+                const waveFactor = 1 + state.wave * 0.15
+                const hp = Math.floor(70 * waveFactor)
+                const damage = Math.floor(4 * (1 + state.wave * 0.08))
+
+                state.enemies.push({
+                    x,
+                    y,
+                    radius: 34,
+                    hp,
+                    maxHp: hp,
+                    speed: 26,
+                    damage,
+                    isBoss: true,
+                    isArtilleryBoss: true,
+                    type: 'ranged',
+                    attackCooldown: 0,
+                    attackInterval: 1.0,
+                    rangedCooldown: 0,
+                    preferredDist: 350,
+                    flashTimer: 0,
+                    waveId: state.currentWaveId,
+                    knockbackX: 0,
+                    knockbackY: 0,
+                    skillState: 'idle',
+                    skillIndex: 0,
+                    skillTimer: 2.5,
+                    skillPhase: 0,
+                    skillAngle: 0,
+                    normalTimer: 1.5,
+                    normalInterval: 3.0,
+                    bombCount: 0,
+                    bombPlan: [],
+                    bombSpawnTimer: 0,
+                    moveTimer: 0,
+                    moveAngle: 0,
+                    ghostTimer: 0,
+                    warn: null,
+                })
+            }
+
+            function startArtillerySkill(e) {
+                const pl = state.player
+                if (e.skillIndex === 0) {
+                    // 技能1：扇形散射 1-3 波
+                    e.skillState = 'skill1'
+                    e.skillAngle = Math.atan2(pl.y - e.y, pl.x - e.x)
+                    e.skillPhase = randInt(1, 3)
+                    e.skillTimer = 0.7
+                    e.warn = { type: 'fan', x: e.x, y: e.y, angle: e.skillAngle, radius: 520, timer: 0.7 }
+                } else if (e.skillIndex === 1) {
+                    // 技能2：全屏环形散射 16 颗
+                    e.skillState = 'skill2'
+                    e.skillTimer = 0.7
+                    e.warn = { type: 'ring', x: e.x, y: e.y, radius: 640, timer: 0.7 }
+                } else {
+                    // 技能3：大量轰炸——快速出现 15-20 个预警点，再依次降落
+                    e.skillState = 'skill3'
+                    e.bombCount = randInt(15, 20)
+                    e.bombPlan = []
+                    e.bombSpawnTimer = 0
+                }
+            }
+
+            function finishArtillerySkill(e) {
+                e.skillState = 'idle'
+                e.skillIndex = (e.skillIndex + 1) % 3
+                e.skillTimer = 3.0
+                e.warn = null
+                e.bombPlan = []
+            }
+
+            /* ─── 炮弹爆炸 ────────────────────────── */
+            function explodeCannonball(c) {
+                // 12 颗碎片向周围散射
+                for (let k = 0; k < 36; k++) {
+                    const a = (k / 36) * Math.PI * 2
+                    state.enemyProjectiles.push({
+                        x: c.x,
+                        y: c.y,
+                        vx: Math.cos(a) * 160,
+                        vy: Math.sin(a) * 160,
+                        radius: 5,
+                        damage: Math.max(1, c.damage - 1),
+                        life: 3,
+                    })
+                }
+                state.attackFx.push({ type: 'blast', x: c.x, y: c.y, angle: 0, life: MELEE_ATTACK_FX_LIFE })
+            }
+
+            /* ─── 大型近战 Boss 攻击特效 ─────────── */
+            function spawnMeleeAttackFx(e) {
+                state.attackFx.push({
+                    type: e.attackType,
+                    x: e.x,
+                    y: e.y,
+                    angle: e.attackAngle,
+                    life: MELEE_ATTACK_FX_LIFE,
+                })
+            }
+
+            /* ─── 波次管理 ────────────────────────── */
+            function startWave() {
+                if (state.gameOver || state.paused) return
+
+                state.currentWaveId = ++state.waveIdCounter
+                state.waveSpawned = 0
+                state.waveKilled = 0
+
+                state.wave++
+                const offset = parseInt(countOffsetSlider.value) || 0
+                let count = Math.max(1, 3 + state.wave + offset)
+                for (let i = 0; i < count; i++) {
+                    spawnEnemy(false)
+                    state.waveSpawned++
+                }
+                if (state.wave % 5 === 0) {
+                    spawnBoss()
+                    state.waveSpawned++
+                }
+                if (state.wave % 10 === 0) {
+                    // 大型 Boss：随机出现远程或近战，不同时出现
+                    if (Math.random() < 0.5) spawnArtilleryBoss()
+                    else spawnMeleeBoss()
+                    state.waveSpawned++
+                }
+                updateUI()
+            }
+
+            /* ─── 升级系统 ────────────────────────── */
+            function applyLevelUpBonus() {
+                const p = state.player
+                p.maxHp += 2
+                p.hp = p.maxHp
+            }
+
+            const UPGRADE_POOL = [{
+                id: 'atk',
+                label: '⚔ 攻击力',
+                desc: '+1~3 (随机)',
+                weight: 1.0,
+                category: 'base',
+                apply: () => {
+                    const bonus = randInt(1, 3)
+                    state.player.atk += bonus
+                }
+            }, {
+                id: 'hp',
+                label: '❤️ 最大生命',
+                desc: '+3 (并回复满血)',
+                weight: 1.0,
+                category: 'base',
+                apply: () => {
+                    state.player.maxHp += 3
+                    state.player.hp = state.player.maxHp
+                }
+            }, {
+                id: 'range',
+                label: '📐 攻击范围',
+                desc: '+15px (上限窗口大小)',
+                weight: 1.0,
+                category: 'base',
+                apply: () => {
+                    const maxRange = Math.min(canvasW, canvasH)
+                    const newRange = state.player.range + 15
+                    state.player.range = Math.min(newRange, maxRange)
+                }
+            }, {
+                id: 'atkSpeed',
+                label: '⚡ 攻击速度',
+                desc: '+10%~25% (上限 ' + MAX_ATTACK_SPEED + ')',
+                weight: 1.0,
+                category: 'base',
+                apply: () => {
+                    if (state.player.attackSpeed < MAX_ATTACK_SPEED) {
+                        const bonus = rand(0.10, 0.25)
+                        const newSpeed = state.player.attackSpeed * (1 + bonus)
+                        state.player.attackSpeed = Math.min(MAX_ATTACK_SPEED, Math.round(newSpeed * 100) / 100)
+                    }
+                }
+            }, {
+                id: 'bulletSpeed',
+                label: '🚀 子弹速度',
+                desc: '+10% (上限 ' + MAX_BULLET_SPEED_MULT.toFixed(1) + 'x)',
+                weight: 1.0,
+                category: 'base',
+                apply: () => {
+                    if (state.player.bulletSpeedMult < MAX_BULLET_SPEED_MULT) {
+                        const newMult = state.player.bulletSpeedMult * 1.1
+                        state.player.bulletSpeedMult = Math.min(MAX_BULLET_SPEED_MULT, Math.round(newMult * 100) / 100)
+                    }
+                }
+            }, {
+                id: 'lifeSteal',
+                label: '💚 命中回血',
+                desc: '+0.1~0.2 (上限2.0)',
+                weight: 0.3,
+                category: 'base',
+                apply: () => {
+                    if (state.player.lifeSteal < MAX_LIFE_STEAL) {
+                        const bonus = rand(0.1, 0.2)
+                        state.player.lifeSteal = Math.min(state.player.lifeSteal + bonus, MAX_LIFE_STEAL)
+                        state.player.lifeSteal = Math.round(state.player.lifeSteal * 100) / 100
+                    }
+                }
+            }, {
+                id: 'extraAttack',
+                label: '💫 额外攻击',
+                desc: '攻击次数 +1 (上限5)',
+                weight: 0.3,
+                category: 'special',
+                apply: () => {
+                    if (state.player.extraAttackCount < MAX_EXTRA_ATTACK) {
+                        state.player.extraAttackCount = Math.min(state.player.extraAttackCount + 1, MAX_EXTRA_ATTACK)
+                    }
+                }
+            }, {
+                id: 'atkSteal',
+                label: '⚔️ 攻击力吸取',
+                desc: '吸取概率 10%→25%→50%，触发后攻击力+0.5 (Boss掉落, 上限3级)',
+                weight: 0.5,
+                category: 'special',
+                apply: () => {
+                    if (state.player.stealLevel < MAX_STEAL_LEVEL) {
+                        state.player.stealLevel++
+                    }
+                }
+            }, {
+                id: 'pierce',
+                label: '💥 穿透强化',
+                desc: '穿透次数 +1 (上限5)',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    if (state.player.pierceCount < MAX_PIERCE) {
+                        state.player.pierceCount = Math.min(state.player.pierceCount + 1, MAX_PIERCE)
+                    }
+                }
+            }, {
+                id: 'split',
+                label: '💥 子弹分裂',
+                desc: '分裂等级 +1 (上限3)',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    if (state.player.splitLevel < MAX_SPLIT_LEVEL) {
+                        state.player.splitLevel = Math.min(state.player.splitLevel + 1, MAX_SPLIT_LEVEL)
+                    }
+                }
+            }, {
+                id: 'ricochet',
+                label: '💫 子弹弹射',
+                desc: '弹射次数 +1 (上限3)，伤害逐次减半',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    if (state.player.ricochetCount < MAX_RICOCHET) {
+                        state.player.ricochetCount = Math.min(state.player.ricochetCount + 1, MAX_RICOCHET)
+                    }
+                }
+            }, {
+                id: 'parallel',
+                label: '➡️ 平行弹道',
+                desc: '+1 平行弹道 (上限8)',
+                weight: 1.0,
+                category: 'ballistic',
+                apply: () => {
+                    if (state.player.parallelCount < MAX_PARALLEL) {
+                        state.player.parallelCount = Math.min(state.player.parallelCount + 1, MAX_PARALLEL)
+                    }
+                }
+            }, {
+                id: 'scatter',
+                label: '🔀 散射弹道',
+                desc: '+1 散射弹道 (上限8)',
+                weight: 1.0,
+                category: 'ballistic',
+                apply: () => {
+                    if (state.player.scatterCount < MAX_SCATTER) {
+                        state.player.scatterCount = Math.min(state.player.scatterCount + 1, MAX_SCATTER)
+                    }
+                }
+            }, ]
+
+            function getAvailableUpgrades() {
+                const p = state.player
+                const maxRange = Math.min(canvasW, canvasH)
+                return UPGRADE_POOL.filter(item => {
+                    if (item.id === 'pierce' && p.pierceCount >= MAX_PIERCE) return false
+                    if (item.id === 'extraAttack' && p.extraAttackCount >= MAX_EXTRA_ATTACK) return false
+                    if (item.id === 'split' && p.splitLevel >= MAX_SPLIT_LEVEL) return false
+                    if (item.id === 'lifeSteal' && p.lifeSteal >= MAX_LIFE_STEAL) return false
+                    if (item.id === 'atkSteal' && p.stealLevel >= MAX_STEAL_LEVEL) return false
+                    if (item.id === 'range' && p.range >= maxRange) return false
+                    if (item.id === 'parallel' && p.parallelCount >= MAX_PARALLEL) return false
+                    if (item.id === 'scatter' && p.scatterCount >= MAX_SCATTER) return false
+                    if (item.id === 'ricochet' && p.ricochetCount >= MAX_RICOCHET) return false
+                    if (item.id === 'atkSpeed' && p.attackSpeed >= MAX_ATTACK_SPEED) return false
+                    if (item.id === 'bulletSpeed' && p.bulletSpeedMult >= MAX_BULLET_SPEED_MULT) return false
+
+                    if (item.id === 'parallel' && p.scatterCount > 0) return false
+                    if (item.id === 'scatter' && p.parallelCount > 0) return false
+                    if (item.id === 'parallel' && p.splitLevel > 0) return false
+                    if (item.id === 'split' && p.parallelCount > 0) return false
+                    if (item.id === 'pierce' && p.splitLevel > 0) return false
+                    if (item.id === 'split' && p.pierceCount > 0) return false
+                    if (item.id === 'ricochet' && p.pierceCount > 0) return false
+                    if (item.id === 'pierce' && p.ricochetCount > 0) return false
+                    if (item.id === 'split' && p.ricochetCount > 0) return false
+                    if (item.id === 'ricochet' && p.splitLevel > 0) return false
+
+                    return true
+                })
+            }
+
+            function getUpgradeOptions(category, count = 3, rare = false) {
+                const categories = Array.isArray(category) ? category : [category]
+                const pool = getAvailableUpgrades().filter(item => categories.includes(item.category))
+                const shuffled = pool.slice().sort(() => Math.random() - 0.5)
+                let options = shuffled.slice(0, count)
+
+                if (rare) {
+                    options = options.map(item => {
+                        if (item.category === 'base') {
+                            const copy = { ...item }
+                            copy.label = '✨ ' + copy.label + ' (翻倍)'
+                            copy.desc = copy.desc + ' ×2'
+                            const originalApply = copy.apply
+                            copy.apply = () => {
+                                originalApply()
+                                const id = item.id
+                                if (id === 'atk') {
+                                    const bonus = randInt(1, 3)
+                                    state.player.atk += bonus
+                                } else if (id === 'hp') {
+                                    state.player.maxHp += 3
+                                    state.player.hp = state.player.maxHp
+                                } else if (id === 'range') {
+                                    const maxRange = Math.min(canvasW, canvasH)
+                                    const newRange = state.player.range + 15
+                                    state.player.range = Math.min(newRange, maxRange)
+                                } else if (id === 'atkSpeed') {
+                                    if (state.player.attackSpeed < MAX_ATTACK_SPEED) {
+                                        const bonus = rand(0.10, 0.25)
+                                        const newSpeed = state.player.attackSpeed * (1 + bonus)
+                                        state.player.attackSpeed = Math.min(MAX_ATTACK_SPEED, Math.round(newSpeed * 100) /
+                                        100)
+                                    }
+                                } else if (id === 'bulletSpeed') {
+                                    if (state.player.bulletSpeedMult < MAX_BULLET_SPEED_MULT) {
+                                        const newMult = state.player.bulletSpeedMult * 1.1
+                                        state.player.bulletSpeedMult = Math.min(MAX_BULLET_SPEED_MULT, Math.round(newMult *
+                                            100) / 100)
+                                    }
+                                } else if (id === 'lifeSteal') {
+                                    if (state.player.lifeSteal < MAX_LIFE_STEAL) {
+                                        const bonus = rand(0.1, 0.2)
+                                        state.player.lifeSteal = Math.min(state.player.lifeSteal + bonus, MAX_LIFE_STEAL)
+                                        state.player.lifeSteal = Math.round(state.player.lifeSteal * 100) / 100
+                                    }
+                                }
+                            }
+                            return copy
+                        } else {
+                            return item
+                        }
+                    })
+                }
+
+                return options
+            }
+
+            function renderUpgradeUI(options, onClose) {
+                upgradeList.innerHTML = ''
+                options.forEach((opt, index) => {
+                    const div = document.createElement('div')
+                    div.className = 'arena-upgrade-item'
+                    if (opt.label && opt.label.includes('✨')) {
+                        div.classList.add('rare')
+                    }
+                    div.innerHTML = `
+                <span class="ug-label">${opt.label || ''}</span>
+                <span class="ug-desc">${opt.desc || ''}</span>
+              `
+                    div.addEventListener('click', () => {
+                        opt.apply()
+                        upgradeOverlay.style.display = 'none'
+                        state.paused = false
+                        saveRecord()
+                        updateUI()
+                        if (onClose) onClose()
+                        setTimeout(() => checkUpgradeAndBoss(), 50)
+                    })
+                    upgradeList.appendChild(div)
+                })
+            }
+
+            function checkUpgradeAndBoss() {
+                const p = state.player
+                if (p.currentKills >= p.killsForNext) {
+                    p.currentKills -= p.killsForNext
+                    p.level++
+                    p.killsForNext = 5 + p.level
+                    applyLevelUpBonus()
+                    state.paused = true
+                    const options = getUpgradeOptions('base', 3, false)
+                    renderUpgradeUI(options, () => {
+                        if (state._pendingBossRare) {
+                            state._pendingBossRare = false
+                            showBossUpgrade()
+                        }
+                    })
+                    upgradeOverlay.style.display = 'flex'
+                    return true
+                } else {
+                    if (state._pendingBossRare) {
+                        state._pendingBossRare = false
+                        showBossUpgrade()
+                    }
+                    return false
+                }
+            }
+
+            function showBossUpgrade() {
+                state.paused = true
+
+                const specialBallisticPool = getAvailableUpgrades().filter(item => ['special', 'ballistic'].includes(item
+                .category))
+                let options = []
+
+                if (specialBallisticPool.length >= 3) {
+                    const shuffled = specialBallisticPool.slice().sort(() => Math.random() - 0.5)
+                    options = shuffled.slice(0, 3)
+                } else {
+                    const existing = specialBallisticPool.slice().sort(() => Math.random() - 0.5)
+                    const need = 3 - existing.length
+                    const basePool = getAvailableUpgrades().filter(item => item.category === 'base')
+                    const shuffledBase = basePool.slice().sort(() => Math.random() - 0.5)
+                    const baseOptions = shuffledBase.slice(0, need)
+
+                    const rareBaseOptions = baseOptions.map(item => {
+                        const copy = { ...item }
+                        copy.label = '✨ ' + copy.label + ' (翻倍)'
+                        copy.desc = copy.desc + ' ×2'
+                        const originalApply = copy.apply
+                        copy.apply = () => {
+                            originalApply()
+                            const id = item.id
+                            if (id === 'atk') {
+                                const bonus = randInt(1, 3)
+                                state.player.atk += bonus
+                            } else if (id === 'hp') {
+                                state.player.maxHp += 3
+                                state.player.hp = state.player.maxHp
+                            } else if (id === 'range') {
+                                const maxRange = Math.min(canvasW, canvasH)
+                                const newRange = state.player.range + 15
+                                state.player.range = Math.min(newRange, maxRange)
+                            } else if (id === 'atkSpeed') {
+                                if (state.player.attackSpeed < MAX_ATTACK_SPEED) {
+                                    const bonus = rand(0.10, 0.25)
+                                    const newSpeed = state.player.attackSpeed * (1 + bonus)
+                                    state.player.attackSpeed = Math.min(MAX_ATTACK_SPEED, Math.round(newSpeed * 100) /
+                                    100)
+                                }
+                            } else if (id === 'bulletSpeed') {
+                                if (state.player.bulletSpeedMult < MAX_BULLET_SPEED_MULT) {
+                                    const newMult = state.player.bulletSpeedMult * 1.1
+                                    state.player.bulletSpeedMult = Math.min(MAX_BULLET_SPEED_MULT, Math.round(newMult *
+                                        100) / 100)
+                                }
+                            } else if (id === 'lifeSteal') {
+                                if (state.player.lifeSteal < MAX_LIFE_STEAL) {
+                                    const bonus = rand(0.1, 0.2)
+                                    state.player.lifeSteal = Math.min(state.player.lifeSteal + bonus, MAX_LIFE_STEAL)
+                                    state.player.lifeSteal = Math.round(state.player.lifeSteal * 100) / 100
+                                }
+                            }
+                        }
+                        return copy
+                    })
+
+                    options = [...existing, ...rareBaseOptions]
+                }
+
+                renderUpgradeUI(options, null)
+                upgradeOverlay.style.display = 'flex'
+            }
+
+            /* ─── 发射子弹 ────────────────────────── */
+            function fireAttackBatch(target) {
+                const p = state.player
+                if (!target) return
+
+                playShootSound(state.selectedGun)
+
+                const baseAngle = Math.atan2(target.y - p.y, target.x - p.x)
+                const currentSpeed = PROJECTILE_SPEED_BASE * p.bulletSpeedMult
+
+                const barrelLen = p.radius + 14
+                const gx = p.x + Math.cos(baseAngle) * barrelLen
+                const gy = p.y + Math.sin(baseAngle) * barrelLen
+
+                const dirX = Math.cos(baseAngle)
+                const dirY = Math.sin(baseAngle)
+                const perpX = -Math.sin(baseAngle)
+                const perpY = Math.cos(baseAngle)
+
+                let angles = []
+
+                if (p.parallelCount > 0) {
+                    const total = 1 + p.parallelCount
+                    const totalWidth = (total - 1) * PARALLEL_STEP
+                    for (let i = 0; i < total; i++) {
+                        const offset = -totalWidth / 2 + i * PARALLEL_STEP
+                        angles.push({
+                            angle: baseAngle,
+                            ox: perpX * offset,
+                            oy: perpY * offset
+                        })
+                    }
+                } else if (p.scatterCount > 0) {
+                    const total = 1 + p.scatterCount
+                    const totalAngle = (total - 1) * SCATTER_STEP
+                    for (let i = 0; i < total; i++) {
+                        const angleOffset = -totalAngle / 2 + i * SCATTER_STEP
+                        const a = baseAngle + angleOffset
+                        angles.push({ angle: a, ox: 0, oy: 0 })
+                    }
+                } else {
+                    angles.push({ angle: baseAngle, ox: 0, oy: 0 })
+                }
+
+                for (const b of angles) {
+                    const dirX2 = Math.cos(b.angle)
+                    const dirY2 = Math.sin(b.angle)
+                    const startX = gx + (b.ox || 0)
+                    const startY = gy + (b.oy || 0)
+                    state.projectiles.push({
+                        x: startX,
+                        y: startY,
+                        vx: dirX2 * currentSpeed,
+                        vy: dirY2 * currentSpeed,
+                        length: p.bulletLength || 12,
+                        width: p.bulletWidth || 1.5,
+                        damage: p.atk,
+                        life: 2.5,
+                        isHoming: true,
+                        isChild: false,
+                        splitRemain: p.splitLevel,
+                        pierceRemain: p.pierceCount,
+                        hitEnemies: new Set(),
+                        radius: 6,
+                        ricochetRemain: p.ricochetCount,
+                        _trailTimer: 0,
+                    })
+                }
+
+                p.attackDirection.x = -Math.cos(baseAngle)
+                p.attackDirection.y = -Math.sin(baseAngle)
+                p.attackEffectTimer = 0.12
+            }
+
+            /* ─── 粒子生成 ────────────────────────── */
+            function spawnHitParticles(x, y, count = 16) {
+                for (let i = 0; i < count; i++) {
+                    const angle = rand(0, Math.PI * 2)
+                    const speed = rand(100, 280)
+                    const size = rand(3, 12)
+                    const colors = ['#ffaa44', '#ff8844', '#ffcc44', '#ffffff']
+                    const color = colors[randInt(0, colors.length - 1)]
+                    state.particles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        size: size,
+                        life: rand(0.15, 0.45),
+                        color: color,
+                    })
+                }
+            }
+
+            /* ─── 玩家受击火花 ────────────────────── */
+            function spawnPlayerHitParticles(x, y, count = 20) {
+                for (let i = 0; i < count; i++) {
+                    const angle = rand(0, Math.PI * 2)
+                    const speed = rand(140, 380)
+                    const size = rand(2, 9)
+                    const colors = ['#ff5555', '#ff7744', '#ffcc66', '#ffffff']
+                    const color = colors[randInt(0, colors.length - 1)]
+                    state.particles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        size: size,
+                        life: rand(0.15, 0.5),
+                        color: color,
+                    })
+                }
+            }
+
+            /* ─── 飘浮文字 ────────────────────────── */
+            function spawnFloatText(x, y, text, color) {
+                state.floatTexts.push({
+                    x,
+                    y,
+                    text,
+                    color,
+                    life: 0.9,
+                    vy: -45,
+                })
+            }
+
+            function spawnDeathPowder(x, y, count = 55) {
+                for (let i = 0; i < count; i++) {
+                    const angle = rand(0, Math.PI * 2)
+                    const speed = rand(100, 250)
+                    const offset = 8
+                    const type = Math.random() < 0.5 ? 'dot' : 'line'
+                    const size = type === 'dot' ? rand(0.8, 2.8) : rand(2.0, 4.5)
+                    const color = `rgba(${randInt(230,255)}, ${randInt(230,255)}, ${randInt(240,255)}, 0.9)`
+                    state.dust.push({
+                        x: x + (Math.random() - 0.5) * offset * 2,
+                        y: y + (Math.random() - 0.5) * offset * 2,
+                        vx: Math.cos(angle) * speed * (0.5 + Math.random() * 0.5),
+                        vy: Math.sin(angle) * speed * (0.5 + Math.random() * 0.5) - 25,
+                        size: size,
+                        life: rand(1.2, 2.8),
+                        color: color,
+                        type: type,
+                        angle: angle,
+                    })
+                }
+            }
+
+            /* ─── 核心更新 ────────────────────────── */
+            function update(dt) {
+                if (state.gamePaused || state.gameOver || !state.selectedGun || state.paused) return
+                const p = state.player
+                const speedMult = parseFloat(speedMultSlider.value) || 1.0
+
+                if (p.hurtFlashTimer > 0) {
+                    p.hurtFlashTimer -= dt
+                    if (p.hurtFlashTimer < 0) p.hurtFlashTimer = 0
+                }
+
+                const dx = state.targetX - p.x
+                const dy = state.targetY - p.y
+                const distMove = Math.hypot(dx, dy)
+                if (distMove > 2) {
+                    const moveSpeed = p.speed * speedMult
+                    const step = Math.min(moveSpeed * dt, distMove)
+                    p.x += (dx / distMove) * step
+                    p.y += (dy / distMove) * step
+                }
+                const margin = 5
+                p.x = clamp(p.x, margin, canvasW - margin)
+                p.y = clamp(p.y, margin, canvasH - margin)
+
+                let nearest = null,
+                    nearDist = Infinity
+                for (const e of state.enemies) {
+                    const d = dist(p, e)
+                    if (d < nearDist) { nearDist = d;
+                        nearest = e }
+                }
+                let targetAngle = p.facingAngle
+                if (nearest) {
+                    targetAngle = Math.atan2(nearest.y - p.y, nearest.x - p.x)
+                }
+                p.targetAngle = targetAngle
+                const diff = angleDelta(p.facingAngle, targetAngle)
+                p.facingAngle += diff * Math.min(1, TURN_SPEED * dt * 60)
+                p.facingDir = { x: Math.cos(p.facingAngle), y: Math.sin(p.facingAngle) }
+
+                if (p.attackEffectTimer > 0) p.attackEffectTimer -= dt
+
+                p.attackTimer -= dt
+                if (p.attackTimer <= 0) {
+                    if (nearest && nearDist < p.range) {
+                        fireAttackBatch(nearest)
+                        if (p.extraAttackCount > 0) {
+                            p._extraPending = p.extraAttackCount
+                            p._extraTimer = EXTRA_BATCH_INTERVAL
+                        } else {
+                            p._extraPending = 0
+                            p._extraTimer = 0
+                        }
+                        p.attackTimer = 1 / p.attackSpeed
+                    } else {
+                        p.attackTimer = 0.05
+                    }
+                }
+
+                if (p._extraPending > 0) {
+                    p._extraTimer -= dt
+                    if (p._extraTimer <= 0) {
+                        let nearest2 = null,
+                            nearDist2 = Infinity
+                        for (const e of state.enemies) {
+                            const d = dist(p, e)
+                            if (d < nearDist2) { nearDist2 = d;
+                                nearest2 = e }
+                        }
+                        if (nearest2 && nearDist2 < p.range) {
+                            fireAttackBatch(nearest2)
+                        }
+                        p._extraPending--
+                        if (p._extraPending > 0) {
+                            if (p.firePattern === 'burst') {
+                                p._extraTimer = p.burstDelay || 0.06
+                            } else {
+                                p._extraTimer = EXTRA_BATCH_INTERVAL
+                            }
+                        } else {
+                            p._extraTimer = 0
+                        }
+                    }
+                }
+
+                // ---- 玩家子弹更新 ----
+                for (let i = state.projectiles.length - 1; i >= 0; i--) {
+                    const proj = state.projectiles[i]
+                    proj.x += proj.vx * dt
+                    proj.y += proj.vy * dt
+                    proj.life -= dt
+
+                    if (proj.life > 0.1) {
+                        const trailCount = 1
+                        for (let t = 0; t < trailCount; t++) {
+                            const trailLife = rand(0.08, 0.2)
+                            const size = rand(1.5, 3.5)
+                            const angle = Math.atan2(proj.vy, proj.vx)
+                            const offsetDist = rand(2, 6)
+                            const tx = proj.x - Math.cos(angle) * offsetDist
+                            const ty = proj.y - Math.sin(angle) * offsetDist
+                            state.particles.push({
+                                x: tx + (Math.random() - 0.5) * 3,
+                                y: ty + (Math.random() - 0.5) * 3,
+                                vx: (Math.random() - 0.5) * 20,
+                                vy: (Math.random() - 0.5) * 20,
+                                size: size,
+                                life: trailLife,
+                                color: 'rgba(136, 221, 255, 0.5)',
+                            })
+                        }
+                    }
+
+                    if (proj.isHoming && state.enemies.length > 0) {
+                        let closest = null,
+                            cd = Infinity
+                        for (const e of state.enemies) {
+                            const d = dist(proj, e)
+                            if (d < cd) { cd = d;
+                                closest = e }
+                        }
+                        if (closest) {
+                            const angle = Math.atan2(closest.y - proj.y, closest.x - proj.x)
+                            const speed = Math.hypot(proj.vx, proj.vy)
+                            const homingStrength = proj.isChild ? 30 : 60
+                            proj.vx += Math.cos(angle) * homingStrength * dt
+                            proj.vy += Math.sin(angle) * homingStrength * dt
+                            const curSpeed = Math.hypot(proj.vx, proj.vy)
+                            if (curSpeed > speed * 1.2) {
+                                proj.vx = (proj.vx / curSpeed) * speed * 1.2
+                                proj.vy = (proj.vy / curSpeed) * speed * 1.2
+                            }
+                        }
+                    }
+
+                    for (let j = state.enemies.length - 1; j >= 0; j--) {
+                        const e = state.enemies[j]
+                        if (proj.hitEnemies.has(e)) continue
+                        if (dist(proj, e) < proj.radius + e.radius) {
+                            e.hp -= proj.damage
+                            e.flashTimer = 0.2
+                            playHitSound(state.selectedGun)
+                            spawnHitParticles(proj.x, proj.y, 16)
+
+                            if (p.lifeSteal > 0 && p.hp < p.maxHp) {
+                                p.hp = Math.min(p.hp + p.lifeSteal, p.maxHp)
+                                // 未满血时在玩家上方显示绿色数值反馈
+                                spawnFloatText(p.x, p.y - p.radius - 12, '+' + p.lifeSteal.toFixed(1), '#7CFC00')
+                            }
+
+                            const knockbackStrength = 30 + proj.damage * 5
+                            const angle = Math.atan2(proj.vy, proj.vx)
+                            e.knockbackX = Math.cos(angle) * knockbackStrength
+                            e.knockbackY = Math.sin(angle) * knockbackStrength
+
+                            const shouldSplit = (proj.splitRemain > 0 && proj.damage > 0.3)
+                            if (shouldSplit) {
+                                const spreadAngle = 0.5
+                                const speed = Math.hypot(proj.vx, proj.vy) * 0.9
+                                const inheritedHit = new Set(proj.hitEnemies)
+                                inheritedHit.add(e)
+                                for (let k = 0; k < 2; k++) {
+                                    const sign = k === 0 ? 1 : -1
+                                    const angleOffset = sign * rand(0.1, spreadAngle)
+                                    const dir = Math.atan2(proj.vy, proj.vx) + angleOffset
+                                    const childDamage = Math.max(0.5, proj.damage * 0.5)
+                                    const offsetLen = 2
+                                    const childX = proj.x + Math.cos(dir) * offsetLen
+                                    const childY = proj.y + Math.sin(dir) * offsetLen
+                                    state.projectiles.push({
+                                        x: childX,
+                                        y: childY,
+                                        vx: Math.cos(dir) * speed,
+                                        vy: Math.sin(dir) * speed,
+                                        length: (proj.length || 12) * 0.8,
+                                        width: (proj.width || 1.5) * 0.8,
+                                        damage: childDamage,
+                                        life: (proj.life || 2.5) * 0.8,
+                                        isHoming: true,
+                                        isChild: true,
+                                        splitRemain: proj.splitRemain - 1,
+                                        hitEnemies: inheritedHit,
+                                        radius: (proj.radius || 6) * 0.8,
+                                        pierceRemain: 0,
+                                        ricochetRemain: 0,
+                                        _trailTimer: 0,
+                                    })
+                                }
+                            }
+
+                            const canRicochet = (proj.ricochetRemain > 0 && !shouldSplit)
+                            if (canRicochet) {
+                                let nearestEnemy = null,
+                                    nearDist2 = Infinity
+                                for (const other of state.enemies) {
+                                    if (other === e || proj.hitEnemies.has(other)) continue
+                                    const d = dist(proj, other)
+                                    if (d < nearDist2) { nearDist2 = d;
+                                        nearestEnemy = other }
+                                }
+                                if (nearestEnemy) {
+                                    const newDamage = Math.max(0.1, proj.damage * 0.5)
+                                    const angle2 = Math.atan2(nearestEnemy.y - proj.y, nearestEnemy.x - proj.x)
+                                    const speed = Math.hypot(proj.vx, proj.vy) * 0.95
+                                    const inheritedHit = new Set(proj.hitEnemies)
+                                    inheritedHit.add(e)
+                                    state.projectiles.push({
+                                        x: proj.x,
+                                        y: proj.y,
+                                        vx: Math.cos(angle2) * speed,
+                                        vy: Math.sin(angle2) * speed,
+                                        length: proj.length,
+                                        width: proj.width,
+                                        damage: newDamage,
+                                        life: proj.life * 0.9,
+                                        isHoming: true,
+                                        isChild: false,
+                                        splitRemain: 0,
+                                        pierceRemain: 0,
+                                        hitEnemies: inheritedHit,
+                                        radius: proj.radius,
+                                        ricochetRemain: proj.ricochetRemain - 1,
+                                        _trailTimer: 0,
+                                    })
+                                }
+                            }
+
+                            proj.hitEnemies.add(e)
+                            if (proj.pierceRemain > 0) {
+                                proj.pierceRemain--
+                            } else {
+                                state.projectiles.splice(i, 1)
+                                break
+                            }
+                        }
+                    }
+
+                    if (state.projectiles[i] && (proj.life <= 0 || proj.x < -50 || proj.x > canvasW + 50 || proj.y < -50 ||
+                            proj.y > canvasH + 50)) {
+                        state.projectiles.splice(i, 1)
+                    }
+                }
+
+                // ---- 命中粒子更新 ----
+                for (let i = state.particles.length - 1; i >= 0; i--) {
+                    const pt = state.particles[i]
+                    pt.x += pt.vx * dt
+                    pt.y += pt.vy * dt
+                    pt.life -= dt
+                    pt.size *= (1 - dt * 0.5)
+                    if (pt.life <= 0 || pt.size < 0.5) {
+                        state.particles.splice(i, 1)
+                    }
+                }
+
+                // ---- 死亡粉末更新 ----
+                for (let i = state.dust.length - 1; i >= 0; i--) {
+                    const d = state.dust[i]
+                    d.x += d.vx * dt
+                    d.y += d.vy * dt
+                    d.vx *= (1 - dt * 2.5)
+                    d.vy *= (1 - dt * 2.5)
+                    d.vx += (Math.random() - 0.5) * 6 * dt
+                    d.vy += (Math.random() - 0.5) * 6 * dt - 4 * dt
+                    const spd = Math.hypot(d.vx, d.vy)
+                    if (spd > 80) {
+                        d.vx = (d.vx / spd) * 80
+                        d.vy = (d.vy / spd) * 80
+                    }
+                    d.life -= dt
+                    const shrinkRate = d.life > 1.0 ? 0.6 : 0.15
+                    d.size *= (1 - dt * shrinkRate)
+                    if (d.life <= 0 || d.size < 0.2) {
+                        state.dust.splice(i, 1)
+                    }
+                }
+
+                // ---- 飘浮文字更新 ----
+                for (let i = state.floatTexts.length - 1; i >= 0; i--) {
+                    const ft = state.floatTexts[i]
+                    ft.y += ft.vy * dt
+                    ft.life -= dt
+                    if (ft.life <= 0) {
+                        state.floatTexts.splice(i, 1)
+                    }
+                }
+
+                // ---- 攻击特效更新 ----
+                for (let i = state.attackFx.length - 1; i >= 0; i--) {
+                    const fx = state.attackFx[i]
+                    fx.life -= dt
+                    if (fx.life <= 0) {
+                        state.attackFx.splice(i, 1)
+                    }
+                }
+
+                // ---- Boss 冲刺残影更新 ----
+                for (let i = state.ghosts.length - 1; i >= 0; i--) {
+                    const g = state.ghosts[i]
+                    g.life -= dt
+                    if (g.life <= 0) {
+                        state.ghosts.splice(i, 1)
+                    }
+                }
+
+                // ---- 敌人更新（含击退衰减） ----
+                for (const e of state.enemies) {
+                    if (Math.abs(e.knockbackX) > 0.1 || Math.abs(e.knockbackY) > 0.1) {
+                        e.x += e.knockbackX * dt
+                        e.y += e.knockbackY * dt
+                        e.knockbackX *= (1 - dt * 8)
+                        e.knockbackY *= (1 - dt * 8)
+                        if (Math.abs(e.knockbackX) < 0.1) e.knockbackX = 0
+                        if (Math.abs(e.knockbackY) < 0.1) e.knockbackY = 0
+                    }
+                    if (e.flashTimer > 0) e.flashTimer -= dt
+                    if (e.warn) {
+                        e.warn.timer -= dt
+                        if (e.warn.timer <= 0) e.warn = null
+                    }
+                }
+
+                // ---- 敌人 AI ----
+                for (const e of state.enemies) {
+                    const dx2 = p.x - e.x,
+                        dy2 = p.y - e.y,
+                        d2 = Math.hypot(dx2, dy2)
+
+                    if (e.isArtilleryBoss) {
+                        // ---- 大型远程 Boss：技能状态机 ----
+                        const keepDist = 320
+                        if (e.skillState === 'idle') {
+                            // 风筝走位：保持中距离
+                            if (d2 > 1) {
+                                let mx = 0,
+                                    my = 0
+                                if (d2 > keepDist + 80) {
+                                    mx = (dx2 / d2) * e.speed * speedMult
+                                    my = (dy2 / d2) * e.speed * speedMult
+                                } else if (d2 < keepDist - 80) {
+                                    mx = -(dx2 / d2) * e.speed * speedMult
+                                    my = -(dy2 / d2) * e.speed * speedMult
+                                }
+                                e.x += mx * dt
+                                e.y += my * dt
+                            }
+                            e.x = clamp(e.x, -50, canvasW + 50)
+                            e.y = clamp(e.y, -50, canvasH + 50)
+
+                            // 普通攻击：慢速圆形炮弹，延迟爆炸
+                            e.normalTimer -= dt
+                            if (e.normalTimer <= 0) {
+                                const a = Math.atan2(dy2, dx2)
+                                state.cannonballs.push({
+                                    x: e.x,
+                                    y: e.y,
+                                    vx: Math.cos(a) * 120,
+                                    vy: Math.sin(a) * 120,
+                                    radius: 14,
+                                    fuse: 1.2,
+                                    damage: e.damage,
+                                    life: 6,
+                                })
+                                e.normalTimer = e.normalInterval
+                            }
+
+                            // 技能调度：间隔结束 → 远离则位移，否则直接技能
+                            e.skillTimer -= dt
+                            if (e.skillTimer <= 0) {
+                                if (d2 > 500) {
+                                    e.skillState = 'move'
+                                    e.moveTimer = Math.min(0.75, d2 / 420)
+                                    e.moveAngle = Math.atan2(dy2, dx2)
+                                    e.ghostTimer = 0
+                                } else {
+                                    startArtillerySkill(e)
+                                }
+                            }
+                        } else if (e.skillState === 'move') {
+                            // 位移：中短距离接近，不造成伤害，带残影
+                            e.moveTimer -= dt
+                            e.x += Math.cos(e.moveAngle) * 420 * dt
+                            e.y += Math.sin(e.moveAngle) * 420 * dt
+                            e.x = clamp(e.x, -50, canvasW + 50)
+                            e.y = clamp(e.y, -50, canvasH + 50)
+                            e.ghostTimer -= dt
+                            if (e.ghostTimer <= 0) {
+                                state.ghosts.push({ x: e.x, y: e.y, radius: e.radius, life: 0.35 })
+                                e.ghostTimer = 0.03
+                            }
+                            if (e.moveTimer <= 0) {
+                                startArtillerySkill(e)
+                            }
+                        } else if (e.skillState === 'skill1') {
+                            // 技能1：扇形散射 1-3 波
+                            e.skillTimer -= dt
+                            if (e.skillTimer <= 0) {
+                                const halfA = Math.PI / 3
+                                const bulletCount = 20
+                                for (let bi = 0; bi < bulletCount; bi++) {
+                                    const a = e.skillAngle - halfA + (2 * halfA) * (bi / (bulletCount - 1))
+                                    state.enemyProjectiles.push({
+                                        x: e.x,
+                                        y: e.y,
+                                        vx: Math.cos(a) * 280,
+                                        vy: Math.sin(a) * 280,
+                                        radius: 5,
+                                        damage: Math.max(1, e.damage - 1),
+                                        life: 3,
+                                    })
+                                }
+                                e.skillPhase--
+                                if (e.skillPhase <= 0) {
+                                    finishArtillerySkill(e)
+                                } else {
+                                    e.skillTimer = 0.3
+                                }
+                            }
+                        } else if (e.skillState === 'skill2') {
+                            // 技能2：全屏环形散射 16 颗
+                            e.skillTimer -= dt
+                            if (e.skillTimer <= 0) {
+                                for (let bi = 0; bi < 120; bi++) {
+                                    const a = (bi / 16) * Math.PI * 2
+                                    state.enemyProjectiles.push({
+                                        x: e.x,
+                                        y: e.y,
+                                        vx: Math.cos(a) * 300,
+                                        vy: Math.sin(a) * 300,
+                                        radius: 5,
+                                        damage: Math.max(1, e.damage - 1),
+                                        life: 3,
+                                    })
+                                }
+                                finishArtillerySkill(e)
+                            }
+                        } else if (e.skillState === 'skill3') {
+                            // 技能3：大量轰炸点——快速连续出现 15-20 个预警，再依次降落
+                            if (e.bombCount > 0) {
+                                e.bombSpawnTimer -= dt
+                                if (e.bombSpawnTimer <= 0) {
+                                    e.bombPlan.push({
+                                        x: p.x + rand(-25, 25),
+                                        y: p.y + rand(-25, 25),
+                                        timer: 0.6,
+                                    })
+                                    e.bombCount--
+                                    e.bombSpawnTimer = 0.2
+                                }
+                            }
+                            // 预警依次到期 → 落弹
+                            for (let bi = e.bombPlan.length - 1; bi >= 0; bi--) {
+                                const bp = e.bombPlan[bi]
+                                bp.timer -= dt
+                                if (bp.timer <= 0) {
+                                    state.cannonballs.push({
+                                        kind: 'bomb',
+                                        x: bp.x,
+                                        y: -80,
+                                        targetY: bp.y,
+                                        fallSpeed: 1200,
+                                        radius: 16,
+                                        blastRadius: 40,
+                                        damage: e.damage,
+                                        tail: 0,
+                                        life: 4,
+                                    })
+                                    e.bombPlan.splice(bi, 1)
+                                }
+                            }
+                            // 全部预警生成且全部落下 → 技能结束
+                            if (e.bombCount <= 0 && e.bombPlan.length === 0) {
+                                finishArtillerySkill(e)
+                            }
+                        }
+                    } else if (e.type === 'ranged' && !e.isBoss) {
+                        const preferred = e.preferredDist
+                        if (d2 < preferred - 50) {
+                            const angle = Math.atan2(e.y - p.y, e.x - p.x)
+                            const moveSpeed = e.speed * speedMult * 0.8
+                            e.x += Math.cos(angle) * moveSpeed * dt
+                            e.y += Math.sin(angle) * moveSpeed * dt
+                        } else if (d2 > preferred + 50) {
+                            const angle = Math.atan2(p.y - e.y, p.x - e.x)
+                            const moveSpeed = e.speed * speedMult * 0.6
+                            e.x += Math.cos(angle) * moveSpeed * dt
+                            e.y += Math.sin(angle) * moveSpeed * dt
+                        }
+                        e.x = clamp(e.x, -50, canvasW + 50)
+                        e.y = clamp(e.y, -50, canvasH + 50)
+
+                        e.rangedCooldown -= dt
+                        if (e.rangedCooldown <= 0 && d2 < 600) {
+                            const angle = Math.atan2(p.y - e.y, p.x - e.x)
+                            state.enemyProjectiles.push({
+                                x: e.x,
+                                y: e.y,
+                                vx: Math.cos(angle) * ENEMY_PROJECTILE_SPEED,
+                                vy: Math.sin(angle) * ENEMY_PROJECTILE_SPEED,
+                                radius: 5,
+                                damage: Math.max(1, e.damage - 1),
+                                life: 3,
+                            })
+                            e.rangedCooldown = e.attackInterval
+                        }
+                    } else if (e.isMeleeBoss) {
+                        // ---- 大型近战 Boss：攻击状态机 ----
+                        if (e.attackState === 'idle') {
+                            if (d2 > 1) {
+                                const moveSpeed = e.speed * speedMult
+                                const step = Math.min(moveSpeed * dt, d2)
+                                e.x += (dx2 / d2) * step
+                                e.y += (dy2 / d2) * step
+                            }
+                            e.x = clamp(e.x, -50, canvasW + 50)
+                            e.y = clamp(e.y, -50, canvasH + 50)
+                            e.attackTimer -= dt
+                            if (e.attackTimer <= 0 && d2 < 650) {
+                                e.attackAngle = Math.atan2(dy2, dx2)
+                                if (d2 > 450) e.attackType = 'dash'
+                                else if (d2 > 320) e.attackType = 'charge'
+                                else if (d2 > 160) e.attackType = 'fan'
+                                else e.attackType = 'slam'
+                                if (e.attackType === 'dash') {
+                                    e.dashLen = Math.min(d2, MELEE_ATTACKS.dash.len)
+                                    e.dashTimer = 0.25
+                                    e.ghostTimer = 0
+                                }
+                                e.attackState = 'windup'
+                                e.windupTimer = MELEE_BOSS_WINDUP
+                            }
+                        } else if (e.attackState === 'windup') {
+                            // 蓄力预警中：静止
+                            e.windupTimer -= dt
+                            if (e.windupTimer <= 0) {
+                                if (e.attackType === 'dash') {
+                                    // 冲刺：转入位移阶段
+                                    e.attackState = 'dash'
+                                } else {
+                                    spawnMeleeAttackFx(e)
+                                    if (meleeBossHitTest(e, p)) {
+                                        const damageAmount = e.damage
+                                        p.hp -= damageAmount
+                                        p.hurtFlashTimer = 0.2
+                                        // 击退玩家
+                                        const kd = d2 || 1
+                                        p.x += (dx2 / kd) * 110
+                                        p.y += (dy2 / kd) * 110
+                                        p.x = clamp(p.x, 5, canvasW - 5)
+                                        p.y = clamp(p.y, 5, canvasH - 5)
+                                        spawnPlayerHitParticles(p.x, p.y, 22)
+                                        if (p.hp <= 0) {
+                                            p.hp = 0
+                                            gameOver()
+                                        }
+                                    }
+                                    e.attackState = 'recover'
+                                    e.recoverTimer = MELEE_BOSS_RECOVER
+                                }
+                            }
+                        } else if (e.attackState === 'dash') {
+                            // 冲刺位移：快速冲向目标，沿途留残影
+                            e.dashTimer -= dt
+                            const dashSpeed = (e.dashLen || 400) / 0.25
+                            e.x += Math.cos(e.attackAngle) * dashSpeed * dt
+                            e.y += Math.sin(e.attackAngle) * dashSpeed * dt
+                            e.x = clamp(e.x, -50, canvasW + 50)
+                            e.y = clamp(e.y, -50, canvasH + 50)
+                            e.ghostTimer -= dt
+                            if (e.ghostTimer <= 0) {
+                                state.ghosts.push({ x: e.x, y: e.y, radius: e.radius, life: 0.35 })
+                                e.ghostTimer = 0.035
+                            }
+                            if (e.dashTimer <= 0) {
+                                // 到达：终点冲击特效 + 接触伤害
+                                spawnMeleeAttackFx(e)
+                                const reach = Math.hypot(p.x - e.x, p.y - e.y)
+                                if (reach < e.radius + p.radius + 50) {
+                                    const damageAmount = e.damage
+                                    p.hp -= damageAmount
+                                    p.hurtFlashTimer = 0.2
+                                    const kd = reach || 1
+                                    p.x += ((p.x - e.x) / kd) * 140
+                                    p.y += ((p.y - e.y) / kd) * 140
+                                    p.x = clamp(p.x, 5, canvasW - 5)
+                                    p.y = clamp(p.y, 5, canvasH - 5)
+                                    spawnPlayerHitParticles(p.x, p.y, 22)
+                                    if (p.hp <= 0) {
+                                        p.hp = 0
+                                        gameOver()
+                                    }
+                                }
+                                e.attackState = 'recover'
+                                e.recoverTimer = MELEE_BOSS_RECOVER
+                            }
+                        } else if (e.attackState === 'recover') {
+                            e.recoverTimer -= dt
+                            if (e.recoverTimer <= 0) {
+                                e.attackState = 'idle'
+                                e.attackTimer = 1.0
+                            }
+                        }
+                    } else {
+                        if (d2 > 1) {
+                            const moveSpeed = e.speed * speedMult
+                            const step = Math.min(moveSpeed * dt, d2)
+                            e.x += (dx2 / d2) * step
+                            e.y += (dy2 / d2) * step
+                        }
+                        e.x = clamp(e.x, -50, canvasW + 50)
+                        e.y = clamp(e.y, -50, canvasH + 50)
+
+                        e.attackCooldown -= dt
+                        if (d2 < e.radius + p.radius && e.attackCooldown <= 0) {
+                            const damageAmount = e.damage
+                            p.hp -= damageAmount
+                            p.hurtFlashTimer = 0.2
+                            e.attackCooldown = e.attackInterval
+                            if (p.hp <= 0) {
+                                p.hp = 0
+                                gameOver()
+                            }
+                        }
+                    }
+                }
+
+                // ---- 炮弹更新（普通炮弹 + 轰炸炸弹） ----
+                for (let i = state.cannonballs.length - 1; i >= 0; i--) {
+                    const c = state.cannonballs[i]
+                    if (c.kind === 'bomb') {
+                        // 轰炸炸弹：垂直快速下落，带拖影
+                        c.y += c.fallSpeed * dt
+                        c.tail = Math.min(c.tail + c.fallSpeed * dt, 500)
+                        if (c.y >= c.targetY) {
+                            // 落地爆炸：范围伤害 + 特效
+                            const db = dist(c, p)
+                            if (db < c.blastRadius + p.radius) {
+                                const dmg = c.damage
+                                p.hp -= dmg
+                                p.hurtFlashTimer = 0.2
+                                spawnPlayerHitParticles(p.x, p.y, 22)
+                                if (p.hp <= 0) {
+                                    p.hp = 0
+                                    gameOver()
+                                }
+                            }
+                            state.attackFx.push({ type: 'blast', x: c.x, y: c.y, angle: 0, life: MELEE_ATTACK_FX_LIFE })
+                            state.cannonballs.splice(i, 1)
+                        }
+                    } else {
+                        // 普通炮弹：慢速飞行 + 引信
+                        c.x += c.vx * dt
+                        c.y += c.vy * dt
+                        c.fuse -= dt
+                        c.life -= dt
+                        let exploded = false
+                        if (dist(c, p) < c.radius + p.radius) exploded = true
+                        if (!exploded && (c.fuse <= 0 || c.life <= 0)) exploded = true
+                        if (exploded) {
+                            explodeCannonball(c)
+                            state.cannonballs.splice(i, 1)
+                        }
+                    }
+                }
+
+                // ---- 远程敌人子弹更新 ----
+                for (let i = state.enemyProjectiles.length - 1; i >= 0; i--) {
+                    const proj = state.enemyProjectiles[i]
+                    proj.x += proj.vx * dt
+                    proj.y += proj.vy * dt
+                    proj.life -= dt
+
+                    if (dist(proj, p) < proj.radius + p.radius) {
+                        const damageAmount = proj.damage
+                        p.hp -= damageAmount
+                        p.hurtFlashTimer = 0.2
+                        spawnPlayerHitParticles(proj.x, proj.y, 18)
+                        state.enemyProjectiles.splice(i, 1)
+                        if (p.hp <= 0) {
+                            p.hp = 0
+                            gameOver()
+                        }
+                        continue
+                    }
+
+                    if (proj.life <= 0 || proj.x < -50 || proj.x > canvasW + 50 || proj.y < -50 || proj.y > canvasH + 50) {
+                        state.enemyProjectiles.splice(i, 1)
+                    }
+                }
+
+                // ---- 敌人死亡检测 ----
+                let bossKilled = false
+                const deadEnemies = []
+                for (const e of state.enemies) {
+                    if (e.hp <= 0) {
+                        deadEnemies.push(e)
+                        if (e.isBoss) bossKilled = true
+                    }
+                }
+
+                for (const e of deadEnemies) {
+                    if (e.waveId === state.currentWaveId) {
+                        state.waveKilled++
+                    }
+                }
+
+                for (const e of deadEnemies) {
+                    spawnDeathPowder(e.x, e.y, e.isBoss ? 100 : 55)
+                }
+                state.enemies = state.enemies.filter(e => e.hp > 0)
+                const killed = deadEnemies.length
+                if (killed > 0) {
+                    state.player.totalKills += killed
+                    state.player.currentKills += killed
+
+                    // ---- 攻击力吸取（被动成长，仅Boss掉落属性，无翻倍） ----
+                    const stealChance = p.stealLevel > 0 ? STEAL_CHANCES[p.stealLevel] : 0
+                    if (stealChance > 0) {
+                        for (let si = 0; si < killed; si++) {
+                            if (Math.random() < stealChance) {
+                                p.atk += STEAL_ATK_BONUS
+                                p.atk = Math.round(p.atk * 100) / 100
+                                // 吸取成功：玩家身上向上飘浮金色文字反馈
+                                spawnFloatText(p.x, p.y - p.radius - 12, '+' + STEAL_ATK_BONUS.toFixed(1), '#ffd700')
+                            }
+                        }
+                    }
+
+                    if (bossKilled) state._pendingBossRare = true
+                    checkUpgradeAndBoss()
+                }
+
+                if (state.waveSpawned > 0 && state.waveKilled >= state.waveSpawned / 2 && !state.gameOver && !state.paused) {
+                    startWave()
+                }
+
+                if (state.enemies.length === 0 && !state.gameOver && !state.paused) {
+                    startWave()
+                }
+
+                updateUI()
+            }
+
+            /* ─── 渲染 ────────────────────────────── */
+            function render() {
+                ctx.clearRect(0, 0, canvasW, canvasH)
+
+                const gridSize = 60
+                ctx.strokeStyle = 'rgba(255,255,255,0.10)'
+                ctx.lineWidth = 0.5
+                for (let x = gridSize; x < canvasW; x += gridSize) {
+                    ctx.beginPath()
+                    ctx.moveTo(x, 0)
+                    ctx.lineTo(x, canvasH)
+                    ctx.stroke()
+                }
+                for (let y = gridSize; y < canvasH; y += gridSize) {
+                    ctx.beginPath()
+                    ctx.moveTo(0, y)
+                    ctx.lineTo(canvasW, y)
+                    ctx.stroke()
+                }
+                if (!state._stars) {
+                    state._stars = []
+                    for (let i = 0; i < 40; i++) {
+                        state._stars.push({
+                            x: Math.random() * canvasW,
+                            y: Math.random() * canvasH,
+                            size: Math.random() * 1.5 + 0.5,
+                            alpha: Math.random() * 0.25 + 0.05
+                        })
+                    }
+                }
+                for (const star of state._stars) {
+                    ctx.globalAlpha = star.alpha
+                    ctx.fillStyle = '#fff'
+                    ctx.beginPath()
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2)
+                    ctx.fill()
+                }
+                ctx.globalAlpha = 1.0
+
+                if (!state.selectedGun) return
+
+                const p = state.player
+
+                ctx.beginPath()
+                ctx.arc(p.x, p.y, p.range, 0, Math.PI * 2)
+                ctx.setLineDash([4, 8])
+                ctx.strokeStyle = 'rgba(255,255,255,0.25)'
+                ctx.lineWidth = 1.5
+                ctx.stroke()
+                ctx.setLineDash([])
+
+                // ---- 玩家子弹 ----
+                for (const proj of state.projectiles) {
+                    const len = proj.length || 12
+                    const endX = proj.x + (proj.vx / Math.hypot(proj.vx, proj.vy)) * len
+                    const endY = proj.y + (proj.vy / Math.hypot(proj.vx, proj.vy)) * len
+                    ctx.shadowColor = 'rgba(255,255,255,0.2)'
+                    ctx.shadowBlur = 8
+                    ctx.beginPath()
+                    ctx.moveTo(proj.x, proj.y)
+                    ctx.lineTo(endX, endY)
+                    ctx.strokeStyle = proj.isChild ? '#aaddff' : '#88ddff'
+                    ctx.lineWidth = proj.width || 1.5
+                    ctx.stroke()
+                    ctx.shadowBlur = 0
+                    if (proj.pierceRemain > 0) {
+                        ctx.fillStyle = 'rgba(255,255,255,0.3)'
+                        ctx.font = '10px monospace'
+                        ctx.textAlign = 'center'
+                        ctx.textBaseline = 'middle'
+                        ctx.fillText(proj.pierceRemain, proj.x, proj.y + 16)
+                    }
+                    if (proj.splitRemain > 0) {
+                        ctx.fillStyle = 'rgba(100,200,255,0.3)'
+                        ctx.font = '8px monospace'
+                        ctx.textAlign = 'center'
+                        ctx.textBaseline = 'top'
+                        ctx.fillText('✦' + proj.splitRemain, proj.x, proj.y + 14)
+                    }
+                    if (proj.ricochetRemain > 0) {
+                        ctx.fillStyle = 'rgba(200,150,255,0.3)'
+                        ctx.font = '8px monospace'
+                        ctx.textAlign = 'center'
+                        ctx.textBaseline = 'bottom'
+                        ctx.fillText('↻' + proj.ricochetRemain, proj.x, proj.y - 14)
+                    }
+                }
+
+                // ---- 远程敌人子弹 ----
+                for (const proj of state.enemyProjectiles) {
+                    const len = 8
+                    const dir = Math.atan2(proj.vy, proj.vx)
+                    const endX = proj.x + Math.cos(dir) * len
+                    const endY = proj.y + Math.sin(dir) * len
+                    ctx.beginPath()
+                    ctx.moveTo(proj.x, proj.y)
+                    ctx.lineTo(endX, endY)
+                    ctx.strokeStyle = '#ff6b6b'
+                    ctx.lineWidth = 1.5
+                    ctx.stroke()
+                }
+
+                // ---- 炮弹 ----
+                for (const c of state.cannonballs) {
+                    if (c.kind === 'bomb') {
+                        // 轰炸炸弹：拖影 + 弹体
+                        const grad = ctx.createLinearGradient(c.x, c.y, c.x, c.y - c.tail)
+                        grad.addColorStop(0, 'rgba(255,140,60,0.7)')
+                        grad.addColorStop(1, 'rgba(255,140,60,0)')
+                        ctx.strokeStyle = grad
+                        ctx.lineWidth = 8
+                        ctx.beginPath()
+                        ctx.moveTo(c.x, c.y)
+                        ctx.lineTo(c.x, c.y - c.tail)
+                        ctx.stroke()
+                        ctx.beginPath()
+                        ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2)
+                        ctx.fillStyle = '#ff8844'
+                        ctx.fill()
+                        ctx.strokeStyle = '#ffcc66'
+                        ctx.lineWidth = 2
+                        ctx.stroke()
+                    } else {
+                        // 普通炮弹：引信闪烁 + 倒计时
+                        const fusePulse = 0.4 + 0.6 * Math.abs(Math.sin(performance.now() / 90))
+                        ctx.beginPath()
+                        ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(255,120,60,' + (0.25 + 0.3 * fusePulse).toFixed(3) + ')'
+                        ctx.fill()
+                        ctx.strokeStyle = 'rgba(255,180,100,' + (0.5 + 0.5 * fusePulse).toFixed(3) + ')'
+                        ctx.lineWidth = 2
+                        ctx.stroke()
+                        ctx.fillStyle = 'rgba(255,255,255,0.7)'
+                        ctx.font = '10px monospace'
+                        ctx.textAlign = 'center'
+                        ctx.fillText(c.fuse.toFixed(1), c.x, c.y - c.radius - 6)
+                    }
+                }
+
+                // ---- 命中粒子 ----
+                for (const pt of state.particles) {
+                    const alpha = Math.max(0, pt.life / 0.3)
+                    ctx.globalAlpha = alpha
+                    const len = pt.size
+                    const angle = Math.atan2(pt.vy, pt.vx)
+                    const endX = pt.x + Math.cos(angle) * len
+                    const endY = pt.y + Math.sin(angle) * len
+                    ctx.beginPath()
+                    ctx.moveTo(pt.x, pt.y)
+                    ctx.lineTo(endX, endY)
+                    ctx.strokeStyle = pt.color
+                    ctx.lineWidth = 1.2
+                    ctx.stroke()
+                }
+                ctx.globalAlpha = 1.0
+
+                // ---- 死亡粉末 ----
+                for (const d of state.dust) {
+                    const alpha = Math.min(1, (d.life / 1.2) * 0.9)
+                    ctx.globalAlpha = alpha
+                    ctx.strokeStyle = d.color
+                    ctx.fillStyle = d.color
+                    if (d.type === 'dot') {
+                        ctx.beginPath()
+                        ctx.arc(d.x, d.y, Math.max(0.3, d.size), 0, Math.PI * 2)
+                        ctx.fill()
+                    } else {
+                        const len = d.size
+                        const dir = d.angle + (Math.random() - 0.5) * 0.3
+                        const ex = d.x + Math.cos(dir) * len
+                        const ey = d.y + Math.sin(dir) * len
+                        ctx.beginPath()
+                        ctx.moveTo(d.x, d.y)
+                        ctx.lineTo(ex, ey)
+                        ctx.lineWidth = 1.2
+                        ctx.stroke()
+                    }
+                }
+                ctx.globalAlpha = 1.0
+
+                // ---- 敌人 ----
+                for (const e of state.enemies) {
+                    if (e.isArtilleryBoss) {
+                        // 大型远程 Boss：紫色菱形
+                        ctx.beginPath()
+                        ctx.moveTo(e.x, e.y - e.radius)
+                        ctx.lineTo(e.x + e.radius, e.y)
+                        ctx.lineTo(e.x, e.y + e.radius)
+                        ctx.lineTo(e.x - e.radius, e.y)
+                        ctx.closePath()
+                        if (e.flashTimer > 0) {
+                            ctx.strokeStyle = '#fff'
+                            ctx.lineWidth = 2.5
+                        } else {
+                            ctx.strokeStyle = 'rgba(199,146,234,0.9)'
+                            ctx.lineWidth = 2
+                        }
+                        ctx.stroke()
+                        ctx.fillStyle = 'rgba(199,146,234,0.08)'
+                        ctx.fill()
+                    } else {
+                        ctx.beginPath()
+                        ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
+                        if (e.flashTimer > 0) {
+                            ctx.strokeStyle = '#fff'
+                            ctx.lineWidth = 2.5
+                        } else {
+                            ctx.strokeStyle = 'rgba(255,255,255,0.4)'
+                            ctx.lineWidth = 1
+                        }
+                        ctx.stroke()
+                    }
+
+                    if (e.isBoss) {
+                        const cy = e.y - e.radius - 12
+                        const cw = 20
+                        ctx.beginPath()
+                        ctx.moveTo(e.x - cw / 2, cy + 6)
+                        ctx.lineTo(e.x - cw / 2 - 4, cy - 2)
+                        ctx.lineTo(e.x - cw / 4, cy + 4)
+                        ctx.lineTo(e.x, cy - 6)
+                        ctx.lineTo(e.x + cw / 4, cy + 4)
+                        ctx.lineTo(e.x + cw / 2 + 4, cy - 2)
+                        ctx.lineTo(e.x + cw / 2, cy + 6)
+                        ctx.closePath()
+                        ctx.strokeStyle = '#ffd700'
+                        ctx.lineWidth = 1.5
+                        ctx.stroke()
+                    }
+
+                    if (!e.isBoss && e.type === 'ranged') {
+                        const angle = Math.atan2(e.vy || 1, e.vx || 0)
+                        const dirX = Math.cos(angle)
+                        const dirY = Math.sin(angle)
+                        const tipX = e.x + dirX * (e.radius + 6)
+                        const tipY = e.y + dirY * (e.radius + 6)
+                        ctx.beginPath()
+                        ctx.moveTo(e.x + dirX * (e.radius + 2), e.y + dirY * (e.radius + 2))
+                        ctx.lineTo(tipX, tipY)
+                        ctx.strokeStyle = 'rgba(200,180,255,0.6)'
+                        ctx.lineWidth = 1.5
+                        ctx.stroke()
+                        const a = Math.atan2(dirY, dirX)
+                        const s = 4
+                        ctx.beginPath()
+                        ctx.moveTo(tipX, tipY)
+                        ctx.lineTo(tipX - s * Math.cos(a - 0.5), tipY - s * Math.sin(a - 0.5))
+                        ctx.moveTo(tipX, tipY)
+                        ctx.lineTo(tipX - s * Math.cos(a + 0.5), tipY - s * Math.sin(a + 0.5))
+                        ctx.stroke()
+                    }
+                }
+
+                // ---- Boss 冲刺残影 ----
+                for (const g of state.ghosts) {
+                    ctx.globalAlpha = Math.max(0, g.life / 0.35) * 0.35
+                    ctx.strokeStyle = '#ffd700'
+                    ctx.lineWidth = 2
+                    ctx.beginPath()
+                    ctx.arc(g.x, g.y, g.radius, 0, Math.PI * 2)
+                    ctx.stroke()
+                }
+                ctx.globalAlpha = 1.0
+
+                // ---- Boss 攻击预警 ----
+                for (const e of state.enemies) {
+                    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 70)
+                    // 近战 Boss windup 预警
+                    if (e.isMeleeBoss && e.attackState === 'windup') {
+                        ctx.save()
+                        ctx.translate(e.x, e.y)
+                        ctx.rotate(e.attackAngle)
+                        ctx.fillStyle = 'rgba(255, 60, 60, ' + (0.10 + 0.16 * pulse).toFixed(3) + ')'
+                        ctx.strokeStyle = 'rgba(255, 90, 90, ' + (0.55 + 0.35 * pulse).toFixed(3) + ')'
+                        ctx.lineWidth = 2
+                        ctx.beginPath()
+                        if (e.attackType === 'fan') {
+                            ctx.moveTo(0, 0)
+                            ctx.arc(0, 0, MELEE_ATTACKS.fan.radius, -MELEE_ATTACKS.fan.halfAngle, MELEE_ATTACKS.fan.halfAngle)
+                            ctx.closePath()
+                        } else if (e.attackType === 'slam') {
+                            ctx.rect(0, -MELEE_ATTACKS.slam.halfW, MELEE_ATTACKS.slam.len, MELEE_ATTACKS.slam.halfW * 2)
+                        } else if (e.attackType === 'dash') {
+                            ctx.rect(0, -MELEE_ATTACKS.dash.halfW, e.dashLen || MELEE_ATTACKS.dash.len, MELEE_ATTACKS.dash.halfW * 2)
+                        } else {
+                            ctx.rect(0, -MELEE_ATTACKS.charge.halfW, MELEE_ATTACKS.charge.len, MELEE_ATTACKS.charge.halfW * 2)
+                        }
+                        ctx.fill()
+                        ctx.stroke()
+                        ctx.restore()
+                        continue
+                    }
+                    // 远程 Boss warn 预警
+                    if (e.isArtilleryBoss && e.warn) {
+                        const w = e.warn
+                        if (w.type === 'fan') {
+                            ctx.save()
+                            ctx.translate(w.x, w.y)
+                            ctx.rotate(w.angle)
+                            ctx.fillStyle = 'rgba(255, 60, 60, ' + (0.10 + 0.16 * pulse).toFixed(3) + ')'
+                            ctx.strokeStyle = 'rgba(255, 90, 90, ' + (0.55 + 0.35 * pulse).toFixed(3) + ')'
+                            ctx.lineWidth = 2
+                            ctx.beginPath()
+                            ctx.moveTo(0, 0)
+                            ctx.arc(0, 0, w.radius, -Math.PI / 3, Math.PI / 3)
+                            ctx.closePath()
+                            ctx.fill()
+                            ctx.stroke()
+                            ctx.restore()
+                        } else if (w.type === 'ring') {
+                            ctx.beginPath()
+                            ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2)
+                            ctx.fillStyle = 'rgba(255, 60, 60, ' + (0.05 + 0.06 * pulse).toFixed(3) + ')'
+                            ctx.fill()
+                            ctx.strokeStyle = 'rgba(255, 90, 90, ' + (0.5 + 0.4 * pulse).toFixed(3) + ')'
+                            ctx.lineWidth = 2
+                            ctx.stroke()
+                        } else if (w.type === 'circle') {
+                            ctx.beginPath()
+                            ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2)
+                            ctx.fillStyle = 'rgba(255, 60, 60, ' + (0.15 + 0.2 * pulse).toFixed(3) + ')'
+                            ctx.fill()
+                            ctx.strokeStyle = 'rgba(255, 90, 90, 0.9)'
+                            ctx.lineWidth = 2.5
+                            ctx.stroke()
+                        }
+                    }
+                    // 远程 Boss 批次轰炸预警（技能3：多个预警圈）
+                    if (e.isArtilleryBoss && e.skillState === 'skill3' && e.bombPlan && e.bombPlan.length > 0) {
+                        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 70)
+                        for (const bp of e.bombPlan) {
+                            ctx.beginPath()
+                            ctx.arc(bp.x, bp.y, 40, 0, Math.PI * 2)
+                            ctx.fillStyle = 'rgba(255, 60, 60, ' + (0.15 + 0.2 * pulse).toFixed(3) + ')'
+                            ctx.fill()
+                            ctx.strokeStyle = 'rgba(255, 90, 90, 0.9)'
+                            ctx.lineWidth = 2.5
+                            ctx.stroke()
+                        }
+                    }
+                }
+
+                // ---- 大型近战 Boss 攻击特效 ----
+                for (const fx of state.attackFx) {
+                    const prog = 1 - fx.life / MELEE_ATTACK_FX_LIFE
+                    const alpha = fx.life / MELEE_ATTACK_FX_LIFE
+                    ctx.save()
+                    ctx.translate(fx.x, fx.y)
+                    ctx.rotate(fx.angle)
+                    if (fx.type === 'fan') {
+                        // 横摆：多道弧形挥砍残影随进度展开
+                        const a = MELEE_ATTACKS.fan.halfAngle
+                        const r = MELEE_ATTACKS.fan.radius
+                        for (let k = 0; k < 5; k++) {
+                            const t = prog - k * 0.06
+                            if (t <= 0) continue
+                            const arcA = Math.min(1, t * 1.4) * a
+                            ctx.globalAlpha = alpha * (1 - k * 0.18)
+                            ctx.strokeStyle = 'rgba(255,200,120,0.9)'
+                            ctx.lineWidth = 8 - k * 1.2
+                            ctx.beginPath()
+                            ctx.arc(0, 0, r * (0.6 + 0.4 * Math.min(1, t)), -arcA, arcA)
+                            ctx.stroke()
+                        }
+                        ctx.globalAlpha = 1
+                    } else if (fx.type === 'slam') {
+                        // 拍击：矩形残影下压扩散
+                        const len = MELEE_ATTACKS.slam.len * Math.min(1, prog * 1.5)
+                        const halfW = MELEE_ATTACKS.slam.halfW * Math.min(1, prog * 1.2)
+                        ctx.globalAlpha = alpha * 0.8
+                        ctx.fillStyle = 'rgba(255,120,60,0.25)'
+                        ctx.strokeStyle = 'rgba(255,180,100,0.8)'
+                        ctx.lineWidth = 3
+                        ctx.beginPath()
+                        ctx.rect(0, -halfW, len, halfW * 2)
+                        ctx.fill()
+                        ctx.stroke()
+                        ctx.globalAlpha = 1
+                    } else if (fx.type === 'charge') {
+                        // 冲击：光束向前冲出
+                        const len = MELEE_ATTACKS.charge.len * Math.min(1, prog * 1.6)
+                        const grad = ctx.createLinearGradient(0, 0, len, 0)
+                        grad.addColorStop(0, 'rgba(255,220,140,0.9)')
+                        grad.addColorStop(1, 'rgba(255,220,140,0)')
+                        ctx.globalAlpha = alpha
+                        ctx.fillStyle = grad
+                        ctx.beginPath()
+                        ctx.rect(0, -MELEE_ATTACKS.charge.halfW, len, MELEE_ATTACKS.charge.halfW * 2)
+                        ctx.fill()
+                        ctx.globalAlpha = 1
+                    } else if (fx.type === 'dash') {
+                        // 冲刺：终点冲击波扩散环
+                        const rr = 30 + prog * 100
+                        ctx.globalAlpha = alpha
+                        ctx.strokeStyle = 'rgba(255,220,140,0.9)'
+                        ctx.lineWidth = 3
+                        ctx.beginPath()
+                        ctx.arc(0, 0, rr, 0, Math.PI * 2)
+                        ctx.stroke()
+                        ctx.globalAlpha = 1
+                    } else if (fx.type === 'blast') {
+                        // 炮弹爆炸：橙红色扩散环 + 内圈闪光
+                        const rr = 20 + prog * 130
+                        ctx.globalAlpha = alpha
+                        ctx.fillStyle = 'rgba(255,120,40,' + (0.25 * (1 - prog)).toFixed(3) + ')'
+                        ctx.strokeStyle = 'rgba(255,200,100,' + (0.9 * alpha).toFixed(3) + ')'
+                        ctx.lineWidth = 3
+                        ctx.beginPath()
+                        ctx.arc(0, 0, rr, 0, Math.PI * 2)
+                        ctx.fill()
+                        ctx.stroke()
+                        ctx.globalAlpha = 1
+                    }
+                    ctx.restore()
+                }
+
+                // ---- 玩家（受伤闪红） ----
+                ctx.beginPath()
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
+                if (p.hurtFlashTimer > 0) {
+                    ctx.strokeStyle = '#ff0000'
+                    ctx.lineWidth = 2.5
+                } else {
+                    ctx.strokeStyle = '#fff'
+                    ctx.lineWidth = 1.5
+                }
+                ctx.stroke()
+
+                const fd = p.facingDir
+                const barrelLen = p.radius + 14
+                ctx.beginPath()
+                ctx.moveTo(p.x + fd.x * 4, p.y + fd.y * 4)
+                ctx.lineTo(p.x + fd.x * barrelLen, p.y + fd.y * barrelLen)
+                ctx.strokeStyle = p.gunColor || '#88ddff'
+                ctx.lineWidth = 3
+                ctx.stroke()
+
+                ctx.beginPath()
+                ctx.arc(p.x + fd.x * barrelLen, p.y + fd.y * barrelLen, 2.5, 0, Math.PI * 2)
+                ctx.fillStyle = p.gunColor || '#88ddff'
+                ctx.fill()
+
+                if (p.attackEffectTimer > 0) {
+                    const progress = 1 - p.attackEffectTimer / 0.12
+                    const alpha = Math.max(0, 1 - progress * 1.3)
+                    if (alpha > 0.01) {
+                        const dir = p.attackDirection
+                        const len = 15 + progress * 70
+                        ctx.save()
+                        ctx.globalAlpha = Math.min(1, alpha * 1.2)
+                        const grad = ctx.createLinearGradient(p.x, p.y, p.x + dir.x * len, p.y + dir.y * len)
+                        grad.addColorStop(0, 'rgba(255,255,255,0.9)')
+                        grad.addColorStop(0.4, 'rgba(255,200,100,0.7)')
+                        grad.addColorStop(1, 'rgba(255,100,20,0)')
+                        ctx.shadowColor = 'rgba(255,200,100,0.2)'
+                        ctx.shadowBlur = 15
+                        ctx.lineCap = 'round'
+                        ctx.lineWidth = 3 + progress * 6
+                        ctx.beginPath()
+                        ctx.moveTo(p.x, p.y)
+                        ctx.lineTo(p.x + dir.x * len, p.y + dir.y * len)
+                        ctx.strokeStyle = grad
+                        ctx.stroke()
+                        ctx.restore()
+                        ctx.globalAlpha = 1.0
+                    }
+                }
+
+                // ---- 属性面板 ----
+                const panelX = canvasW - 195
+                const panelY = 12
+                const panelW = 185
+                const panelH = 280
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+                ctx.lineWidth = 1
+                ctx.strokeRect(panelX, panelY, panelW, panelH)
+
+                ctx.fillStyle = 'rgba(255,255,255,0.6)'
+                ctx.font = '11px monospace'
+                ctx.textAlign = 'left'
+                ctx.textBaseline = 'top'
+                const lines = [
+                    `HP  ${p.hp}/${p.maxHp}`,
+                    `ATK ${p.atk.toFixed(1)}`,
+                    `RNG ${p.range}`,
+                    `ASPD ${p.attackSpeed.toFixed(2)}`,
+                    `PIE ${p.pierceCount}/${MAX_PIERCE}`,
+                    `BSPD ${p.bulletSpeedMult.toFixed(2)}x`,
+                    `XATK ${p.extraAttackCount}/${MAX_EXTRA_ATTACK}`,
+                    `SPLIT ${p.splitLevel}/${MAX_SPLIT_LEVEL}`,
+                    `PARALLEL ${p.parallelCount}/${MAX_PARALLEL}`,
+                    `SCATTER ${p.scatterCount}/${MAX_SCATTER}`,
+                    `LIFESTEAL ${p.lifeSteal.toFixed(2)}/${MAX_LIFE_STEAL.toFixed(1)}`,
+                    `STEAL ${p.stealLevel > 0 ? Math.round(STEAL_CHANCES[p.stealLevel] * 100) + '%' : '0%'}`,
+                    `LVL ${p.level}`,
+                    `RICO ${p.ricochetCount}/${MAX_RICOCHET}`,
+                ]
+                lines.forEach((text, idx) => {
+                    ctx.fillStyle = idx === 0 ? '#ff6b6b' : 'rgba(255,255,255,0.5)'
+                    ctx.fillText(text, panelX + 10, panelY + 10 + idx * 17)
+                })
+
+                // ---- 飘浮文字 ----
+                for (const ft of state.floatTexts) {
+                    const alpha = Math.max(0, Math.min(1, ft.life / 0.4))
+                    ctx.globalAlpha = alpha
+                    ctx.font = 'bold 16px monospace'
+                    ctx.textAlign = 'center'
+                    ctx.textBaseline = 'middle'
+                    ctx.shadowColor = ft.color
+                    ctx.shadowBlur = 8
+                    ctx.fillStyle = ft.color
+                    ctx.fillText(ft.text, ft.x, ft.y)
+                    ctx.shadowBlur = 0
+                }
+                ctx.globalAlpha = 1.0
+
+                ctx.fillStyle = 'rgba(255,255,255,0.15)'
+                ctx.font = '10px monospace'
+                ctx.textAlign = 'left'
+                ctx.textBaseline = 'bottom'
+                const gunName = state.selectedGun ? state.selectedGun.name : '未知'
+                ctx.fillText(`🔫 ${gunName}`, 12, canvasH - 10)
+            }
+
+            /* ─── UI 更新 ──────────────────────────── */
+            function updateUI() {
+                const p = state.player
+                waveDisplay.textContent = state.wave
+                totalKillsDisplay.textContent = p.totalKills
+                hpDisplay.textContent = `${p.hp}/${p.maxHp}`
+            }
+
+            /* ---- 暂停 ---- */
+            function togglePause() {
+                if (!state.selectedGun || state.gameOver || state.paused) return
+                state.gamePaused = !state.gamePaused
+                pauseOverlay.style.display = state.gamePaused ? 'flex' : 'none'
+            }
+
+            function canTogglePause() {
+                return state.selectedGun && !state.gameOver && !state.paused &&
+                    homeOverlay.style.display !== 'flex' &&
+                    manageOverlay.style.display !== 'flex' &&
+                    editOverlay.style.display !== 'flex' &&
+                    upgradeOverlay.style.display !== 'flex' &&
+                    gameOverOverlay.style.display !== 'flex'
+            }
+
+            /* ---- 全屏 ---- */
+            function toggleFullscreen() {
+                if (document.fullscreenElement || document.webkitFullscreenElement) {
+                    if (document.exitFullscreen) document.exitFullscreen().catch(() => {})
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen()
+                } else {
+                    const el = document.documentElement
+                    if (el.requestFullscreen) el.requestFullscreen().catch(() => {})
+                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+                }
+            }
+
+            /* ---- 枪械管理 ---- */
+            function renderHomeList() {
+                gunList.innerHTML = ''
+                GUNS.forEach(gun => {
+                    const card = document.createElement('div')
+                    card.className = 'gun-card'
+                    card.innerHTML = `
+                <div class="icon">${gun.icon || '🔫'}</div>
+                <div class="info">
+                  <div class="name">${gun.name}</div>
+                  <div class="desc">${gun.desc || ''}</div>
+                  <div class="stats">
+                    <span>⚔ ${gun.atk}</span>
+                    <span>📐 ${gun.range}</span>
+                    <span>⚡ ${gun.attackSpeed}</span>
+                    <span>🎯 ${gun.firePattern}</span>
+                  </div>
+                </div>
+                <div class="badge">选择</div>
+              `
+                    card.addEventListener('click', () => {
+                        selectGun(gun)
+                    })
+                    gunList.appendChild(card)
+                })
+            }
+
+            function renderManageList() {
+                manageList.innerHTML = ''
+                GUNS.forEach(gun => {
+                    const card = document.createElement('div')
+                    card.className = 'manage-card'
+                    card.innerHTML = `
+                <div class="header">
+                  <span class="name">${gun.icon || '🔫'} ${gun.name}</span>
+                  <div class="actions">
+                    <button class="manage-btn" data-action="edit" data-id="${gun.id}">✎ 编辑</button>
+                    <button class="manage-btn preview" data-action="preview" data-id="${gun.id}">▶ 试听</button>
+                    <button class="manage-btn danger" data-action="delete" data-id="${gun.id}">✕ 删除</button>
+                  </div>
+                </div>
+                <div class="details">
+                  <span><span class="label">伤害</span> ${gun.atk}</span>
+                  <span><span class="label">射程</span> ${gun.range}</span>
+                  <span><span class="label">射速</span> ${gun.attackSpeed}</span>
+                  <span><span class="label">模式</span> ${gun.firePattern}</span>
+                  <span><span class="label">子弹长度</span> ${gun.bulletLength}</span>
+                  <span><span class="label">音效</span> 🔉 衰减${gun.shootDecay || 6}</span>
+                </div>
+              `
+                    manageList.appendChild(card)
+                })
+                manageList.querySelectorAll('[data-action="edit"]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = btn.dataset.id
+                        const gun = GUNS.find(g => g.id === id)
+                        if (gun) openEditDialog(gun)
+                    })
+                })
+                manageList.querySelectorAll('[data-action="preview"]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = btn.dataset.id
+                        const gun = GUNS.find(g => g.id === id)
+                        if (gun) previewSound(gun)
+                    })
+                })
+                manageList.querySelectorAll('[data-action="delete"]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = btn.dataset.id
+                        const name = GUNS.find(g => g.id === id)?.name
+                        if (confirm(`确定删除枪械“${name}”吗？`)) {
+                            GUNS = GUNS.filter(g => g.id !== id)
+                            renderAll()
+                        }
+                    })
+                })
+            }
+
+            function renderAll() {
+                renderHomeList()
+                renderManageList()
+            }
+
+            function openEditDialog(gun = null) {
+                const isEdit = !!gun
+                editTitle.textContent = isEdit ? '编辑枪械' : '新增枪械'
+
+                const fields = [
+                    { key: 'id', label: 'ID (唯一标识)', type: 'text', required: true, readonly: isEdit },
+                    { key: 'name', label: '名称', type: 'text', required: true },
+                    { key: 'desc', label: '描述', type: 'text' },
+                    { key: 'icon', label: '图标 (Emoji)', type: 'text' },
+                    { key: 'color', label: '枪管颜色 (如 #88ddff)', type: 'text' },
+                    { key: 'bulletLength', label: '子弹长度', type: 'number', step: '0.5' },
+                    { key: 'bulletWidth', label: '子弹粗细', type: 'number', step: '0.1' },
+                    { key: 'atk', label: '伤害', type: 'number', step: '0.5' },
+                    { key: 'range', label: '射程', type: 'number' },
+                    { key: 'attackSpeed', label: '射速 (每秒次数)', type: 'number', step: '0.1' },
+                    { key: 'bulletSpeedMult', label: '子弹速度倍率', type: 'number', step: '0.05' },
+                    { key: 'bulletCount', label: '子弹数量', type: 'number' },
+                    { key: 'pierceCount', label: '穿透次数', type: 'number' },
+                    { key: 'extraAttackCount', label: '额外攻击次数', type: 'number' },
+                    { key: 'firePattern', label: '攻击模式', type: 'select', options: ['single', 'spread', 'burst'] },
+                    { key: 'spreadAngle', label: '散射角度 (度)', type: 'number', step: '1' },
+                    { key: 'burstCount', label: '连发次数', type: 'number' },
+                    { key: 'burstDelay', label: '连发间隔 (秒)', type: 'number', step: '0.01' },
+                    { key: 'shootDuration', label: '射击时长 (秒)', type: 'number', step: '0.01' },
+                    { key: 'shootDecay', label: '射击衰减速度', type: 'number', step: '0.5' },
+                    { key: 'shootVolume', label: '射击音量', type: 'number', step: '0.01' },
+                    { key: 'hitDuration', label: '命中时长 (秒)', type: 'number', step: '0.01' },
+                    { key: 'hitDecay', label: '命中衰减速度', type: 'number', step: '0.5' },
+                    { key: 'hitVolume', label: '命中音量', type: 'number', step: '0.01' },
+                ]
+
+                let html = ''
+                html += `<div class="form-grid">`
+                fields.forEach(f => {
+                    const val = gun ? gun[f.key] : ''
+                    const readonlyAttr = f.readonly ? 'readonly' : ''
+                    let input = ''
+                    if (f.type === 'select') {
+                        const opts = f.options.map(o =>
+                            `<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')
+                        input = `<select id="field_${f.key}" ${readonlyAttr}>${opts}</select>`
+                    } else {
+                        const stepAttr = f.step ? `step="${f.step}"` : ''
+                        input =
+                            `<input type="${f.type}" id="field_${f.key}" value="${val}" ${stepAttr} ${readonlyAttr} ${f.required?'required':''}/>`
+                    }
+                    html += `<div class="form-row"><label>${f.label}</label>${input}</div>`
+                })
+                html += `</div>`
+
+                editForm.innerHTML = html
+                editOverlay.dataset.editId = gun ? gun.id : ''
+                editOverlay.style.display = 'flex'
+            }
+
+            function saveEdit() {
+                const isEdit = !!editOverlay.dataset.editId
+                const fields = ['id', 'name', 'desc', 'icon', 'color', 'bulletLength', 'bulletWidth', 'atk', 'range',
+                    'attackSpeed', 'bulletSpeedMult', 'bulletCount', 'pierceCount', 'extraAttackCount', 'firePattern',
+                    'spreadAngle', 'burstCount', 'burstDelay', 'shootDuration', 'shootDecay', 'shootVolume',
+                    'hitDuration', 'hitDecay', 'hitVolume'
+                ]
+                const data = {}
+                fields.forEach(key => {
+                    const el = document.getElementById(`field_${key}`)
+                    if (el) {
+                        let val = el.value
+                        if (el.type === 'number' || el.type === 'range') {
+                            val = parseFloat(val)
+                            if (isNaN(val)) val = 0
+                        }
+                        data[key] = val
+                    }
+                })
+                if (!data.name || !data.id) {
+                    alert('名称和ID为必填项')
+                    return
+                }
+                const exists = GUNS.some(g => g.id === data.id && g.id !== (isEdit ? editOverlay.dataset.editId : null))
+                if (exists) {
+                    alert('ID已存在，请使用不同的ID')
+                    return
+                }
+
+                if (isEdit) {
+                    const index = GUNS.findIndex(g => g.id === editOverlay.dataset.editId)
+                    if (index !== -1) {
+                        GUNS[index] = { ...GUNS[index],
+                            ...data }
+                    }
+                } else {
+                    GUNS.push(data)
+                }
+                editOverlay.style.display = 'none'
+                renderAll()
+            }
+
+            /* ---- 选择枪械，启动游戏 ---- */
+            function selectGun(gun) {
+                initAudio()
+
+                state.selectedGun = gun
+                const p = state.player
+                p.atk = gun.atk
+                p.range = gun.range
+                p.attackSpeed = gun.attackSpeed
+                p.bulletSpeedMult = gun.bulletSpeedMult ?? 1
+                p.bulletCount = gun.bulletCount ?? 1
+                p.pierceCount = gun.pierceCount ?? 0
+                p.extraAttackCount = gun.extraAttackCount ?? 0
+                p.gunColor = gun.color || '#88ddff'
+                p.bulletLength = gun.bulletLength || 12
+                p.bulletWidth = gun.bulletWidth || 1.5
+                p.firePattern = gun.firePattern || 'single'
+                p.spreadAngle = gun.spreadAngle || 0
+                p.burstCount = gun.burstCount || 0
+                p.burstDelay = gun.burstDelay || 0.06
+                p.splitLevel = 0
+                p.lifeSteal = 0
+                p.stealLevel = 0
+                p.parallelCount = 0
+                p.scatterCount = 0
+                p.ricochetCount = 0
+                p.hurtFlashTimer = 0
+
+                p.totalKills = 0
+                p.currentKills = 0
+                p.level = 0
+                p.killsForNext = 5
+
+                state.waveIdCounter = 0
+                state.currentWaveId = 0
+                state.waveSpawned = 0
+                state.waveKilled = 0
+
+                homeOverlay.style.display = 'none'
+                manageOverlay.style.display = 'none'
+                editOverlay.style.display = 'none'
+                pauseOverlay.style.display = 'none'
+                state.gamePaused = false
+                p.x = canvasW / 2
+                p.y = canvasH / 2
+                state.targetX = canvasW / 2
+                state.targetY = canvasH / 2
+                state.gameOver = false
+                state.paused = false
+                state.wave = 0
+                state.enemies = []
+                state.projectiles = []
+                state.enemyProjectiles = []
+                state.particles = []
+                state.dust = []
+                state.floatTexts = []
+                state.attackFx = []
+                state.ghosts = []
+                state.cannonballs = []
+                state.explosions = []
+                state._pendingBossRare = false
+                p.hp = p.maxHp
+                p.attackTimer = 0
+                p._extraPending = 0
+                p._extraTimer = 0
+                p.attackEffectTimer = 0
+                p.facingAngle = 0
+                p.targetAngle = 0
+                p.facingDir = { x: 1, y: 0 }
+                updateUI()
+                setTimeout(() => { if (!state.gameOver) startWave() }, 100)
+            }
+
+            /* ─── 游戏结束 ────────────────────────── */
+            function gameOver() {
+                state.gameOver = true
+                state.gamePaused = false
+                pauseOverlay.style.display = 'none'
+                if (state.wave > state.highestWave) state.highestWave = state.wave
+                if (state.player.totalKills > state.highestKills) state.highestKills = state.player.totalKills
+                saveRecord()
+                goWave.textContent = state.wave
+                goKills.textContent = state.player.totalKills
+                goHighestWave.textContent = state.highestWave
+                goHighestKills.textContent = state.highestKills
+                gameOverOverlay.style.display = 'flex'
+            }
+
+            function restartGame() {
+                state.gameOver = false
+                state.paused = false
+                state.gamePaused = false
+                state.wave = 0
+                state.enemies = []
+                state.projectiles = []
+                state.enemyProjectiles = []
+                state.particles = []
+                state.dust = []
+                state.floatTexts = []
+                state.attackFx = []
+                state.ghosts = []
+                state.cannonballs = []
+                state.explosions = []
+                state._pendingBossRare = false
+                state.waveIdCounter = 0
+                state.currentWaveId = 0
+                state.waveSpawned = 0
+                state.waveKilled = 0
+                pauseOverlay.style.display = 'none'
+
+                const p = state.player
+                p.x = canvasW / 2
+                p.y = canvasH / 2
+                state.targetX = canvasW / 2
+                state.targetY = canvasH / 2
+                p.hp = p.maxHp
+                p.totalKills = 0
+                p.currentKills = 0
+                p.level = 0
+                p.killsForNext = 5
+                p.attackTimer = 0
+                p._extraPending = 0
+                p._extraTimer = 0
+                p.attackEffectTimer = 0
+                p.facingAngle = 0
+                p.targetAngle = 0
+                p.facingDir = { x: 1, y: 0 }
+                p.splitLevel = 0
+                p.lifeSteal = 0
+                p.stealLevel = 0
+                p.parallelCount = 0
+                p.scatterCount = 0
+                p.ricochetCount = 0
+                p.hurtFlashTimer = 0
+                updateUI()
+
+                homeOverlay.style.display = 'flex'
+                gameOverOverlay.style.display = 'none'
+                upgradeOverlay.style.display = 'none'
+                manageOverlay.style.display = 'none'
+                editOverlay.style.display = 'none'
+                renderHomeList()
+            }
+
+            /* ─── 事件绑定 ────────────────────────── */
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect()
+                const scaleX = canvasW / rect.width
+                const scaleY = canvasH / rect.height
+                state.targetX = (e.clientX - rect.left) * scaleX
+                state.targetY = (e.clientY - rect.top) * scaleY
+            })
+
+            btnRestart.addEventListener('click', restartGame)
+
+            btnResume.addEventListener('click', togglePause)
+            btnPauseHome.addEventListener('click', () => {
+                restartGame()
+            })
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'x' || e.key === 'X') {
+                    if (canTogglePause()) togglePause()
+                }
+                if (e.key === 'Escape') {
+                    // 1. 全屏中：退出全屏（并阻止继续触发暂停）
+                    if (document.fullscreenElement || document.webkitFullscreenElement) {
+                        if (document.exitFullscreen) document.exitFullscreen().catch(() => {})
+                        else if (document.webkitExitFullscreen) document.webkitExitFullscreen()
+                        return
+                    }
+                    // 2. 弹窗：关闭（原有职责）
+                    if (configPanel.style.display === 'flex') {
+                        configPanel.style.display = 'none'
+                        return
+                    }
+                    if (editOverlay.style.display === 'flex') {
+                        editOverlay.style.display = 'none'
+                        return
+                    }
+                    if (manageOverlay.style.display === 'flex') {
+                        manageOverlay.style.display = 'none'
+                        homeOverlay.style.display = 'flex'
+                        renderHomeList()
+                        return
+                    }
+                    // 3. 游戏中：触发暂停；首页/其他界面：无效果
+                    if (canTogglePause()) togglePause()
+                }
+            })
+
+            btnFullscreenHome.addEventListener('click', toggleFullscreen)
+            btnFullscreenHud.addEventListener('click', toggleFullscreen)
+
+            btnManageGuns.addEventListener('click', () => {
+                homeOverlay.style.display = 'none'
+                manageOverlay.style.display = 'flex'
+                renderManageList()
+            })
+            btnCloseManage.addEventListener('click', () => {
+                manageOverlay.style.display = 'none'
+                homeOverlay.style.display = 'flex'
+                renderHomeList()
+            })
+            btnAddGun.addEventListener('click', () => {
+                openEditDialog(null)
+            })
+            btnEditCancel.addEventListener('click', () => {
+                editOverlay.style.display = 'none'
+            })
+            btnEditSave.addEventListener('click', saveEdit)
+
+            btnConfigToggle.addEventListener('click', () => {
+                const v = configPanel.style.display === 'none' ? 'flex' : 'none'
+                configPanel.style.display = v
+            })
+
+            btnConfigClose.addEventListener('click', () => {
+                configPanel.style.display = 'none'
+            })
+            speedMultSlider.addEventListener('input', () => {
+                speedMultVal.textContent = parseFloat(speedMultSlider.value).toFixed(2)
+            })
+            countOffsetSlider.addEventListener('input', () => {
+                countOffsetVal.textContent = countOffsetSlider.value
+            })
+
+            /* ─── 游戏循环 ────────────────────────── */
+            let lastTime = 0,
+                rafId = null
+
+            function loop(time) {
+                const dt = Math.min((time - lastTime) / 1000, 0.05)
+                lastTime = time
+                update(dt)
+                render()
+                rafId = requestAnimationFrame(loop)
+            }
+
+            /* ─── 初始化 ──────────────────────────── */
+            // 读取存档
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY)
+                if (saved) {
+                    const data = JSON.parse(saved)
+                    state.highestWave = data.highestWave || 0
+                    state.highestKills = data.highestKills || 0
+                }
+            } catch (_) {}
+
+            resizeCanvas()
+            homeOverlay.style.display = 'flex'
+            manageOverlay.style.display = 'none'
+            editOverlay.style.display = 'none'
+            pauseOverlay.style.display = 'none'
+            gameOverOverlay.style.display = 'none'
+            upgradeOverlay.style.display = 'none'
+
+            renderHomeList()
+
+            state.player.x = canvasW / 2
+            state.player.y = canvasH / 2
+            state.targetX = canvasW / 2
+            state.targetY = canvasH / 2
+            updateUI()
+
+            lastTime = performance.now()
+            rafId = requestAnimationFrame(loop)
+
+            /* ─── 清理 ────────────────────────────── */
+            window.addEventListener('beforeunload', () => {
+                if (rafId) cancelAnimationFrame(rafId)
+                ro.disconnect()
+                saveRecord()
+                if (audioCtx) {
+                    audioCtx.close().catch(() => {})
+                }
+            })
+
+        })(); // end IIFE
+    </script>
+</body>
+</html>

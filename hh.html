@@ -85,6 +85,49 @@
             background: #000;
             cursor: crosshair;
         }
+
+        /* 移动端虚拟摇杆 */
+        .joy-base {
+            position: absolute;
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.08);
+            display: none;
+            z-index: 30;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .joy-knob {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        /* 竖屏：中间偏下 */
+        @media (orientation: portrait) {
+            .joy-base {
+                left: 50%;
+                bottom: 16%;
+                transform: translateX(-50%);
+            }
+        }
+        /* 横屏：左下角 */
+        @media (orientation: landscape) {
+            .joy-base {
+                left: 40px;
+                bottom: 40px;
+                transform: none;
+            }
+        }
         .arena-overlay {
             position: absolute;
             top: 0;
@@ -698,6 +741,9 @@
                 wave: 0,
                 targetX: 0,
                 targetY: 0,
+                joyActive: false,
+                joyDX: 0,
+                joyDY: 0,
 
                 _pendingBossRare: false,
                 _stars: null,
@@ -733,6 +779,7 @@
             </div>
             <div class="arena-canvas-wrap">
               <canvas id="arenaCanvas"></canvas>
+              <div class="joy-base" id="joyBase"><div class="joy-knob" id="joyKnob"></div></div>
               <!-- 首页 -->
               <div class="arena-overlay" id="homeOverlay">
                 <div class="arena-modal" style="max-width:640px;">
@@ -1695,14 +1742,21 @@
                     if (p.hurtFlashTimer < 0) p.hurtFlashTimer = 0
                 }
 
-                const dx = state.targetX - p.x
-                const dy = state.targetY - p.y
-                const distMove = Math.hypot(dx, dy)
-                if (distMove > 2) {
-                    const moveSpeed = p.speed * speedMult
-                    const step = Math.min(moveSpeed * dt, distMove)
-                    p.x += (dx / distMove) * step
-                    p.y += (dy / distMove) * step
+                if (state.joyActive && (state.joyDX !== 0 || state.joyDY !== 0)) {
+                    // 移动端摇杆：方向 * 速度 持续移动
+                    const joySpeed = p.speed * speedMult
+                    p.x += state.joyDX * joySpeed * dt
+                    p.y += state.joyDY * joySpeed * dt
+                } else {
+                    const dx = state.targetX - p.x
+                    const dy = state.targetY - p.y
+                    const distMove = Math.hypot(dx, dy)
+                    if (distMove > 2) {
+                        const moveSpeed = p.speed * speedMult
+                        const step = Math.min(moveSpeed * dt, distMove)
+                        p.x += (dx / distMove) * step
+                        p.y += (dy / distMove) * step
+                    }
                 }
                 const margin = 5
                 p.x = clamp(p.x, margin, canvasW - margin)
@@ -3358,6 +3412,75 @@
                     if (canTogglePause()) togglePause()
                 }
             })
+
+            /* ---- 移动端虚拟摇杆 ---- */
+            const joyBase = $('#joyBase')
+            const joyKnob = $('#joyKnob')
+            const isTouchDevice = ('ontouchstart' in window) ||
+                (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
+            if (isTouchDevice) joyBase.style.display = 'block'
+
+            let joyCenterX = 0,
+                joyCenterY = 0,
+                joyActive = false
+
+            function updateJoy(touch) {
+                const dx = touch.clientX - joyCenterX
+                const dy = touch.clientY - joyCenterY
+                const maxR = 45
+                const len = Math.hypot(dx, dy)
+                if (len < 4) {
+                    state.joyDX = 0
+                    state.joyDY = 0
+                    joyKnob.style.transform = 'translate(-50%, -50%)'
+                    return
+                }
+                const clamped = Math.min(len, maxR)
+                const nx = dx / len
+                const ny = dy / len
+                state.joyDX = nx
+                state.joyDY = ny
+                joyKnob.style.transform =
+                    `translate(calc(-50% + ${(nx * clamped).toFixed(1)}px), calc(-50% + ${(ny * clamped).toFixed(1)}px))`
+            }
+
+            function resetJoy() {
+                joyActive = false
+                state.joyActive = false
+                state.joyDX = 0
+                state.joyDY = 0
+                joyKnob.style.transform = 'translate(-50%, -50%)'
+            }
+
+            if (isTouchDevice) {
+                joyBase.addEventListener('touchstart', (e) => {
+                    e.preventDefault()
+                    const t = e.touches[0]
+                    const rect = joyBase.getBoundingClientRect()
+                    joyCenterX = rect.left + rect.width / 2
+                    joyCenterY = rect.top + rect.height / 2
+                    joyActive = true
+                    state.joyActive = true
+                    updateJoy(t)
+                }, { passive: false })
+
+                document.addEventListener('touchmove', (e) => {
+                    if (!joyActive) return
+                    e.preventDefault()
+                    updateJoy(e.touches[0])
+                }, { passive: false })
+
+                document.addEventListener('touchend', (e) => {
+                    if (!joyActive) return
+                    for (let i = 0; i < e.touches.length; i++) {
+                        if (e.touches[i].target === joyBase) return
+                    }
+                    resetJoy()
+                })
+                document.addEventListener('touchcancel', () => {
+                    if (joyActive) resetJoy()
+                })
+            }
 
             btnFullscreenHome.addEventListener('click', toggleFullscreen)
             btnFullscreenHud.addEventListener('click', toggleFullscreen)

@@ -5,8 +5,9 @@
 
 ## 🎮 在线试玩
 
-> GitHub Pages 部署后生效，替换为你的实际地址：
-> `https://<你的GitHub用户名>.github.io/<仓库名>/hh.html`
+**[点击试玩](https://qia-n.github.io/arena-survival-shooter/hh.html)**
+
+> 注：需先在 GitHub 仓库启用 Pages 部署（见下文「🚀 部署到 GitHub Pages」）后链接才可访问。
 
 ## ✨ 功能特性
 
@@ -53,6 +54,12 @@
 python -m http.server 8000
 # 然后访问 http://localhost:8000/hh.html
 ```
+
+## 🚀 部署到 GitHub Pages
+
+1. 在仓库 **Settings → Pages** 中，将 **Build and deployment** 的 Source 设为 **Deploy from a branch**
+2. Branch 选择 **main** + **/(root)**，点击 **Save**
+3. 等待约 1 分钟，游戏即可通过 <https://qia-n.github.io/arena-survival-shooter/hh.html> 访问
 
 ## 📜 许可
 

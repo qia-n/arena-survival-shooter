@@ -586,7 +586,9 @@
                 slam: { len: 100, halfW: 110 },
                 charge: { len: 420, halfW: 45 },
                 dash: { len: 600, halfW: 50 },
+                nova: { radius: 200 },
             }
+            const MELEE_BOSS_NOVA_WINDUP = 5
             const MELEE_ATTACK_FX_LIFE = 0.28
             const DASH_SPEED = 900
             const PROJECTILE_SPEED_BASE = 600
@@ -1163,6 +1165,9 @@
                     const r = MELEE_ATTACKS.fan.radius + pad + e.radius
                     if (Math.hypot(lx, ly) > r) return false
                     return Math.abs(Math.atan2(ly, lx)) <= MELEE_ATTACKS.fan.halfAngle + 0.15
+                } else if (e.attackType === 'nova') {
+                    const r = MELEE_ATTACKS.nova.radius + pad + e.radius
+                    return Math.hypot(lx, ly) <= r
                 } else if (e.attackType === 'slam') {
                     const len = MELEE_ATTACKS.slam.len + pad + e.radius
                     const halfW = MELEE_ATTACKS.slam.halfW + pad
@@ -1176,7 +1181,7 @@
 
             /* ─── Boss 技能 AI（随机技能池 + 距离适配） ─ */
             function rollMeleeSkill(e) {
-                const skills = e.meleeSkills || ['fan', 'slam', 'charge', 'dash']
+                const skills = e.meleeSkills || ['fan', 'slam', 'charge', 'dash', 'nova']
                 const pool = skills.slice()
                 if (pool.length > 1 && e.lastSkill) {
                     const idx = pool.indexOf(e.lastSkill)
@@ -1190,7 +1195,8 @@
                 e.attackAngle = Math.atan2(pl.y - e.y, pl.x - e.x)
                 e.attackType = skill
                 e.attackState = 'windup'
-                e.windupTimer = MELEE_BOSS_WINDUP
+                // 蓄力拍击蓄力 5s，其余 0.7s
+                e.windupTimer = skill === 'nova' ? MELEE_BOSS_NOVA_WINDUP : MELEE_BOSS_WINDUP
                 e.lastSkill = skill
             }
 
@@ -2412,6 +2418,7 @@
                                 if (skill === 'slam') cover = MELEE_ATTACKS.slam.len + 10
                                 else if (skill === 'fan') cover = MELEE_ATTACKS.fan.radius + 10
                                 else if (skill === 'charge') cover = MELEE_ATTACKS.charge.len + 10
+                                else if (skill === 'nova') cover = MELEE_ATTACKS.nova.radius + 10
                                 if (skill === 'dash') {
                                     // 抽到冲刺：直接冲刺（技能本身）
                                     startMeleeDash(e)
@@ -2951,6 +2958,8 @@
                             ctx.moveTo(0, 0)
                             ctx.arc(0, 0, MELEE_ATTACKS.fan.radius + e.radius, -MELEE_ATTACKS.fan.halfAngle, MELEE_ATTACKS.fan.halfAngle)
                             ctx.closePath()
+                        } else if (e.attackType === 'nova') {
+                            ctx.arc(0, 0, MELEE_ATTACKS.nova.radius + e.radius, 0, Math.PI * 2)
                         } else if (e.attackType === 'slam') {
                             ctx.rect(e.radius, -MELEE_ATTACKS.slam.halfW, MELEE_ATTACKS.slam.len, MELEE_ATTACKS.slam.halfW * 2)
                         } else if (e.attackType === 'dash') {
@@ -3077,6 +3086,18 @@
                         ctx.globalAlpha = alpha
                         ctx.fillStyle = 'rgba(255,120,40,' + (0.25 * (1 - prog)).toFixed(3) + ')'
                         ctx.strokeStyle = 'rgba(255,200,100,' + (0.9 * alpha).toFixed(3) + ')'
+                        ctx.lineWidth = 3
+                        ctx.beginPath()
+                        ctx.arc(0, 0, rr, 0, Math.PI * 2)
+                        ctx.fill()
+                        ctx.stroke()
+                        ctx.globalAlpha = 1
+                    } else if (fx.type === 'nova') {
+                        // 蓄力拍击：圆形扩散冲击波
+                        const rr = 20 + prog * (MELEE_ATTACKS.nova.radius + 20)
+                        ctx.globalAlpha = alpha
+                        ctx.fillStyle = 'rgba(255,150,60,' + (0.18 * (1 - prog)).toFixed(3) + ')'
+                        ctx.strokeStyle = 'rgba(255,220,140,' + (0.9 * alpha).toFixed(3) + ')'
                         ctx.lineWidth = 3
                         ctx.beginPath()
                         ctx.arc(0, 0, rr, 0, Math.PI * 2)

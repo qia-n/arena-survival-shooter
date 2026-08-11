@@ -3330,15 +3330,15 @@
                             ctx.strokeStyle = '#fff'
                             ctx.lineWidth = 2.5
                         } else {
-                            ctx.strokeStyle = 'rgba(199,146,234,0.9)'
+                            ctx.strokeStyle = 'rgba(205,160,240,1)'
                             ctx.lineWidth = 2
                         }
                         ctx.stroke()
-                        ctx.fillStyle = 'rgba(199,146,234,0.08)'
+                        ctx.fillStyle = 'rgba(199,146,234,0.12)'
                         ctx.fill()
                     } else {
                         // 普通敌人：按类型着色（melee 白 / bomber 红 / splitter 紫 / charger 橙 / healer 绿）
-                        let strokeC = 'rgba(255,255,255,0.4)'
+                        let strokeC = 'rgba(255,255,255,0.6)'
                         let fillC = 'rgba(255,255,255,0.08)'
                         if (e.type === 'bomber') { strokeC = 'rgba(255,90,70,0.9)'; fillC = 'rgba(255,80,60,0.15)' }
                         else if (e.type === 'splitter') { strokeC = 'rgba(190,90,230,0.9)'; fillC = 'rgba(180,80,220,0.15)' }

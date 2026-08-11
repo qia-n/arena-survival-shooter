@@ -128,6 +128,49 @@
                 transform: none;
             }
         }
+
+        /* Boss 血条 */
+        .boss-bar {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(420px, 70%);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 15;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 5px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+        .boss-bar-name {
+            font-size: 12px;
+            color: #ffd700;
+            white-space: nowrap;
+            letter-spacing: 1px;
+        }
+        .boss-bar-track {
+            flex: 1;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .boss-bar-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff4d4d, #ff8844);
+            border-radius: 5px;
+            transition: width 0.1s linear;
+        }
+        .boss-bar-hp {
+            font-size: 11px;
+            color: #fff;
+            font-family: monospace;
+            white-space: nowrap;
+        }
         .arena-overlay {
             position: absolute;
             top: 0;
@@ -780,6 +823,11 @@
             <div class="arena-canvas-wrap">
               <canvas id="arenaCanvas"></canvas>
               <div class="joy-base" id="joyBase"><div class="joy-knob" id="joyKnob"></div></div>
+              <div class="boss-bar" id="bossBar" style="display:none;">
+                <span class="boss-bar-name" id="bossBarName">首领</span>
+                <div class="boss-bar-track"><div class="boss-bar-fill" id="bossBarFill"></div></div>
+                <span class="boss-bar-hp" id="bossBarHp">0/0</span>
+              </div>
               <!-- 首页 -->
               <div class="arena-overlay" id="homeOverlay">
                 <div class="arena-modal" style="max-width:640px;">
@@ -877,6 +925,10 @@
             const waveDisplay = $('#waveDisplay')
             const totalKillsDisplay = $('#totalKillsDisplay')
             const hpDisplay = $('#hpDisplay')
+            const bossBar = $('#bossBar')
+            const bossBarName = $('#bossBarName')
+            const bossBarFill = $('#bossBarFill')
+            const bossBarHp = $('#bossBarHp')
             const homeOverlay = $('#homeOverlay')
             const gunList = $('#gunList')
             const manageOverlay = $('#manageOverlay')
@@ -968,6 +1020,10 @@
                 return diff
             }
 
+            /* ─── 成长曲线 ────────────────────────── */
+            // Boss 血量：激进指数成长
+            function bossHpScale(wave) { return Math.pow(1.22, wave) }
+
             /* ─── 生成敌人 ────────────────────────── */
             function spawnEnemy(isBoss = false) {
                 const margin = 120
@@ -983,7 +1039,9 @@
                 const speedBase = isBoss ? 40 : 40 + state.wave * 1.5
                 const speed = Math.min(speedBase, isBoss ? 120 : 220)
                 const hpBase = isBoss ? 30 : 3
-                const hp = Math.floor(hpBase * waveFactor) + (isBoss ? 0 : Math.floor(state.wave / 2))
+                const hp = isBoss
+                    ? Math.floor(32 * bossHpScale(state.wave))
+                    : Math.floor(hpBase * waveFactor * (1 + state.wave * 0.12))
                 const damageBase = isBoss ? 4 : 2
                 const damage = Math.floor(damageBase * (1 + state.wave * 0.1))
                 const radius = isBoss ? BOSS_RADIUS : ENEMY_RADIUS
@@ -1028,7 +1086,7 @@
                     y = canvasH + margin }
 
                 const waveFactor = 1 + state.wave * 0.15
-                const hp = Math.floor(80 * waveFactor)
+                const hp = Math.floor(80 * bossHpScale(state.wave))
                 const damage = Math.floor(6 * (1 + state.wave * 0.08))
 
                 state.enemies.push({
@@ -1096,7 +1154,7 @@
                     y = canvasH + margin }
 
                 const waveFactor = 1 + state.wave * 0.15
-                const hp = Math.floor(70 * waveFactor)
+                const hp = Math.floor(70 * bossHpScale(state.wave))
                 const damage = Math.floor(4 * (1 + state.wave * 0.08))
 
                 state.enemies.push({
@@ -1496,7 +1554,7 @@
                 if (p.currentKills >= p.killsForNext) {
                     p.currentKills -= p.killsForNext
                     p.level++
-                    p.killsForNext = 5 + p.level
+                    p.killsForNext = Math.floor(5 + p.level * p.level * 0.5 + state.wave * 2)
                     applyLevelUpBonus()
                     state.paused = true
                     const options = getUpgradeOptions('base', 3, false)
@@ -2470,12 +2528,16 @@
                     checkUpgradeAndBoss()
                 }
 
-                if (state.waveSpawned > 0 && state.waveKilled >= state.waveSpawned / 2 && !state.gameOver && !state.paused) {
-                    startWave()
-                }
+                // 有 Boss 存活时完全冻结波次推进，击败 Boss 后继续
+                const hasBoss = state.enemies.some(e => e.isBoss)
+                if (!hasBoss) {
+                    if (state.waveSpawned > 0 && state.waveKilled >= state.waveSpawned / 2 && !state.gameOver && !state.paused) {
+                        startWave()
+                    }
 
-                if (state.enemies.length === 0 && !state.gameOver && !state.paused) {
-                    startWave()
+                    if (state.enemies.length === 0 && !state.gameOver && !state.paused) {
+                        startWave()
+                    }
                 }
 
                 updateUI()
@@ -3007,11 +3069,30 @@
             }
 
             /* ─── UI 更新 ──────────────────────────── */
+            function updateBossBar() {
+                // 显示场上最强 Boss 的血条（多个 Boss 时取 maxHp 最大者）
+                let boss = null
+                for (const e of state.enemies) {
+                    if (e.isBoss && (!boss || e.maxHp > boss.maxHp)) boss = e
+                }
+                if (boss) {
+                    bossBar.style.display = 'flex'
+                    bossBarName.textContent = boss.isMeleeBoss ? '⚔ 近战首领' :
+                        boss.isArtilleryBoss ? '🎯 远程首领' : '👑 首领'
+                    const pct = Math.max(0, Math.min(100, boss.hp / boss.maxHp * 100))
+                    bossBarFill.style.width = pct.toFixed(1) + '%'
+                    bossBarHp.textContent = Math.max(0, Math.ceil(boss.hp)) + ' / ' + boss.maxHp
+                } else {
+                    bossBar.style.display = 'none'
+                }
+            }
+
             function updateUI() {
                 const p = state.player
                 waveDisplay.textContent = state.wave
                 totalKillsDisplay.textContent = p.totalKills
                 hpDisplay.textContent = `${p.hp}/${p.maxHp}`
+                updateBossBar()
             }
 
             /* ---- 暂停 ---- */

@@ -3089,72 +3089,82 @@
                 if (!state._terrain) {
                     state._terrain = []
                     const n = Math.floor(120 * WORLD_ZOOM)
+                    const spaceColors = ['#7fb3ff', '#b08cff', '#7ff0d8']
                     for (let i = 0; i < n; i++) {
                         const type = randInt(0, 3)
-                        const t = {
+                        state._terrain.push({
                             x: Math.random() * worldW,
                             y: Math.random() * worldH,
                             type,
                             size: rand(8, 20),
-                        }
-                        if (type === 3) {
-                            // 色斑：预生成不规则多边形顶点（避免每帧随机抖动）
-                            const sides = randInt(4, 7)
-                            t.verts = []
-                            for (let s = 0; s < sides; s++) {
-                                const a = (s / sides) * Math.PI * 2
-                                const rr = t.size * (0.6 + Math.random() * 0.8)
-                                t.verts.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr })
-                            }
-                        }
-                        state._terrain.push(t)
+                            phase: rand(0, Math.PI * 2),
+                            color: spaceColors[randInt(0, 2)],
+                        })
                     }
                 }
+                const terrainTime = performance.now() / 1000
                 for (const t of state._terrain) {
-                    if (t.x < camX - 30 || t.x > camX + canvasW + 30 || t.y < camY - 30 || t.y > camY + canvasH + 30) continue
+                    if (t.x < camX - 40 || t.x > camX + canvasW + 40 || t.y < camY - 40 || t.y > camY + canvasH + 40) continue
+                    // 漂浮动画：轻微上下浮动
+                    const bob = Math.sin(terrainTime * 1.5 + t.phase) * 3
+                    const ty = t.y + bob
                     if (t.type === 0) {
-                        // 岩石：灰蓝色多边形
+                        // 漂浮陨石：深灰多边形 + 受光面高光线
                         ctx.beginPath()
-                        ctx.moveTo(t.x - t.size, t.y + t.size * 0.3)
-                        ctx.lineTo(t.x - t.size * 0.5, t.y - t.size * 0.7)
-                        ctx.lineTo(t.x + t.size * 0.6, t.y - t.size * 0.4)
-                        ctx.lineTo(t.x + t.size, t.y + t.size * 0.5)
+                        ctx.moveTo(t.x - t.size, ty + t.size * 0.3)
+                        ctx.lineTo(t.x - t.size * 0.5, ty - t.size * 0.7)
+                        ctx.lineTo(t.x + t.size * 0.6, ty - t.size * 0.4)
+                        ctx.lineTo(t.x + t.size, ty + t.size * 0.5)
                         ctx.closePath()
-                        ctx.fillStyle = 'rgba(150,170,210,0.40)'
+                        ctx.fillStyle = 'rgba(70,80,110,0.55)'
                         ctx.fill()
-                    } else if (t.type === 1) {
-                        // 草丛：绿色短线簇
-                        ctx.strokeStyle = 'rgba(110,210,140,0.55)'
+                        ctx.strokeStyle = 'rgba(160,190,255,0.35)'
                         ctx.lineWidth = 1.5
-                        for (let g = -1; g <= 1; g++) {
-                            ctx.beginPath()
-                            ctx.moveTo(t.x + g * t.size * 0.4, t.y)
-                            ctx.lineTo(t.x + g * t.size * 0.6, t.y - t.size * 0.9)
-                            ctx.stroke()
-                        }
+                        ctx.beginPath()
+                        ctx.moveTo(t.x - t.size * 0.5, ty - t.size * 0.7)
+                        ctx.lineTo(t.x + t.size * 0.6, ty - t.size * 0.4)
+                        ctx.stroke()
+                    } else if (t.type === 1) {
+                        // 漂浮晶体：发光菱形 + 光晕，缓慢旋转
+                        ctx.save()
+                        ctx.translate(t.x, ty)
+                        ctx.rotate(terrainTime * 0.6 + t.phase)
+                        ctx.globalAlpha = 0.14
+                        ctx.fillStyle = t.color
+                        ctx.beginPath()
+                        ctx.arc(0, 0, t.size * 1.5, 0, Math.PI * 2)
+                        ctx.fill()
+                        ctx.globalAlpha = 0.9
+                        ctx.beginPath()
+                        ctx.moveTo(t.size, 0)
+                        ctx.lineTo(0, -t.size * 0.7)
+                        ctx.lineTo(-t.size, 0)
+                        ctx.lineTo(0, t.size * 0.7)
+                        ctx.closePath()
+                        ctx.fill()
+                        ctx.globalAlpha = 1.0
+                        ctx.restore()
                     } else if (t.type === 2) {
-                        // 裂缝：明显的中灰折线
-                        ctx.strokeStyle = 'rgba(190,200,220,0.45)'
+                        // 空间裂缝：紫光折线，亮度脉动
+                        const pulse = 0.5 + 0.5 * Math.sin(terrainTime * 2 + t.phase)
+                        ctx.strokeStyle = 'rgba(140,120,255,' + (0.3 + 0.3 * pulse).toFixed(3) + ')'
                         ctx.lineWidth = 2.5
                         ctx.beginPath()
-                        ctx.moveTo(t.x - t.size, t.y - t.size * 0.3)
-                        ctx.lineTo(t.x - t.size * 0.3, t.y + t.size * 0.2)
-                        ctx.lineTo(t.x + t.size * 0.4, t.y - t.size * 0.3)
-                        ctx.lineTo(t.x + t.size, t.y + t.size * 0.4)
+                        ctx.moveTo(t.x - t.size, ty - t.size * 0.3)
+                        ctx.lineTo(t.x - t.size * 0.3, ty + t.size * 0.2)
+                        ctx.lineTo(t.x + t.size * 0.4, ty - t.size * 0.3)
+                        ctx.lineTo(t.x + t.size, ty + t.size * 0.4)
                         ctx.stroke()
                     } else {
-                        // 色斑：不规则浅色块（模拟地面水渍，预生成顶点）
-                        ctx.fillStyle = 'rgba(255,255,255,0.15)'
-                        ctx.beginPath()
-                        for (let v = 0; v < t.verts.length; v++) {
-                            const vv = t.verts[v]
-                            const px = t.x + vv.x
-                            const py = t.y + vv.y
-                            if (v === 0) ctx.moveTo(px, py)
-                            else ctx.lineTo(px, py)
+                        // 星云光晕：多层彩色同心圆（中心亮、边缘淡）
+                        for (let layer = 0; layer < 3; layer++) {
+                            ctx.globalAlpha = 0.11 - layer * 0.028
+                            ctx.fillStyle = t.color
+                            ctx.beginPath()
+                            ctx.arc(t.x, ty, t.size * (1.7 - layer * 0.45), 0, Math.PI * 2)
+                            ctx.fill()
                         }
-                        ctx.closePath()
-                        ctx.fill()
+                        ctx.globalAlpha = 1.0
                     }
                 }
 
@@ -3170,7 +3180,9 @@
                     }
                 }
                 for (const star of state._stars) {
-                    ctx.globalAlpha = star.alpha
+                    // 星星闪烁（alpha 脉动）
+                    const tw = 0.6 + 0.4 * Math.sin(performance.now() / 1000 * 2 + star.x)
+                    ctx.globalAlpha = star.alpha * tw
                     ctx.fillStyle = '#fff'
                     ctx.beginPath()
                     ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2)

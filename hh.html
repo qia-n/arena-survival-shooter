@@ -3093,6 +3093,14 @@
                     for (let i = 0; i < n; i++) {
                         // 0=陨石, 2=空间裂缝, 3=星云（不生成晶体）
                         const type = [0, 2, 3][randInt(0, 2)]
+                        const t = {
+                            x: Math.random() * worldW,
+                            y: Math.random() * worldH,
+                            type,
+                            size: rand(8, 20),
+                            phase: rand(0, Math.PI * 2),
+                            color: spaceColors[randInt(0, 2)],
+                        }
                         if (type === 0) {
                             // 陨石：随机形状顶点（5-8 个，预生成避免每帧抖动）
                             const sides = randInt(5, 8)
@@ -3103,14 +3111,7 @@
                                 t.verts.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr })
                             }
                         }
-                        state._terrain.push({
-                            x: Math.random() * worldW,
-                            y: Math.random() * worldH,
-                            type,
-                            size: rand(8, 20),
-                            phase: rand(0, Math.PI * 2),
-                            color: spaceColors[randInt(0, 2)],
-                        })
+                        state._terrain.push(t)
                     }
                 }
                 const terrainTime = performance.now() / 1000

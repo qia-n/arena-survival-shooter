@@ -2371,6 +2371,12 @@
                 if (p.poisonTimer > 0) {
                     p.poisonTimer -= dt
                     p.hp = r2(p.hp - p.poisonDps * dt)
+                    // 中毒跳字：每 0.5s 飘一次 -0.5（对应 0.5s 内的扣血量）
+                    p._poisonTick = (p._poisonTick || 0) + dt
+                    if (p._poisonTick >= 0.5) {
+                        p._poisonTick -= 0.5
+                        spawnFloatText(p.x, p.y - p.radius - 24, '-0.5', '#a5e000')
+                    }
                     if (Math.random() < 0.5) {
                         state.particles.push({
                             x: p.x + rand(-12, 12),

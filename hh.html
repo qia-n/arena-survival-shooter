@@ -3091,7 +3091,8 @@
                     const n = Math.floor(120 * WORLD_ZOOM)
                     const spaceColors = ['#7fb3ff', '#b08cff', '#7ff0d8']
                     for (let i = 0; i < n; i++) {
-                        const type = randInt(0, 3)
+                        // 0=陨石, 2=空间裂缝, 3=星云（不生成晶体）
+                        const type = [0, 2, 3][randInt(0, 2)]
                         state._terrain.push({
                             x: Math.random() * worldW,
                             y: Math.random() * worldH,
@@ -3124,26 +3125,6 @@
                         ctx.moveTo(t.x - t.size * 0.5, ty - t.size * 0.7)
                         ctx.lineTo(t.x + t.size * 0.6, ty - t.size * 0.4)
                         ctx.stroke()
-                    } else if (t.type === 1) {
-                        // 漂浮晶体：发光菱形 + 光晕，缓慢旋转
-                        ctx.save()
-                        ctx.translate(t.x, ty)
-                        ctx.rotate(terrainTime * 0.6 + t.phase)
-                        ctx.globalAlpha = 0.14
-                        ctx.fillStyle = t.color
-                        ctx.beginPath()
-                        ctx.arc(0, 0, t.size * 1.5, 0, Math.PI * 2)
-                        ctx.fill()
-                        ctx.globalAlpha = 0.9
-                        ctx.beginPath()
-                        ctx.moveTo(t.size, 0)
-                        ctx.lineTo(0, -t.size * 0.7)
-                        ctx.lineTo(-t.size, 0)
-                        ctx.lineTo(0, t.size * 0.7)
-                        ctx.closePath()
-                        ctx.fill()
-                        ctx.globalAlpha = 1.0
-                        ctx.restore()
                     } else if (t.type === 2) {
                         // 空间裂缝：紫光折线，亮度脉动
                         const pulse = 0.5 + 0.5 * Math.sin(terrainTime * 2 + t.phase)

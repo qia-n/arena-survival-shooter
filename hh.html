@@ -2818,8 +2818,8 @@
                         if (e.chargeState === 'windup') {
                             e.chargeWarnTimer -= dt
                             if (e.chargeWarnTimer <= 0) {
-                                // 发射高伤高速狙击弹
-                                const a = Math.atan2(dy2, dx2)
+                                // 发射高伤高速狙击弹（沿预警线方向，预警线即真实弹道）
+                                const a = e.chargeAngle
                                 state.enemyProjectiles.push({
                                     x: e.x,
                                     y: e.y,

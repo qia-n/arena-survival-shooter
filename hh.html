@@ -626,15 +626,15 @@
             const BOMBER_BLAST_RADIUS = 110
             const BOMBER_CHARGE_RADIUS = 90
             const BOMBER_WINDUP = 1.0
-            const CHARGER_WINDUP = 0.6
-            const CHARGER_SPEED = 420
-            const CHARGER_DIST = 320
+            const CHARGER_WINDUP = 0.8
+            const CHARGER_SPEED = 260
+            const CHARGER_DIST = 900
             const CHARGER_STUN = 0.5
             const HEALER_RANGE = 150
             const HEALER_AMOUNT = 1.5
             const HEALER_INTERVAL = 2.5
             const SNIPER_WINDUP = 1.0
-            const SNIPER_RANGE = 500
+            const SNIPER_RANGE = 750
             const BARRAGE_ANGLE = Math.PI / 6
             const BARRAGE_COUNT = 5
 
@@ -2740,8 +2740,8 @@
                         } else if (e.chargeState === 'stun') {
                             e.stunTimer -= dt
                             if (e.stunTimer <= 0) e.chargeState = 'idle'
-                        } else if (d2 > 250) {
-                            // 远距离：锁定方向并蓄力预警
+                        } else if (d2 > 600) {
+                            // 超远距离：锁定方向并蓄力预警，随后慢速长距离冲锋
                             e.chargeState = 'windup'
                             e.chargeWarnTimer = CHARGER_WINDUP
                             e.chargeAngle = Math.atan2(dy2, dx2)
@@ -2821,11 +2821,11 @@
                                     life: 4,
                                 })
                                 e.chargeState = 'idle'
-                                e.rangedCooldown = 3.5
+                                e.rangedCooldown = 1.2
                             }
                         } else {
                             e.rangedCooldown -= dt
-                            if (e.rangedCooldown <= 0 && d2 > 350) {
+                            if (e.rangedCooldown <= 0 && d2 > 400) {
                                 e.chargeState = 'windup'
                                 e.chargeWarnTimer = SNIPER_WINDUP
                                 e.chargeAngle = Math.atan2(dy2, dx2)

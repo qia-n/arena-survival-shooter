@@ -15,7 +15,7 @@
         body {
             width: 100%;
             height: 100%;
-            background: #000;
+            background: #0c1017;
             overflow: hidden;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: #ddd;
@@ -3069,7 +3069,7 @@
                 ctx.translate(-camX, -camY)
 
                 const gridSize = 60
-                ctx.strokeStyle = 'rgba(255,255,255,0.10)'
+                ctx.strokeStyle = 'rgba(255,255,255,0.20)'
                 ctx.lineWidth = 0.5
                 // 只画视口内的网格（大世界性能优化）
                 for (let x = Math.max(gridSize, Math.floor(camX / gridSize) * gridSize); x < camX + canvasW; x += gridSize) {
@@ -3108,11 +3108,11 @@
                         ctx.lineTo(t.x + t.size * 0.6, t.y - t.size * 0.4)
                         ctx.lineTo(t.x + t.size, t.y + t.size * 0.5)
                         ctx.closePath()
-                        ctx.fillStyle = 'rgba(130,150,190,0.15)'
+                        ctx.fillStyle = 'rgba(150,170,210,0.40)'
                         ctx.fill()
                     } else if (t.type === 1) {
                         // 草丛：绿色短线簇
-                        ctx.strokeStyle = 'rgba(90,180,120,0.25)'
+                        ctx.strokeStyle = 'rgba(110,210,140,0.55)'
                         ctx.lineWidth = 1.5
                         for (let g = -1; g <= 1; g++) {
                             ctx.beginPath()
@@ -3121,8 +3121,8 @@
                             ctx.stroke()
                         }
                     } else if (t.type === 2) {
-                        // 裂缝：暗色折线
-                        ctx.strokeStyle = 'rgba(0,0,0,0.18)'
+                        // 裂缝：浅色折线
+                        ctx.strokeStyle = 'rgba(255,255,255,0.16)'
                         ctx.lineWidth = 1.5
                         ctx.beginPath()
                         ctx.moveTo(t.x - t.size, t.y)
@@ -3131,10 +3131,10 @@
                         ctx.lineTo(t.x + t.size, t.y + t.size * 0.2)
                         ctx.stroke()
                     } else {
-                        // 色斑：半透明深色圆（地面阴影）
+                        // 色斑：半透明浅色圆（地面亮斑）
                         ctx.beginPath()
                         ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2)
-                        ctx.fillStyle = 'rgba(0,0,0,0.12)'
+                        ctx.fillStyle = 'rgba(255,255,255,0.12)'
                         ctx.fill()
                     }
                 }
@@ -3145,8 +3145,8 @@
                         state._stars.push({
                             x: Math.random() * worldW,
                             y: Math.random() * worldH,
-                            size: Math.random() * 1.5 + 0.5,
-                            alpha: Math.random() * 0.25 + 0.05
+                            size: Math.random() * 2 + 0.8,
+                            alpha: Math.random() * 0.45 + 0.1
                         })
                     }
                 }

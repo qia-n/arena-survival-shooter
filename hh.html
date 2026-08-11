@@ -1035,15 +1035,22 @@
             const WORLD_ZOOM = 1.8
 
             /* ─── 生成敌人 ────────────────────────── */
-            function spawnEnemy(isBoss = false) {
-                const margin = 120
-                let x, y
+            // 在相机视口边缘外一点刷新（玩家附近，避免满地图找敌人）
+            function spawnEdgePos() {
+                const margin = 100
+                const vw = camX + canvasW
+                const vh = camY + canvasH
                 const side = randInt(0, 3)
-                if (side === 0) { x = -margin;
-                    y = rand(0, worldH) } else if (side === 1) { x = worldW + margin;
-                    y = rand(0, worldH) } else if (side === 2) { x = rand(0, worldW);
-                    y = -margin } else { x = rand(0, worldW);
-                    y = worldH + margin }
+                if (side === 0) return { x: camX - margin, y: rand(camY, vh) }
+                if (side === 1) return { x: vw + margin, y: rand(camY, vh) }
+                if (side === 2) return { x: rand(camX, vw), y: camY - margin }
+                return { x: rand(camX, vw), y: vh + margin }
+            }
+
+            function spawnEnemy(isBoss = false) {
+                const pos = spawnEdgePos()
+                let x = pos.x,
+                    y = pos.y
 
                 const waveFactor = 1 + state.wave * 0.15
                 const speedBase = isBoss ? 40 : 40 + state.wave * 1.5
@@ -1099,14 +1106,9 @@
 
             /* ─── 大型近战 Boss（独立类型） ───────── */
             function spawnMeleeBoss() {
-                const margin = 120
-                let x, y
-                const side = randInt(0, 3)
-                if (side === 0) { x = -margin;
-                    y = rand(0, worldH) } else if (side === 1) { x = worldW + margin;
-                    y = rand(0, worldH) } else if (side === 2) { x = rand(0, worldW);
-                    y = -margin } else { x = rand(0, worldW);
-                    y = worldH + margin }
+                const pos = spawnEdgePos()
+                let x = pos.x,
+                    y = pos.y
 
                 const waveFactor = 1 + state.wave * 0.15
                 const hp = Math.floor(80 * bossHpScale(state.wave))
@@ -1168,14 +1170,9 @@
 
             /* ─── 大型远程 Boss（独立类型） ───────── */
             function spawnArtilleryBoss() {
-                const margin = 120
-                let x, y
-                const side = randInt(0, 3)
-                if (side === 0) { x = -margin;
-                    y = rand(0, worldH) } else if (side === 1) { x = worldW + margin;
-                    y = rand(0, worldH) } else if (side === 2) { x = rand(0, worldW);
-                    y = -margin } else { x = rand(0, worldW);
-                    y = worldH + margin }
+                const pos = spawnEdgePos()
+                let x = pos.x,
+                    y = pos.y
 
                 const waveFactor = 1 + state.wave * 0.15
                 const hp = Math.floor(70 * bossHpScale(state.wave))
@@ -1844,8 +1841,8 @@
                 }
 
                 if (state.joyActive && (state.joyDX !== 0 || state.joyDY !== 0)) {
-                    // 移动端摇杆：方向 * 速度 持续移动（略加速补偿触屏滞后）
-                    const joySpeed = p.speed * speedMult * 1.25
+                    // 移动端摇杆：方向 * 速度 持续移动
+                    const joySpeed = p.speed * speedMult
                     p.x += state.joyDX * joySpeed * dt
                     p.y += state.joyDY * joySpeed * dt
                     // 同步目标点，防止松开摇杆后被拉回

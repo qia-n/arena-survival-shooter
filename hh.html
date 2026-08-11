@@ -2360,16 +2360,23 @@
                             e.attackTimer -= dt
                             if (e.attackTimer <= 0 && d2 < 650) {
                                 e.attackAngle = Math.atan2(dy2, dx2)
-                                // 触发距离从 Boss 身体边缘起算（+e.radius）；冲刺无死区：超出中程技能上限即冲刺
+                                // 触发距离从 Boss 身体边缘起算（+e.radius）
+                                // 各技能触发上限 = 判定覆盖（len+容差10）：覆盖内必触发
+                                // 冲刺阈值 = 最大判定覆盖：任何技能都攻击不到玩家时冲刺（冷却外）
                                 const skills = e.meleeSkills || ['fan', 'slam', 'charge', 'dash']
-                                // 无中程技能的 Boss（圆形 Boss）：超出拍击范围即冲刺逼近，防止被无限拉扯风筝
                                 const hasMidSkill = skills.includes('fan') || skills.includes('charge')
-                                const maxMid = hasMidSkill ? 400 : 100
+                                const r = e.radius
+                                const cover = {
+                                    slam: MELEE_ATTACKS.slam.len + 10,
+                                    fan: MELEE_ATTACKS.fan.radius + 10,
+                                    charge: MELEE_ATTACKS.charge.len + 10,
+                                }
+                                const maxCover = hasMidSkill ? cover.charge : cover.slam
                                 let chosen = null
-                                if (skills.includes('dash') && d2 > maxMid + e.radius && e.dashCooldown <= 0) chosen = 'dash'
-                                else if (skills.includes('charge') && d2 > 260 + e.radius && d2 <= 400 + e.radius) chosen = 'charge'
-                                else if (skills.includes('fan') && d2 > 120 + e.radius && d2 <= 200 + e.radius) chosen = 'fan'
-                                else if (skills.includes('slam') && d2 <= 100 + e.radius) chosen = 'slam'
+                                if (skills.includes('dash') && d2 > maxCover + r && e.dashCooldown <= 0) chosen = 'dash'
+                                else if (skills.includes('charge') && d2 > 260 + r && d2 <= cover.charge + r) chosen = 'charge'
+                                else if (skills.includes('fan') && d2 > 120 + r && d2 <= cover.fan + r) chosen = 'fan'
+                                else if (skills.includes('slam') && d2 <= cover.slam + r) chosen = 'slam'
                                 if (chosen) {
                                     e.attackType = chosen
                                     if (chosen === 'dash') {

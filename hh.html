@@ -1129,7 +1129,6 @@
                     dashLen: 0,
                     dashTimer: 0,
                     ghostTimer: 0,
-                    dashCooldown: 0,
                 })
             }
 
@@ -2347,19 +2346,23 @@
                             e.attackTimer -= dt
                             if (e.attackTimer <= 0 && d2 < 650) {
                                 e.attackAngle = Math.atan2(dy2, dx2)
-                                // 按可用技能集选招（圆形 Boss 仅 slam + dash）；冲刺带冷却降频
+                                // 按距离选招：仅当玩家进入对应攻击范围才触发，避免无效攻击
                                 const skills = e.meleeSkills || ['fan', 'slam', 'charge', 'dash']
-                                if (skills.includes('dash') && d2 > 450 && e.dashCooldown <= 0) e.attackType = 'dash'
-                                else if (skills.includes('charge') && d2 > 320) e.attackType = 'charge'
-                                else if (skills.includes('fan') && d2 > 160) e.attackType = 'fan'
-                                else e.attackType = 'slam'
-                                if (e.attackType === 'dash') {
-                                    e.dashLen = Math.min(d2, MELEE_ATTACKS.dash.len)
-                                    e.dashTimer = 0.25
-                                    e.ghostTimer = 0
+                                let chosen = null
+                                if (skills.includes('dash') && d2 > 450) chosen = 'dash'
+                                else if (skills.includes('charge') && d2 > 300 && d2 <= 460) chosen = 'charge'
+                                else if (skills.includes('fan') && d2 > 150 && d2 <= 280) chosen = 'fan'
+                                else if (skills.includes('slam') && d2 <= 150) chosen = 'slam'
+                                if (chosen) {
+                                    e.attackType = chosen
+                                    if (chosen === 'dash') {
+                                        e.dashLen = Math.min(d2, MELEE_ATTACKS.dash.len)
+                                        e.dashTimer = 0.25
+                                        e.ghostTimer = 0
+                                    }
+                                    e.attackState = 'windup'
+                                    e.windupTimer = MELEE_BOSS_WINDUP
                                 }
-                                e.attackState = 'windup'
-                                e.windupTimer = MELEE_BOSS_WINDUP
                             }
                         } else if (e.attackState === 'windup') {
                             // 蓄力预警中：静止
@@ -2407,8 +2410,6 @@
                             if (e.dashTimer <= 0) {
                                 // 到达：终点冲击特效 + 接触伤害
                                 spawnMeleeAttackFx(e)
-                                // 冲刺冷却，降低触发频率
-                                e.dashCooldown = 4
                                 const reach = Math.hypot(p.x - e.x, p.y - e.y)
                                 if (reach < e.radius + p.radius + 50) {
                                     const damageAmount = e.damage

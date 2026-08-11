@@ -1606,7 +1606,7 @@
                             vx: Math.cos(a) * 150,
                             vy: Math.sin(a) * 150,
                             radius: 7,
-                            damage: Math.max(1, e.damage),
+                            damage: Math.max(1, Math.floor(e.damage * 0.5)),
                             life: 3.5,
                         })
                     }
@@ -2371,11 +2371,12 @@
                 if (p.poisonTimer > 0) {
                     p.poisonTimer -= dt
                     p.hp = r2(p.hp - p.poisonDps * dt)
-                    // 中毒跳字：每 0.5s 飘一次 -0.5（对应 0.5s 内的扣血量）
+                    // 中毒跳字：每 0.5s 飘一次实际扣血量（对应 0.5s 内的毒伤）
                     p._poisonTick = (p._poisonTick || 0) + dt
                     if (p._poisonTick >= 0.5) {
                         p._poisonTick -= 0.5
-                        spawnFloatText(p.x, p.y - p.radius - 24, '-0.5', '#a5e000')
+                        const tickDmg = (p.poisonDps * 0.5).toFixed(2)
+                        spawnFloatText(p.x, p.y - p.radius - 24, '-' + tickDmg, '#a5e000')
                     }
                     if (Math.random() < 0.5) {
                         state.particles.push({
@@ -3356,9 +3357,9 @@
                         p.hurtFlashTimer = 0.2
                         spawnPlayerHitParticles(proj.x, proj.y, 18)
                         if (proj.kind === 'venom') {
-                            // 毒液弹：附加中毒（2.5s 持续伤害）
-                            p.poisonTimer = 2.5
-                            p.poisonDps = 1.0
+                            // 毒液弹：附加中毒（4s 持续伤害，主伤害靠毒）
+                            p.poisonTimer = 4
+                            p.poisonDps = 1.5
                         }
                         state.enemyProjectiles.splice(i, 1)
                         if (p.hp <= 0) {

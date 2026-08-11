@@ -1352,9 +1352,9 @@
                     spawnBoss()
                     state.waveSpawned++
                 }
-                // [测试用] 第一波追加普通圆形 Boss，测试完成后删除此块
+                // [测试用] 第一波追加大型近战 Boss，测试完成后删除此块
                 if (state.wave === 1) {
-                    spawnBoss()
+                    spawnMeleeBoss()
                     state.waveSpawned++
                 }
                 if (state.wave % 10 === 0) {

@@ -1147,7 +1147,8 @@
             /* ─── 生成敌人 ────────────────────────── */
             // 在相机视口边缘外一点刷新（玩家附近，避免满地图找敌人）
             function spawnEdgePos() {
-                const margin = 100
+                // 紧贴当前玩家视角窗口外围刷新（margin 40px），避免玩家满图找怪
+                const margin = 40
                 const vw = camX + canvasW
                 const vh = camY + canvasH
                 const side = randInt(0, 3)

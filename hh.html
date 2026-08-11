@@ -3330,11 +3330,13 @@
                 const p = state.player
                 waveDisplay.textContent = state.wave
                 totalKillsDisplay.textContent = p.totalKills
-                hpDisplay.textContent = `${p.hp}/${p.maxHp}`
+                // 血量显示取整（内部仍保留真实血量，回血可能产生小数）
+                const hpShown = Math.floor(p.hp)
+                hpDisplay.textContent = `${hpShown}/${p.maxHp}`
                 // 左上角固定长度血条
                 const hpPct = Math.max(0, Math.min(100, p.hp / p.maxHp * 100))
                 playerHpFill.style.width = hpPct.toFixed(1) + '%'
-                playerHpText.textContent = `${p.hp}/${p.maxHp}`
+                playerHpText.textContent = `${hpShown}/${p.maxHp}`
                 updateBossBar()
             }
 

@@ -48,6 +48,9 @@ const footer = `
       worldW = w
       worldH = h
     },
+    getWorld() {
+      return { worldW, worldH }
+    },
     pickEnemyType,
     spawnEnemy,
     spawnBoss,

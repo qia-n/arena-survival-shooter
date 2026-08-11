@@ -501,6 +501,7 @@
                 // 世界尺寸：手机端放大（相机方案），电脑端=屏幕
                 worldW = canvasW * WORLD_ZOOM
                 worldH = canvasH * WORLD_ZOOM
+                EnemySystem.setWorld(worldW, worldH)
 
                 const p = state.player
                 if (state.gameOver) {

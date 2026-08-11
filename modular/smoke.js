@@ -59,7 +59,11 @@ const need = ['init', 'setWorld', 'pickEnemyType', 'spawnEnemy', 'spawnBoss', 's
 for (const k of need) if (typeof ES[k] !== 'function') throw new Error('EnemySystem 缺少方法: ' + k)
 
 // 手动触发一次更新，验证 AI 不抛异常
-ES.setWorld(2000, 1125)
+const w0 = ES.getWorld()
+if (!w0 || w0.worldW <= 0 || w0.worldH <= 0) {
+  throw new Error('世界尺寸未同步: ' + JSON.stringify(w0) + ' （bug: 敌人会挤在左上角）')
+}
+console.log('世界尺寸同步 OK:', w0.worldW + 'x' + w0.worldH)
 ES.spawnEnemy(false, 'bomber')
 ES.spawnEnemy(false, 'sniper')
 ES.spawnEnemy(false, 'melee')

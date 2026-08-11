@@ -50,11 +50,8 @@ out = out.split('spawnMeleeBoss()').join('EnemySystem.spawnMeleeBoss()');
 out = out.split('spawnArtilleryBoss()').join('EnemySystem.spawnArtilleryBoss()');
 out = out.split('spawnMotherBoss()').join('EnemySystem.spawnMotherBoss()');
 
-// resizeCanvas 里同步世界尺寸给 EnemySystem
-out = out.replace(
-  '                worldW = canvasW * WORLD_ZOOM\n                worldH = canvasH * WORLD_ZOOM',
-  '                worldW = canvasW * WORLD_ZOOM\n                worldH = canvasH * WORLD_ZOOM\n                EnemySystem.setWorld(worldW, worldH)'
-);
+// resizeCanvas 里同步世界尺寸给 EnemySystem（单行锚点，避免 CRLF 问题）
+out = out.replace('worldH = canvasH * WORLD_ZOOM', 'worldH = canvasH * WORLD_ZOOM\n                EnemySystem.setWorld(worldW, worldH)');
 
 // setup 尾部：注入依赖后启动
 out = out.replace(

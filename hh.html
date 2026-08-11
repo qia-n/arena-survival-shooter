@@ -2201,6 +2201,7 @@
                         if (Math.abs(e.knockbackY) < 0.1) e.knockbackY = 0
                     }
                     if (e.flashTimer > 0) e.flashTimer -= dt
+                    if (e.dashCooldown > 0) e.dashCooldown -= dt
                     if (e.warn) {
                         e.warn.timer -= dt
                         if (e.warn.timer <= 0) e.warn = null

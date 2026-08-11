@@ -1312,6 +1312,11 @@
                     spawnBoss()
                     state.waveSpawned++
                 }
+                // [测试用] 第一波追加普通圆形 Boss，测试完成后删除此块
+                if (state.wave === 1) {
+                    spawnBoss()
+                    state.waveSpawned++
+                }
                 if (state.wave % 10 === 0) {
                     // 大型 Boss：随机出现远程或近战，不同时出现
                     if (Math.random() < 0.5) spawnArtilleryBoss()

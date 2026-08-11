@@ -1143,6 +1143,7 @@
                     dashLen: 0,
                     dashTimer: 0,
                     ghostTimer: 0,
+                    dashCooldown: 0,
                 })
             }
 
@@ -2363,7 +2364,7 @@
                                 // 无中程技能的 Boss（圆形 Boss）：超出拍击范围即冲刺逼近，防止被无限拉扯风筝
                                 const hasMidSkill = skills.includes('fan') || skills.includes('charge')
                                 let chosen = null
-                                if (skills.includes('dash') && (hasMidSkill ? d2 > 450 : d2 > 150)) chosen = 'dash'
+                                if (skills.includes('dash') && d2 > (hasMidSkill ? 450 : 150) && e.dashCooldown <= 0) chosen = 'dash'
                                 else if (skills.includes('charge') && d2 > 300 && d2 <= 460) chosen = 'charge'
                                 else if (skills.includes('fan') && d2 > 150 && d2 <= 280) chosen = 'fan'
                                 else if (skills.includes('slam') && d2 <= 150) chosen = 'slam'
@@ -2424,6 +2425,8 @@
                             if (e.dashTimer <= 0) {
                                 // 到达：终点冲击特效 + 接触伤害
                                 spawnMeleeAttackFx(e)
+                                // 冲刺冷却 1s，防止高频冲刺
+                                e.dashCooldown = 1
                                 const reach = Math.hypot(p.x - e.x, p.y - e.y)
                                 if (reach < e.radius + p.radius + 50) {
                                     const damageAmount = e.damage

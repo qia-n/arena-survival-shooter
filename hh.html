@@ -1411,6 +1411,16 @@
                     else spawnMeleeBoss()
                     state.waveSpawned++
                 }
+                if (isBossWave) {
+                    // Boss 出现：清场全部普通敌人（不计入击杀统计，仅触发死亡粒子特效）
+                    for (let i = state.enemies.length - 1; i >= 0; i--) {
+                        const e = state.enemies[i]
+                        if (!e.isBoss) {
+                            spawnDeathPowder(e.x, e.y, 55)
+                            state.enemies.splice(i, 1)
+                        }
+                    }
+                }
                 updateUI()
             }
 

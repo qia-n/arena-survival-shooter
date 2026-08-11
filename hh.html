@@ -1490,7 +1490,7 @@
                 state.enemies.push({
                     x,
                     y,
-                    radius: 30,
+                    radius: 38,
                     hp,
                     maxHp: hp,
                     speed: 22,
@@ -1650,7 +1650,7 @@
                         state.enemyProjectiles.push({
                             x: e.x,
                             y: e.y,
-                            kind: 'venom',
+                            kind: 'bug',
                             vx: Math.cos(a) * 160,
                             vy: Math.sin(a) * 160,
                             radius: 5,
@@ -3350,9 +3350,9 @@
                         p.hurtFlashTimer = 0.2
                         spawnPlayerHitParticles(proj.x, proj.y, 18)
                         if (proj.kind === 'venom') {
-                            // 毒液弹：附加中毒（2s 持续伤害）
-                            p.poisonTimer = 2
-                            p.poisonDps = 0.5
+                            // 毒液弹：附加中毒（2.5s 持续伤害）
+                            p.poisonTimer = 2.5
+                            p.poisonDps = 1.0
                         }
                         state.enemyProjectiles.splice(i, 1)
                         if (p.hp <= 0) {
@@ -3668,17 +3668,46 @@
 
                 // ---- 远程敌人子弹 ----
                 for (const proj of state.enemyProjectiles) {
-                    // 狙击弹视觉区分：更长更粗的橙色弹体
-                    const len = proj.kind === 'sniper' ? 18 : (proj.kind === 'venom' ? 10 : 8)
                     const dir = Math.atan2(proj.vy, proj.vx)
-                    const endX = proj.x + Math.cos(dir) * len
-                    const endY = proj.y + Math.sin(dir) * len
-                    ctx.beginPath()
-                    ctx.moveTo(proj.x, proj.y)
-                    ctx.lineTo(endX, endY)
-                    ctx.strokeStyle = proj.kind === 'sniper' ? '#ffb020' : (proj.kind === 'venom' ? '#7CFC9A' : '#ff6b6b')
-                    ctx.lineWidth = proj.kind === 'sniper' ? 3 : (proj.kind === 'venom' ? 2.5 : 1.5)
-                    ctx.stroke()
+                    if (proj.kind === 'venom') {
+                        // 毒液弹：绿色液滴（圆 + 拖尾）
+                        ctx.beginPath()
+                        ctx.arc(proj.x, proj.y, 6, 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(90,255,130,0.85)'
+                        ctx.fill()
+                        ctx.strokeStyle = 'rgba(90,255,130,0.35)'
+                        ctx.lineWidth = 3
+                        ctx.beginPath()
+                        ctx.moveTo(proj.x, proj.y)
+                        ctx.lineTo(proj.x - Math.cos(dir) * 14, proj.y - Math.sin(dir) * 14)
+                        ctx.stroke()
+                    } else if (proj.kind === 'bug') {
+                        // 冲击波虫弹：墨绿小虫（圆 + 两个触角点）
+                        ctx.beginPath()
+                        ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(150,210,90,0.9)'
+                        ctx.fill()
+                        ctx.strokeStyle = 'rgba(90,150,60,1)'
+                        ctx.lineWidth = 1.5
+                        ctx.stroke()
+                        const px = Math.cos(dir)
+                        const py = Math.sin(dir)
+                        ctx.beginPath()
+                        ctx.arc(proj.x + px * 6, proj.y + py * 6, 1.5, 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(60,110,40,0.9)'
+                        ctx.fill()
+                    } else {
+                        // 普通远程弹 / 狙击弹：线条
+                        const len = proj.kind === 'sniper' ? 18 : 8
+                        const endX = proj.x + Math.cos(dir) * len
+                        const endY = proj.y + Math.sin(dir) * len
+                        ctx.beginPath()
+                        ctx.moveTo(proj.x, proj.y)
+                        ctx.lineTo(endX, endY)
+                        ctx.strokeStyle = proj.kind === 'sniper' ? '#ffb020' : '#ff6b6b'
+                        ctx.lineWidth = proj.kind === 'sniper' ? 3 : 1.5
+                        ctx.stroke()
+                    }
                 }
 
                 // ---- 炮弹 ----
@@ -4149,6 +4178,16 @@
                 }
                 ctx.stroke()
 
+                // 中毒视觉：玩家身体泛绿光
+                if (p.poisonTimer > 0) {
+                    const pa = 0.35 + 0.2 * Math.sin(performance.now() / 200 * 5)
+                    ctx.beginPath()
+                    ctx.arc(p.x, p.y, p.radius + 4, 0, Math.PI * 2)
+                    ctx.strokeStyle = 'rgba(90,255,130,' + pa.toFixed(3) + ')'
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+                }
+
                 const fd = p.facingDir
                 const barrelLen = p.radius + 14
                 ctx.beginPath()
@@ -4189,27 +4228,35 @@
                     }
                 }
 
-                // ---- 束缚减速区域（毒雾：多层雾气 + 上浮毒泡） ----
+                // ---- 束缚减速区域（毒雾：多层浮动雾团 + 上浮毒泡，最后消散） ----
                 for (const z of state.webZones) {
                     const tw = performance.now() / 1000
-                    for (let layer = 0; layer < 3; layer++) {
-                        const lr = z.radius * (1 - layer * 0.22)
+                    // 消散：最后 1.2s 逐渐变淡
+                    const fade = Math.min(1, Math.max(0, z.life / 1.2))
+                    // 主雾团 + 多个浮动偏移雾团
+                    const baseAlpha = 0.16 * fade
+                    for (let layer = 0; layer < 4; layer++) {
+                        const off = Math.sin(tw * 1.3 + layer * 1.7) * 6
+                        const lr = z.radius * (1 - layer * 0.18)
                         ctx.beginPath()
-                        ctx.arc(z.x, z.y, lr, 0, Math.PI * 2)
-                        ctx.fillStyle = 'rgba(70,230,110,' + (0.16 - layer * 0.045).toFixed(3) + ')'
+                        ctx.arc(z.x + off, z.y + off * 0.6, lr, 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(70,230,110,' + Math.max(0.02, baseAlpha - layer * 0.03).toFixed(3) + ')'
                         ctx.fill()
                     }
+                    // 边缘脉动
                     ctx.beginPath()
                     ctx.arc(z.x, z.y, z.radius * (0.9 + 0.1 * Math.sin(tw * 3)), 0, Math.PI * 2)
-                    ctx.strokeStyle = 'rgba(120,255,150,' + (0.4 + 0.2 * Math.sin(tw * 4)).toFixed(3) + ')'
+                    ctx.strokeStyle = 'rgba(120,255,150,' + Math.max(0.05, 0.4 * fade + 0.2 * Math.sin(tw * 4)).toFixed(3) + ')'
                     ctx.lineWidth = 2
                     ctx.stroke()
-                    // 上浮毒气泡泡
-                    for (let k = 0; k < 3; k++) {
-                        const ba = tw * 0.8 + k * 2.1
+                    // 上浮毒气泡泡（随消散减少）
+                    for (let k = 0; k < 4; k++) {
+                        const ba = tw * 0.8 + k * 1.6
+                        const bx = z.x + Math.cos(ba) * z.radius * 0.45
+                        const by = z.y + Math.sin(ba) * z.radius * 0.45 + ((tw * 16) % 30 - 15)
                         ctx.beginPath()
-                        ctx.arc(z.x + Math.cos(ba) * z.radius * 0.4, z.y + Math.sin(ba) * z.radius * 0.4 + ((tw * 14) % 26 - 13), 2.5, 0, Math.PI * 2)
-                        ctx.fillStyle = 'rgba(160,255,170,0.5)'
+                        ctx.arc(bx, by, 2.5 + (k % 2), 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(160,255,170,' + (0.5 * fade).toFixed(3) + ')'
                         ctx.fill()
                     }
                 }

@@ -72,6 +72,15 @@
             font-weight: 300;
         }
         /* 左上角玩家血条（固定长度） */
+        .arena-lvl {
+            color: #ffd700;
+            font-size: 13px;
+            font-weight: 500;
+            margin-left: 10px;
+            margin-right: 4px;
+            white-space: nowrap;
+            align-self: center;
+        }
         .player-hp-bar {
             position: relative;
             width: 40%;
@@ -858,6 +867,7 @@
               <span class="arena-title">⚡ 竞技场
                 <button id="btnConfigToggle" style="margin-left:6px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#888;padding:0 8px;border-radius:3px;cursor:pointer;font-size:12px;">⚙</button>
               </span>
+                <span class="arena-lvl" id="lvlDisplay">Lv.1</span>
               <div class="player-hp-bar" title="生命值">
                 <div class="player-hp-fill" id="playerHpFill"></div>
                 <span class="player-hp-text" id="playerHpText">10/10</span>
@@ -968,6 +978,7 @@
             const waveDisplay = $('#waveDisplay')
             const totalKillsDisplay = $('#totalKillsDisplay')
             const hpDisplay = $('#hpDisplay')
+            const lvlDisplay = $('#lvlDisplay')
             const playerHpFill = $('#playerHpFill')
             const playerHpText = $('#playerHpText')
             const bossBar = $('#bossBar')
@@ -3260,7 +3271,7 @@
                 const panelX = canvasW - 195
                 const panelY = 12
                 const panelW = 185
-                const panelH = 280
+                const panelH = 225
                 ctx.strokeStyle = 'rgba(255,255,255,0.1)'
                 ctx.lineWidth = 1
                 ctx.strokeRect(panelX, panelY, panelW, panelH)
@@ -3270,7 +3281,6 @@
                 ctx.textAlign = 'left'
                 ctx.textBaseline = 'top'
                 const lines = [
-                    `生命 ${p.hp}/${p.maxHp}`,
                     `攻击 ${p.atk.toFixed(1)}`,
                     `射程 ${p.range}`,
                     `攻速 ${p.attackSpeed.toFixed(2)}`,
@@ -3282,7 +3292,6 @@
                     `散射 ${p.scatterCount}/${MAX_SCATTER}`,
                     `吸血 ${p.lifeSteal.toFixed(2)}/${MAX_LIFE_STEAL.toFixed(1)}`,
                     `吸取 ${p.stealLevel > 0 ? Math.round(STEAL_CHANCES[p.stealLevel] * 100) + '%' : '0%'}`,
-                    `等级 ${p.level}`,
                     `弹射 ${p.ricochetCount}/${MAX_RICOCHET}`,
                 ]
                 lines.forEach((text, idx) => {
@@ -3343,6 +3352,8 @@
                 // 右上角状态栏：整数显示
                 const hpShown = Math.floor(p.hp)
                 hpDisplay.textContent = `${hpShown}/${p.maxHp}`
+                // 等级显示在血条左侧
+                lvlDisplay.textContent = `Lv.${p.level}`
                 // 左上角血条：显示 2 位小数
                 const hpPct = Math.max(0, Math.min(100, p.hp / p.maxHp * 100))
                 playerHpFill.style.width = hpPct.toFixed(1) + '%'

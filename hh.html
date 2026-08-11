@@ -3093,6 +3093,16 @@
                     for (let i = 0; i < n; i++) {
                         // 0=陨石, 2=空间裂缝, 3=星云（不生成晶体）
                         const type = [0, 2, 3][randInt(0, 2)]
+                        if (type === 0) {
+                            // 陨石：随机形状顶点（5-8 个，预生成避免每帧抖动）
+                            const sides = randInt(5, 8)
+                            t.verts = []
+                            for (let s = 0; s < sides; s++) {
+                                const a = (s / sides) * Math.PI * 2
+                                const rr = t.size * (0.5 + Math.random() * 0.6)
+                                t.verts.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr })
+                            }
+                        }
                         state._terrain.push({
                             x: Math.random() * worldW,
                             y: Math.random() * worldH,
@@ -3110,20 +3120,30 @@
                     const bob = Math.sin(terrainTime * 1.5 + t.phase) * 3
                     const ty = t.y + bob
                     if (t.type === 0) {
-                        // 漂浮陨石：深灰多边形 + 受光面高光线
+                        // 漂浮陨石：随机形状 + 半边受光高光
                         ctx.beginPath()
-                        ctx.moveTo(t.x - t.size, ty + t.size * 0.3)
-                        ctx.lineTo(t.x - t.size * 0.5, ty - t.size * 0.7)
-                        ctx.lineTo(t.x + t.size * 0.6, ty - t.size * 0.4)
-                        ctx.lineTo(t.x + t.size, ty + t.size * 0.5)
+                        for (let v = 0; v < t.verts.length; v++) {
+                            const vv = t.verts[v]
+                            const px = t.x + vv.x
+                            const py = ty + vv.y
+                            if (v === 0) ctx.moveTo(px, py)
+                            else ctx.lineTo(px, py)
+                        }
                         ctx.closePath()
                         ctx.fillStyle = 'rgba(70,80,110,0.55)'
                         ctx.fill()
+                        // 受光面高光：描边前一半顶点（光照侧）
                         ctx.strokeStyle = 'rgba(160,190,255,0.35)'
                         ctx.lineWidth = 1.5
                         ctx.beginPath()
-                        ctx.moveTo(t.x - t.size * 0.5, ty - t.size * 0.7)
-                        ctx.lineTo(t.x + t.size * 0.6, ty - t.size * 0.4)
+                        const half = Math.max(2, Math.ceil(t.verts.length / 2))
+                        for (let v = 0; v <= half; v++) {
+                            const vv = t.verts[v % t.verts.length]
+                            const px = t.x + vv.x
+                            const py = ty + vv.y
+                            if (v === 0) ctx.moveTo(px, py)
+                            else ctx.lineTo(px, py)
+                        }
                         ctx.stroke()
                     } else if (t.type === 2) {
                         // 空间裂缝：紫光折线，亮度脉动

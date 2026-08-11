@@ -345,9 +345,9 @@
                     <label class="auto-fire-opt" id="autoFireOpt" style="display:none;">
                       <input type="checkbox" id="autoFireCheck"> 自动射击（无需按住左键）
                     </label>
-                    <div style="margin-top:16px;text-align:center;">
-                      <button class="arena-btn-primary" id="btnStartGame" style="font-size:15px;padding:8px 44px;">▶ 开始游戏</button>
-                    </div>
+                  </div>
+                  <div style="margin-top:16px;text-align:center;">
+                    <button class="arena-btn-primary" id="btnStartGame" style="font-size:15px;padding:8px 44px;">▶ 开始游戏</button>
                   </div>
                 </div>
               </div>

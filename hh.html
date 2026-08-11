@@ -308,6 +308,59 @@
         .gun-card .stats span {
             color: #aaa;
         }
+        .gun-card.selected {
+            border-color: #4da3ff;
+            background: rgba(77, 163, 255, 0.12);
+            box-shadow: 0 0 12px rgba(77, 163, 255, 0.25);
+        }
+        .gun-card.selected .badge {
+            background: #4da3ff;
+            color: #fff;
+        }
+        /* 操作方式选择 */
+        .control-mode-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .control-mode-card {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #ddd;
+        }
+        .control-mode-card:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .control-mode-card.selected {
+            border-color: #4da3ff;
+            background: rgba(77, 163, 255, 0.12);
+            box-shadow: 0 0 12px rgba(77, 163, 255, 0.25);
+        }
+        .control-mode-card .cm-title {
+            font-size: 14px;
+            color: #fff;
+        }
+        .control-mode-card .cm-desc {
+            font-size: 12px;
+            color: #888;
+        }
+        .auto-fire-opt {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #bbb;
+            cursor: pointer;
+        }
         .gun-card .badge {
             padding: 2px 8px;
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -892,6 +945,11 @@
                 joyActive: false,
                 joyDX: 0,
                 joyDY: 0,
+                controlMode: 'mouse',
+                keys: { w: false, a: false, s: false, d: false },
+                mouseDown: false,
+                autoFire: false,
+                homeSelectedGun: null,
 
                 _pendingBossRare: false,
                 _stars: null,
@@ -946,6 +1004,25 @@
                   </div>
                   <p class="sub" style="margin-top:0;">选择一种枪械开始战斗</p>
                   <div class="gun-list" id="gunList"></div>
+                  <div id="controlModeSection" style="margin-top:14px;">
+                    <p class="sub" style="margin:0 0 8px 0;">操作方式</p>
+                    <div class="control-mode-list" id="controlModeList">
+                      <div class="control-mode-card selected" data-mode="mouse">
+                        <span class="cm-title">🖱 鼠标移动 + 自动射击</span>
+                        <span class="cm-desc">鼠标控制移动方向，自动攻击射程内敌人</span>
+                      </div>
+                      <div class="control-mode-card" data-mode="keyboard">
+                        <span class="cm-title">⌨ 键盘移动 + 鼠标射击</span>
+                        <span class="cm-desc">WASD 八方向移动，鼠标瞄准，按住左键射击</span>
+                      </div>
+                    </div>
+                    <label class="auto-fire-opt" id="autoFireOpt" style="display:none;">
+                      <input type="checkbox" id="autoFireCheck"> 自动射击（无需按住左键）
+                    </label>
+                    <div style="margin-top:16px;text-align:center;">
+                      <button class="arena-btn-primary" id="btnStartGame" style="font-size:15px;padding:8px 44px;">▶ 开始游戏</button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <!-- 管理界面 -->
@@ -1032,6 +1109,11 @@
             const totalKillsDisplay = $('#totalKillsDisplay')
             const hpDisplay = $('#hpDisplay')
             const lvlDisplay = $('#lvlDisplay')
+            const controlModeSection = $('#controlModeSection')
+            const controlModeList = $('#controlModeList')
+            const autoFireOpt = $('#autoFireOpt')
+            const autoFireCheck = $('#autoFireCheck')
+            const btnStartGame = $('#btnStartGame')
             const playerHpFill = $('#playerHpFill')
             const playerHpText = $('#playerHpText')
             const bossBar = $('#bossBar')
@@ -1936,7 +2018,7 @@
                         width: p.bulletWidth || 1.5,
                         damage: p.atk,
                         life: 2.5,
-                        isHoming: true,
+                        isHoming: (homing !== undefined) ? homing : true,
                         isChild: false,
                         splitRemain: p.splitLevel,
                         pierceRemain: p.pierceCount,
@@ -2045,6 +2127,20 @@
                     // 同步目标点，防止松开摇杆后被拉回
                     state.targetX = p.x
                     state.targetY = p.y
+                } else if (state.controlMode === 'keyboard') {
+                    // 键盘 WASD 八方向移动（targetX/targetY 保留为鼠标瞄准点）
+                    let mx = 0,
+                        my = 0
+                    if (state.keys.w) my -= 1
+                    if (state.keys.s) my += 1
+                    if (state.keys.a) mx -= 1
+                    if (state.keys.d) mx += 1
+                    if (mx !== 0 || my !== 0) {
+                        const len = Math.hypot(mx, my)
+                        const mv = p.speed * speedMult
+                        p.x += (mx / len) * mv * dt
+                        p.y += (my / len) * mv * dt
+                    }
                 } else {
                     const dx = state.targetX - p.x
                     const dy = state.targetY - p.y
@@ -2068,7 +2164,10 @@
                         nearest = e }
                 }
                 let targetAngle = p.facingAngle
-                if (nearest) {
+                if (state.controlMode === 'keyboard') {
+                    // 键盘模式：朝向鼠标瞄准方向
+                    targetAngle = Math.atan2(state.targetY - p.y, state.targetX - p.x)
+                } else if (nearest) {
                     targetAngle = Math.atan2(nearest.y - p.y, nearest.x - p.x)
                 }
                 p.targetAngle = targetAngle
@@ -2080,7 +2179,24 @@
 
                 p.attackTimer -= dt
                 if (p.attackTimer <= 0) {
-                    if (nearest && nearDist < p.range) {
+                    if (state.controlMode === 'keyboard') {
+                        // 键盘模式：朝鼠标方向射击（按住左键，或勾选自动射击）
+                        const wantFire = state.mouseDown || state.autoFire
+                        if (wantFire) {
+                            const aimAngle = Math.atan2(state.targetY - p.y, state.targetX - p.x)
+                            fireAttackBatch(null, aimAngle, false)
+                            if (p.extraAttackCount > 0) {
+                                p._extraPending = p.extraAttackCount
+                                p._extraTimer = EXTRA_BATCH_INTERVAL
+                            } else {
+                                p._extraPending = 0
+                                p._extraTimer = 0
+                            }
+                            p.attackTimer = 1 / p.attackSpeed
+                        } else {
+                            p.attackTimer = 0.05
+                        }
+                    } else if (nearest && nearDist < p.range) {
                         fireAttackBatch(nearest)
                         if (p.extraAttackCount > 0) {
                             p._extraPending = p.extraAttackCount
@@ -2105,7 +2221,11 @@
                             if (d < nearDist2) { nearDist2 = d;
                                 nearest2 = e }
                         }
-                        if (nearest2 && nearDist2 < p.range) {
+                        if (state.controlMode === 'keyboard') {
+                            // 键盘模式：追加攻击沿鼠标瞄准方向
+                            const aimAngle = Math.atan2(state.targetY - p.y, state.targetX - p.x)
+                            fireAttackBatch(null, aimAngle, false)
+                        } else if (nearest2 && nearDist2 < p.range) {
                             fireAttackBatch(nearest2)
                         }
                         p._extraPending--
@@ -3879,6 +3999,7 @@
                 GUNS.forEach(gun => {
                     const card = document.createElement('div')
                     card.className = 'gun-card'
+                    if (state.homeSelectedGun && state.homeSelectedGun.id === gun.id) card.classList.add('selected')
                     card.innerHTML = `
                 <div class="icon">${gun.icon || '🔫'}</div>
                 <div class="info">
@@ -3894,10 +4015,19 @@
                 <div class="badge">选择</div>
               `
                     card.addEventListener('click', () => {
-                        selectGun(gun)
+                        // 选中枪械（高亮），点击开始按钮才进入游戏
+                        state.homeSelectedGun = gun
+                        gunList.querySelectorAll('.gun-card').forEach(c => c.classList.remove('selected'))
+                        card.classList.add('selected')
                     })
                     gunList.appendChild(card)
                 })
+                // 默认选中第一把枪
+                if (!state.homeSelectedGun && GUNS.length > 0) {
+                    state.homeSelectedGun = GUNS[0]
+                    const first = gunList.querySelector('.gun-card')
+                    if (first) first.classList.add('selected')
+                }
             }
 
             function renderManageList() {
@@ -4210,6 +4340,41 @@
                 state.targetY = (e.clientY - rect.top) * scaleY + camY
             })
 
+            // ---- 操作方式选择 ----------------
+            controlModeList.querySelectorAll('.control-mode-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    controlModeList.querySelectorAll('.control-mode-card').forEach(c => c.classList.remove('selected'))
+                    card.classList.add('selected')
+                    state.controlMode = card.dataset.mode
+                    autoFireOpt.style.display = state.controlMode === 'keyboard' ? 'flex' : 'none'
+                })
+            })
+            autoFireCheck.addEventListener('change', () => {
+                state.autoFire = autoFireCheck.checked
+            })
+            btnStartGame.addEventListener('click', () => {
+                if (!state.homeSelectedGun) {
+                    alert('请先选择枪械')
+                    return
+                }
+                selectGun(state.homeSelectedGun)
+            })
+            // 手机端隐藏操作方式区（使用摇杆）
+            if (isTouchDevice) controlModeSection.style.display = 'none'
+
+            // ---- 键盘 WASD + 鼠标射击（方式二） ----
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0) state.mouseDown = true
+            })
+            window.addEventListener('mouseup', (e) => {
+                if (e.button === 0) state.mouseDown = false
+            })
+            const KEY_MAP = { w: 'w', a: 'a', s: 's', d: 'd', W: 'w', A: 'a', S: 's', D: 'd' }
+
+            document.addEventListener('keyup', (e) => {
+                if (KEY_MAP[e.key]) state.keys[KEY_MAP[e.key]] = false
+            })
+
             btnRestart.addEventListener('click', restartGame)
 
             btnResume.addEventListener('click', togglePause)
@@ -4218,6 +4383,7 @@
             })
 
             document.addEventListener('keydown', (e) => {
+                if (KEY_MAP[e.key]) state.keys[KEY_MAP[e.key]] = true
                 if (e.key === 'x' || e.key === 'X') {
                     if (canTogglePause()) togglePause()
                 }

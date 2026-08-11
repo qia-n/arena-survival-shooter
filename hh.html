@@ -4366,7 +4366,7 @@
             canvas.addEventListener('mousedown', (e) => {
                 if (e.button === 0) state.mouseDown = true
             })
-            window.addEventListener('mouseup', (e) => {
+            document.addEventListener('mouseup', (e) => {
                 if (e.button === 0) state.mouseDown = false
             })
             const KEY_MAP = { w: 'w', a: 'a', s: 's', d: 'd', W: 'w', A: 'a', S: 's', D: 'd' }

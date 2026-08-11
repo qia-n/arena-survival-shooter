@@ -629,7 +629,7 @@
             const CHARGER_WINDUP = 0.8
             const CHARGER_SPEED = 260
             const CHARGER_DIST = 900
-            const CHARGER_STUN = 0.5
+            const CHARGER_STUN = 2
             const HEALER_RANGE = 150
             const HEALER_AMOUNT = 1.5
             const HEALER_INTERVAL = 2.5
@@ -2731,7 +2731,6 @@
                                 p.y = clamp(p.y, 5, worldH - 5)
                                 spawnPlayerHitParticles(p.x, p.y, 20)
                                 if (p.hp <= 0) { p.hp = 0; gameOver() }
-                                e.chargeDist = 0 // 撞到玩家即停，进入硬直
                             }
                             if (e.chargeDist <= 0) {
                                 e.chargeState = 'stun'
@@ -2740,28 +2739,12 @@
                         } else if (e.chargeState === 'stun') {
                             e.stunTimer -= dt
                             if (e.stunTimer <= 0) e.chargeState = 'idle'
-                        } else if (d2 > 600) {
-                            // 超远距离：锁定方向并蓄力预警，随后慢速长距离冲锋
+                        } else {
+                            // 只会冲锋：任意距离都锁定方向蓄力，固定超长距离慢速冲锋
                             e.chargeState = 'windup'
                             e.chargeWarnTimer = CHARGER_WINDUP
                             e.chargeAngle = Math.atan2(dy2, dx2)
-                            e.chargeDist = Math.min(d2, CHARGER_DIST)
-                        } else {
-                            // 近身：普通追击 + 攻击
-                            const moveSpeed = e.speed * speedMult
-                            const step = Math.min(moveSpeed * dt, d2)
-                            e.x += (dx2 / d2) * step
-                            e.y += (dy2 / d2) * step
-                            e.x = clamp(e.x, -50, worldW + 50)
-                            e.y = clamp(e.y, -50, worldH + 50)
-                            e.attackCooldown -= dt
-                            if (d2 < e.radius + p.radius && e.attackCooldown <= 0) {
-                                const damageAmount = e.damage
-                                p.hp = r2(p.hp - damageAmount)
-                                p.hurtFlashTimer = 0.2
-                                e.attackCooldown = e.attackInterval
-                                if (p.hp <= 0) { p.hp = 0; gameOver() }
-                            }
+                            e.chargeDist = CHARGER_DIST
                         }
                     } else if (e.type === 'healer') {
                         // ---- 治疗怪：保持中距离，周期性治疗周围敌人 ----
@@ -2814,14 +2797,14 @@
                                 state.enemyProjectiles.push({
                                     x: e.x,
                                     y: e.y,
-                                    vx: Math.cos(a) * ENEMY_PROJECTILE_SPEED * 0.9,
-                                    vy: Math.sin(a) * ENEMY_PROJECTILE_SPEED * 0.9,
+                                    vx: Math.cos(a) * ENEMY_PROJECTILE_SPEED * 1.4,
+                                    vy: Math.sin(a) * ENEMY_PROJECTILE_SPEED * 1.4,
                                     radius: 6,
                                     damage: Math.max(1, Math.floor(e.damage * 2.5)),
                                     life: 4,
                                 })
                                 e.chargeState = 'idle'
-                                e.rangedCooldown = 1.2
+                                e.rangedCooldown = 3.2
                             }
                         } else {
                             e.rangedCooldown -= dt

@@ -1154,16 +1154,17 @@
                 const lx = (p.x - e.x) * cosA + (p.y - e.y) * sinA
                 const ly = -(p.x - e.x) * sinA + (p.y - e.y) * cosA
                 const pad = 10
+                // 判定从 Boss 身体边缘起算（+e.radius），与预警视觉一致
                 if (e.attackType === 'fan') {
-                    const r = MELEE_ATTACKS.fan.radius + pad
+                    const r = MELEE_ATTACKS.fan.radius + pad + e.radius
                     if (Math.hypot(lx, ly) > r) return false
                     return Math.abs(Math.atan2(ly, lx)) <= MELEE_ATTACKS.fan.halfAngle + 0.15
                 } else if (e.attackType === 'slam') {
-                    const len = MELEE_ATTACKS.slam.len + pad
+                    const len = MELEE_ATTACKS.slam.len + pad + e.radius
                     const halfW = MELEE_ATTACKS.slam.halfW + pad
                     return lx >= -pad && lx <= len && Math.abs(ly) <= halfW
                 } else {
-                    const len = MELEE_ATTACKS.charge.len + pad
+                    const len = MELEE_ATTACKS.charge.len + pad + e.radius
                     const halfW = MELEE_ATTACKS.charge.halfW + pad
                     return lx >= -pad && lx <= len && Math.abs(ly) <= halfW
                 }
@@ -2359,15 +2360,16 @@
                             e.attackTimer -= dt
                             if (e.attackTimer <= 0 && d2 < 650) {
                                 e.attackAngle = Math.atan2(dy2, dx2)
-                                // 按距离选招：触发距离 ≤ 技能判定覆盖范围，确保出手时玩家在覆盖内（提高命中率）
+                                // 触发距离从 Boss 身体边缘起算（+e.radius）；冲刺无死区：超出中程技能上限即冲刺
                                 const skills = e.meleeSkills || ['fan', 'slam', 'charge', 'dash']
                                 // 无中程技能的 Boss（圆形 Boss）：超出拍击范围即冲刺逼近，防止被无限拉扯风筝
                                 const hasMidSkill = skills.includes('fan') || skills.includes('charge')
+                                const maxMid = hasMidSkill ? 400 : 100
                                 let chosen = null
-                                if (skills.includes('dash') && d2 > (hasMidSkill ? 450 : 150) && e.dashCooldown <= 0) chosen = 'dash'
-                                else if (skills.includes('charge') && d2 > 260 && d2 <= 400) chosen = 'charge'
-                                else if (skills.includes('fan') && d2 > 120 && d2 <= 200) chosen = 'fan'
-                                else if (skills.includes('slam') && d2 <= 100) chosen = 'slam'
+                                if (skills.includes('dash') && d2 > maxMid + e.radius && e.dashCooldown <= 0) chosen = 'dash'
+                                else if (skills.includes('charge') && d2 > 260 + e.radius && d2 <= 400 + e.radius) chosen = 'charge'
+                                else if (skills.includes('fan') && d2 > 120 + e.radius && d2 <= 200 + e.radius) chosen = 'fan'
+                                else if (skills.includes('slam') && d2 <= 100 + e.radius) chosen = 'slam'
                                 if (chosen) {
                                     e.attackType = chosen
                                     if (chosen === 'dash') {
@@ -2888,14 +2890,14 @@
                         ctx.beginPath()
                         if (e.attackType === 'fan') {
                             ctx.moveTo(0, 0)
-                            ctx.arc(0, 0, MELEE_ATTACKS.fan.radius, -MELEE_ATTACKS.fan.halfAngle, MELEE_ATTACKS.fan.halfAngle)
+                            ctx.arc(0, 0, MELEE_ATTACKS.fan.radius + e.radius, -MELEE_ATTACKS.fan.halfAngle, MELEE_ATTACKS.fan.halfAngle)
                             ctx.closePath()
                         } else if (e.attackType === 'slam') {
-                            ctx.rect(0, -MELEE_ATTACKS.slam.halfW, MELEE_ATTACKS.slam.len, MELEE_ATTACKS.slam.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.slam.halfW, MELEE_ATTACKS.slam.len, MELEE_ATTACKS.slam.halfW * 2)
                         } else if (e.attackType === 'dash') {
-                            ctx.rect(0, -MELEE_ATTACKS.dash.halfW, e.dashLen || MELEE_ATTACKS.dash.len, MELEE_ATTACKS.dash.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.dash.halfW, e.dashLen || MELEE_ATTACKS.dash.len, MELEE_ATTACKS.dash.halfW * 2)
                         } else {
-                            ctx.rect(0, -MELEE_ATTACKS.charge.halfW, MELEE_ATTACKS.charge.len, MELEE_ATTACKS.charge.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.charge.halfW, MELEE_ATTACKS.charge.len, MELEE_ATTACKS.charge.halfW * 2)
                         }
                         ctx.fill()
                         ctx.stroke()

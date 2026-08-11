@@ -3270,20 +3270,20 @@
                 ctx.textAlign = 'left'
                 ctx.textBaseline = 'top'
                 const lines = [
-                    `HP  ${p.hp}/${p.maxHp}`,
-                    `ATK ${p.atk.toFixed(1)}`,
-                    `RNG ${p.range}`,
-                    `ASPD ${p.attackSpeed.toFixed(2)}`,
-                    `PIE ${p.pierceCount}/${MAX_PIERCE}`,
-                    `BSPD ${p.bulletSpeedMult.toFixed(2)}x`,
-                    `XATK ${p.extraAttackCount}/${MAX_EXTRA_ATTACK}`,
-                    `SPLIT ${p.splitLevel}/${MAX_SPLIT_LEVEL}`,
-                    `PARALLEL ${p.parallelCount}/${MAX_PARALLEL}`,
-                    `SCATTER ${p.scatterCount}/${MAX_SCATTER}`,
-                    `LIFESTEAL ${p.lifeSteal.toFixed(2)}/${MAX_LIFE_STEAL.toFixed(1)}`,
-                    `STEAL ${p.stealLevel > 0 ? Math.round(STEAL_CHANCES[p.stealLevel] * 100) + '%' : '0%'}`,
-                    `LVL ${p.level}`,
-                    `RICO ${p.ricochetCount}/${MAX_RICOCHET}`,
+                    `生命 ${p.hp}/${p.maxHp}`,
+                    `攻击 ${p.atk.toFixed(1)}`,
+                    `射程 ${p.range}`,
+                    `攻速 ${p.attackSpeed.toFixed(2)}`,
+                    `穿透 ${p.pierceCount}/${MAX_PIERCE}`,
+                    `弹速 ${p.bulletSpeedMult.toFixed(2)}x`,
+                    `额外攻击 ${p.extraAttackCount}/${MAX_EXTRA_ATTACK}`,
+                    `分裂 ${p.splitLevel}/${MAX_SPLIT_LEVEL}`,
+                    `平行 ${p.parallelCount}/${MAX_PARALLEL}`,
+                    `散射 ${p.scatterCount}/${MAX_SCATTER}`,
+                    `吸血 ${p.lifeSteal.toFixed(2)}/${MAX_LIFE_STEAL.toFixed(1)}`,
+                    `吸取 ${p.stealLevel > 0 ? Math.round(STEAL_CHANCES[p.stealLevel] * 100) + '%' : '0%'}`,
+                    `等级 ${p.level}`,
+                    `弹射 ${p.ricochetCount}/${MAX_RICOCHET}`,
                 ]
                 lines.forEach((text, idx) => {
                     ctx.fillStyle = idx === 0 ? '#ff6b6b' : 'rgba(255,255,255,0.5)'

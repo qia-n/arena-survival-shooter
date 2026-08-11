@@ -3457,18 +3457,22 @@
                 }
                 state.enemies = state.enemies.filter(e => e.hp > 0)
                 const killed = deadEnemies.length
+                // 母体孵化的小怪不计入玩家击杀统计（防刷等级/刷吸取）
+                const realKills = deadEnemies.filter(e => !e.isMotherMinion).length
                 if (killed > 0) {
-                    state.player.totalKills += killed
-                    state.player.currentKills += killed
+                    if (realKills > 0) {
+                        state.player.totalKills += realKills
+                        state.player.currentKills += realKills
 
-                    // ---- 攻击力吸取（被动成长，仅Boss掉落属性，无翻倍） ----
-                    const stealChance = p.stealLevel > 0 ? STEAL_CHANCES[p.stealLevel] : 0
-                    if (stealChance > 0) {
-                        for (let si = 0; si < killed; si++) {
-                            if (Math.random() < stealChance) {
-                                p.atk = r2(p.atk + STEAL_ATK_BONUS)
-                                // 吸取成功：玩家身上向上飘浮金色文字反馈
-                                spawnFloatText(p.x, p.y - p.radius - 12, '+' + STEAL_ATK_BONUS.toFixed(1), '#ffd700')
+                        // ---- 攻击力吸取（被动成长，仅Boss掉落属性，无翻倍） ----
+                        const stealChance = p.stealLevel > 0 ? STEAL_CHANCES[p.stealLevel] : 0
+                        if (stealChance > 0) {
+                            for (let si = 0; si < realKills; si++) {
+                                if (Math.random() < stealChance) {
+                                    p.atk = r2(p.atk + STEAL_ATK_BONUS)
+                                    // 吸取成功：玩家身上向上飘浮金色文字反馈
+                                    spawnFloatText(p.x, p.y - p.radius - 12, '+' + STEAL_ATK_BONUS.toFixed(1), '#ffd700')
+                                }
                             }
                         }
                     }

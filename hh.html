@@ -927,6 +927,8 @@
                     scatterCount: 0,
                     ricochetCount: 0,
                     hurtFlashTimer: 0,
+                    poisonTimer: 0,
+                    poisonDps: 0,
                 },
 
                 enemies: [],
@@ -952,6 +954,11 @@
                 homeSelectedGun: null,
 
                 _pendingBossRare: false,
+                webZones: [],
+                flashRed: 0,
+                shakeTimer: 0,
+                shakePower: 0,
+                enrageWarnTimer: 0,
                 _stars: null,
 
                 waveIdCounter: 0,
@@ -1470,6 +1477,217 @@
                 })
             }
 
+            /* ─── 母体 Boss（召唤 + 束缚 + 冲击波 + 狂暴） ─ */
+            function spawnMotherBoss() {
+                const pos = spawnEdgePos()
+                let x = pos.x,
+                    y = pos.y
+
+                const waveFactor = 1 + state.wave * 0.15
+                const hp = Math.floor(60 * bossHpScale(state.wave))
+                const damage = Math.floor(5 * (1 + state.wave * 0.08))
+
+                state.enemies.push({
+                    x,
+                    y,
+                    radius: 30,
+                    hp,
+                    maxHp: hp,
+                    speed: 22,
+                    damage,
+                    isBoss: true,
+                    bossName: '🦠 母体',
+                    isMotherBoss: true,
+                    type: 'ranged',
+                    attackCooldown: 0,
+                    attackInterval: 1.0,
+                    rangedCooldown: 0,
+                    preferredDist: 300,
+                    flashTimer: 0,
+                    waveId: state.currentWaveId,
+                    knockbackX: 0,
+                    knockbackY: 0,
+                    venomCooldown: 2.0,
+                    spawnCooldown: 3.0,
+                    webCooldown: 5.0,
+                    shockCooldown: 8.0,
+                    enraged: false,
+                    motherWarns: [],
+                })
+            }
+
+            // 母体孵化的小怪
+            function spawnMotherMinion(x, y, mother) {
+                const waveFactor = 1 + state.wave * 0.15
+                const hp = Math.max(1, Math.floor(2 * waveFactor * (1 + state.wave * 0.12) * 0.7))
+                const damage = Math.max(1, Math.floor(2 * (1 + state.wave * 0.1) * 0.7))
+                state.enemies.push({
+                    x,
+                    y,
+                    radius: 11,
+                    hp,
+                    maxHp: hp,
+                    speed: 95 + state.wave * 1.5,
+                    damage,
+                    isBoss: false,
+                    isMotherMinion: true,
+                    type: 'melee',
+                    attackCooldown: 0,
+                    attackInterval: 0.7,
+                    rangedCooldown: 0,
+                    preferredDist: 350,
+                    flashTimer: 0,
+                    waveId: mother.waveId,
+                    knockbackX: 0,
+                    knockbackY: 0,
+                })
+            }
+
+            // 狂暴变化特效：红闪 + 震屏 + 冲击波 + 体型增大 + 警告
+            function triggerMotherEnrage(e) {
+                e.radius = e.radius * 1.3
+                state.flashRed = 0.6
+                state.shakeTimer = 0.5
+                state.shakePower = 11
+                state.enrageWarnTimer = 2.2
+                state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.5, maxLife: 0.5, radius: 280 })
+                state.attackFx.push({ type: 'blast', x: e.x, y: e.y, angle: 0, life: 0.35 })
+                // 红色粒子爆发
+                for (let k = 0; k < 44; k++) {
+                    const a = rand(0, Math.PI * 2)
+                    const sp = rand(100, 380)
+                    state.particles.push({
+                        x: e.x,
+                        y: e.y,
+                        vx: Math.cos(a) * sp,
+                        vy: Math.sin(a) * sp,
+                        size: rand(3, 10),
+                        life: rand(0.4, 0.9),
+                        color: Math.random() < 0.5 ? '#ff3b3b' : '#ff8c42',
+                    })
+                }
+            }
+
+            // 母体 AI：慢速周旋 + 毒液弹 + 召唤虫群 + 束缚陷阱 + 冲击波
+            function updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult) {
+                // 狂暴被动（hp ≤ 50%）
+                if (!e.enraged && e.hp <= e.maxHp * 0.5) {
+                    e.enraged = true
+                    triggerMotherEnrage(e)
+                }
+
+                // 慢速周旋：保持中距离（不追击）
+                const preferred = 260
+                if (d2 > preferred + 80) {
+                    const a = Math.atan2(dy2, dx2)
+                    const mv = e.speed * speedMult * 0.6
+                    e.x += Math.cos(a) * mv * dt
+                    e.y += Math.sin(a) * mv * dt
+                } else if (d2 < preferred - 100) {
+                    const a = Math.atan2(e.y - p.y, e.x - p.x)
+                    const mv = e.speed * speedMult * 0.4
+                    e.x += Math.cos(a) * mv * dt
+                    e.y += Math.sin(a) * mv * dt
+                }
+                e.x = clamp(e.x, -50, worldW + 50)
+                e.y = clamp(e.y, -50, worldH + 50)
+
+                // 普通攻击：毒液弹（狂暴后双发）
+                e.venomCooldown -= dt
+                if (e.venomCooldown <= 0 && d2 < 700) {
+                    const shots = e.enraged ? 2 : 1
+                    for (let s = 0; s < shots; s++) {
+                        const off = shots === 2 ? (s === 0 ? -0.14 : 0.14) : 0
+                        const a = Math.atan2(dy2, dx2) + off
+                        state.enemyProjectiles.push({
+                            x: e.x,
+                            y: e.y,
+                            kind: 'venom',
+                            vx: Math.cos(a) * 150,
+                            vy: Math.sin(a) * 150,
+                            radius: 7,
+                            damage: Math.max(1, e.damage),
+                            life: 3.5,
+                        })
+                    }
+                    e.venomCooldown = e.enraged ? 1.6 : 2.5
+                }
+
+                // 技能1：孵化虫群（预警圈 → 小怪，场上上限 8）
+                e.spawnCooldown -= dt
+                if (e.spawnCooldown <= 0) {
+                    e.spawnCooldown = e.enraged ? 3.5 : 6
+                    const minions = state.enemies.filter(o => o.isMotherMinion).length
+                    if (minions < 8) {
+                        const count = e.enraged ? randInt(3, 4) : randInt(2, 3)
+                        for (let k = 0; k < count; k++) {
+                            const a = rand(0, Math.PI * 2)
+                            const dist2 = rand(60, 130)
+                            e.motherWarns.push({
+                                x: e.x + Math.cos(a) * dist2,
+                                y: e.y + Math.sin(a) * dist2,
+                                timer: 1.0,
+                                kind: 'spawn',
+                            })
+                        }
+                    }
+                }
+
+                // 技能2：束缚陷阱（玩家脚下，预警后生成减速区域）
+                e.webCooldown -= dt
+                if (e.webCooldown <= 0 && d2 < 600) {
+                    e.webCooldown = e.enraged ? 6 : 8
+                    e.motherWarns.push({ x: p.x, y: p.y, timer: 1.0, kind: 'web' })
+                }
+
+                // 技能3：虫群冲击波（环形散射）
+                e.shockCooldown -= dt
+                if (e.shockCooldown <= 0) {
+                    e.shockCooldown = e.enraged ? 7 : 10
+                    const n = e.enraged ? 16 : 12
+                    for (let k = 0; k < n; k++) {
+                        const a = (k / n) * Math.PI * 2
+                        state.enemyProjectiles.push({
+                            x: e.x,
+                            y: e.y,
+                            kind: 'venom',
+                            vx: Math.cos(a) * 160,
+                            vy: Math.sin(a) * 160,
+                            radius: 5,
+                            damage: Math.max(1, e.damage - 1),
+                            life: 2.5,
+                        })
+                    }
+                }
+
+                // 狂暴持续：身体上飘火焰粒子
+                if (e.enraged && Math.random() < 0.4) {
+                    state.particles.push({
+                        x: e.x + rand(-e.radius * 0.6, e.radius * 0.6),
+                        y: e.y + rand(-e.radius * 0.6, e.radius * 0.6),
+                        vx: rand(-15, 15),
+                        vy: rand(-70, -30),
+                        size: rand(2, 6),
+                        life: rand(0.3, 0.6),
+                        color: Math.random() < 0.5 ? '#ff3b3b' : '#ff8c42',
+                    })
+                }
+
+                // 预警到期：web → 减速区域；spawn → 孵化小怪
+                for (let i = e.motherWarns.length - 1; i >= 0; i--) {
+                    const w = e.motherWarns[i]
+                    w.timer -= dt
+                    if (w.timer <= 0) {
+                        if (w.kind === 'web') {
+                            state.webZones.push({ x: w.x, y: w.y, radius: 90, life: 3 })
+                        } else {
+                            spawnMotherMinion(w.x, w.y, e)
+                        }
+                        e.motherWarns.splice(i, 1)
+                    }
+                }
+            }
+
             function startArtillerySkill(e) {
                 const pl = state.player
                 if (e.skillIndex === 0) {
@@ -1572,9 +1790,11 @@
                     state.waveSpawned++
                 }
                 if (state.wave % 10 === 0) {
-                    // 大型 Boss：随机出现远程或近战，不同时出现
-                    if (Math.random() < 0.5) spawnArtilleryBoss()
-                    else spawnMeleeBoss()
+                    // 大型 Boss：近战 / 远程 / 母体 随机三选一
+                    const br = Math.random()
+                    if (br < 0.34) spawnMeleeBoss()
+                    else if (br < 0.67) spawnArtilleryBoss()
+                    else spawnMotherBoss()
                     state.waveSpawned++
                 }
                 if (isBossWave) {
@@ -1880,6 +2100,12 @@
                     renderUpgradeUI(options, () => {
                         if (state._pendingBossRare) {
                             state._pendingBossRare = false
+                state.webZones = []
+                state.flashRed = 0
+                state.shakeTimer = 0
+                state.enrageWarnTimer = 0
+                p.poisonTimer = 0
+                p.poisonDps = 0
                             showBossUpgrade()
                         }
                     })
@@ -1888,6 +2114,12 @@
                 } else {
                     if (state._pendingBossRare) {
                         state._pendingBossRare = false
+                state.webZones = []
+                state.flashRed = 0
+                state.shakeTimer = 0
+                state.enrageWarnTimer = 0
+                p.poisonTimer = 0
+                p.poisonDps = 0
                         showBossUpgrade()
                     }
                     return false
@@ -2120,9 +2352,40 @@
                     if (p.hurtFlashTimer < 0) p.hurtFlashTimer = 0
                 }
 
+                // ---- 束缚减速区域更新 + 中毒持续伤害（先于移动计算） ----
+                state._playerSlowed = false
+                for (let i = state.webZones.length - 1; i >= 0; i--) {
+                    const z = state.webZones[i]
+                    z.life -= dt
+                    if (z.life <= 0) {
+                        state.webZones.splice(i, 1)
+                        continue
+                    }
+                    if (dist(z, p) < z.radius + p.radius) state._playerSlowed = true
+                }
+                if (p.poisonTimer > 0) {
+                    p.poisonTimer -= dt
+                    p.hp = r2(p.hp - p.poisonDps * dt)
+                    if (Math.random() < 0.5) {
+                        state.particles.push({
+                            x: p.x + rand(-12, 12),
+                            y: p.y + rand(-12, 12),
+                            vx: rand(-20, 20),
+                            vy: rand(-55, -20),
+                            size: rand(2, 5),
+                            life: 0.6,
+                            color: '#6fdc6f',
+                        })
+                    }
+                    if (p.hp <= 0) {
+                        p.hp = 0
+                        gameOver()
+                    }
+                }
+
                 if (state.joyActive && (state.joyDX !== 0 || state.joyDY !== 0)) {
-                    // 移动端摇杆：方向 * 速度 持续移动
-                    const joySpeed = p.speed * speedMult
+                    // 移动端摇杆：方向 * 速度 持续移动（束缚区域内减速）
+                    const joySpeed = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1)
                     p.x += state.joyDX * joySpeed * dt
                     p.y += state.joyDY * joySpeed * dt
                     // 同步目标点，防止松开摇杆后被拉回
@@ -2138,7 +2401,7 @@
                     if (state.keys.d) mx += 1
                     if (mx !== 0 || my !== 0) {
                         const len = Math.hypot(mx, my)
-                        const mv = p.speed * speedMult
+                        const mv = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1)
                         p.x += (mx / len) * mv * dt
                         p.y += (my / len) * mv * dt
                     }
@@ -2147,7 +2410,7 @@
                     const dy = state.targetY - p.y
                     const distMove = Math.hypot(dx, dy)
                     if (distMove > 2) {
-                        const moveSpeed = p.speed * speedMult
+                        const moveSpeed = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1)
                         const step = Math.min(moveSpeed * dt, distMove)
                         p.x += (dx / distMove) * step
                         p.y += (dy / distMove) * step
@@ -2688,6 +2951,8 @@
                             })
                             e.rangedCooldown = e.attackInterval
                         }
+                    } else if (e.isMotherBoss) {
+                        updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult)
                     } else if (e.isMeleeBoss) {
                         // ---- 大型近战 Boss：攻击状态机 ----
                         if (e.attackState === 'idle') {
@@ -3079,6 +3344,11 @@
                         p.hp = r2(p.hp - damageAmount)
                         p.hurtFlashTimer = 0.2
                         spawnPlayerHitParticles(proj.x, proj.y, 18)
+                        if (proj.kind === 'venom') {
+                            // 毒液弹：附加中毒（2s 持续伤害）
+                            p.poisonTimer = 2
+                            p.poisonDps = 0.5
+                        }
                         state.enemyProjectiles.splice(i, 1)
                         if (p.hp <= 0) {
                             p.hp = 0
@@ -3214,7 +3484,15 @@
                     }
                 }
                 ctx.save()
-                ctx.translate(-camX, -camY)
+                // 震屏效果（狂暴触发）
+                let shakeX = 0,
+                    shakeY = 0
+                if (state.shakeTimer > 0) {
+                    state.shakeTimer -= 1 / 60
+                    shakeX = (Math.random() - 0.5) * state.shakePower
+                    shakeY = (Math.random() - 0.5) * state.shakePower
+                }
+                ctx.translate(-camX + shakeX, -camY + shakeY)
 
                 const gridSize = 60
                 ctx.strokeStyle = 'rgba(255,255,255,0.20)'
@@ -3386,15 +3664,15 @@
                 // ---- 远程敌人子弹 ----
                 for (const proj of state.enemyProjectiles) {
                     // 狙击弹视觉区分：更长更粗的橙色弹体
-                    const len = proj.kind === 'sniper' ? 18 : 8
+                    const len = proj.kind === 'sniper' ? 18 : (proj.kind === 'venom' ? 10 : 8)
                     const dir = Math.atan2(proj.vy, proj.vx)
                     const endX = proj.x + Math.cos(dir) * len
                     const endY = proj.y + Math.sin(dir) * len
                     ctx.beginPath()
                     ctx.moveTo(proj.x, proj.y)
                     ctx.lineTo(endX, endY)
-                    ctx.strokeStyle = proj.kind === 'sniper' ? '#ffb020' : '#ff6b6b'
-                    ctx.lineWidth = proj.kind === 'sniper' ? 3 : 1.5
+                    ctx.strokeStyle = proj.kind === 'sniper' ? '#ffb020' : (proj.kind === 'venom' ? '#7CFC9A' : '#ff6b6b')
+                    ctx.lineWidth = proj.kind === 'sniper' ? 3 : (proj.kind === 'venom' ? 2.5 : 1.5)
                     ctx.stroke()
                 }
 
@@ -3478,7 +3756,43 @@
 
                 // ---- 敌人 ----
                 for (const e of state.enemies) {
-                    if (e.isArtilleryBoss) {
+                    if (e.isMotherBoss) {
+                        // 母体：绿色虫体 + 环绕触须；狂暴后变红 + 脉动
+                        const enraged = e.enraged
+                        const body = enraged ? 'rgba(255,60,60,0.38)' : 'rgba(90,220,140,0.3)'
+                        const edge = enraged ? 'rgba(255,90,90,0.95)' : 'rgba(120,240,170,0.9)'
+                        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 1000 * 3)
+                        const rad = e.radius * (1 + (enraged ? pulse * 0.1 : 0))
+                        ctx.beginPath()
+                        ctx.arc(e.x, e.y, rad, 0, Math.PI * 2)
+                        ctx.fillStyle = body
+                        ctx.fill()
+                        ctx.strokeStyle = edge
+                        ctx.lineWidth = enraged ? 3 : 2
+                        ctx.stroke()
+                        // 环绕触须斑点
+                        for (let k = 0; k < 6; k++) {
+                            const a = performance.now() / 1000 * 1.2 + k * Math.PI / 3
+                            ctx.beginPath()
+                            ctx.arc(e.x + Math.cos(a) * rad * 0.85, e.y + Math.sin(a) * rad * 0.85, 3.5, 0, Math.PI * 2)
+                            ctx.fillStyle = edge
+                            ctx.fill()
+                        }
+                        // 孵化 / 束缚预警圈
+                        for (const w of e.motherWarns || []) {
+                            const wp = 0.5 + 0.5 * Math.sin(performance.now() / 1000 * 8)
+                            const wr = w.kind === 'web' ? 90 : 16
+                            ctx.beginPath()
+                            ctx.arc(w.x, w.y, wr, 0, Math.PI * 2)
+                            ctx.strokeStyle = w.kind === 'web'
+                                ? 'rgba(180,120,255,' + (0.4 + 0.3 * wp).toFixed(3) + ')'
+                                : 'rgba(120,240,170,' + (0.4 + 0.3 * wp).toFixed(3) + ')'
+                            ctx.lineWidth = 2
+                            ctx.stroke()
+                            ctx.fillStyle = w.kind === 'web' ? 'rgba(180,120,255,0.08)' : 'rgba(120,240,170,0.1)'
+                            ctx.fill()
+                        }
+                    } else if (e.isArtilleryBoss) {
                         // 大型远程 Boss：紫色菱形
                         ctx.beginPath()
                         ctx.moveTo(e.x, e.y - e.radius)
@@ -3870,6 +4184,27 @@
                     }
                 }
 
+                // ---- 束缚减速区域（蛛网） ----
+                for (const z of state.webZones) {
+                    ctx.beginPath()
+                    ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2)
+                    ctx.fillStyle = 'rgba(150,110,220,0.10)'
+                    ctx.fill()
+                    ctx.strokeStyle = 'rgba(180,130,255,' + (0.35 + 0.15 * Math.sin(performance.now() / 1000 * 4)).toFixed(3) + ')'
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+                    // 蛛网放射线
+                    ctx.strokeStyle = 'rgba(180,130,255,0.15)'
+                    ctx.lineWidth = 1
+                    for (let k = 0; k < 6; k++) {
+                        const a = (k / 6) * Math.PI * 2
+                        ctx.beginPath()
+                        ctx.moveTo(z.x, z.y)
+                        ctx.lineTo(z.x + Math.cos(a) * z.radius, z.y + Math.sin(a) * z.radius)
+                        ctx.stroke()
+                    }
+                }
+
                 // ---- 飘浮文字（世界层内，坐标跟随世界） ----
                 for (const ft of state.floatTexts) {
                     const alpha = Math.max(0, Math.min(1, ft.life / 0.4))
@@ -3925,6 +4260,29 @@
                 ctx.textBaseline = 'bottom'
                 const gunName = state.selectedGun ? state.selectedGun.name : '未知'
                 ctx.fillText(`🔫 ${gunName}`, 12, canvasH - 10)
+
+                // ---- 全屏红闪（母体狂暴） ----
+                if (state.flashRed > 0) {
+                    ctx.fillStyle = 'rgba(255,0,0,' + (state.flashRed * 0.55).toFixed(3) + ')'
+                    ctx.fillRect(0, 0, canvasW, canvasH)
+                    state.flashRed -= 0.04
+                    if (state.flashRed < 0) state.flashRed = 0
+                }
+                // ---- 狂暴警告文字 ----
+                if (state.enrageWarnTimer > 0) {
+                    const wa = Math.min(1, state.enrageWarnTimer / 0.6) * (0.75 + 0.25 * Math.sin(performance.now() / 120 * 5))
+                    ctx.globalAlpha = wa
+                    ctx.font = 'bold 44px sans-serif'
+                    ctx.textAlign = 'center'
+                    ctx.textBaseline = 'middle'
+                    ctx.shadowColor = '#ff3b3b'
+                    ctx.shadowBlur = 26
+                    ctx.fillStyle = '#ff3b3b'
+                    ctx.fillText('⚠ 母体狂暴！', canvasW / 2, canvasH * 0.28)
+                    ctx.shadowBlur = 0
+                    ctx.globalAlpha = 1.0
+                    state.enrageWarnTimer -= 1 / 60
+                }
             }
 
             /* ─── UI 更新 ──────────────────────────── */
@@ -4247,6 +4605,12 @@
                 state.cannonballs = []
                 state.explosions = []
                 state._pendingBossRare = false
+                state.webZones = []
+                state.flashRed = 0
+                state.shakeTimer = 0
+                state.enrageWarnTimer = 0
+                p.poisonTimer = 0
+                p.poisonDps = 0
                 p.hp = p.maxHp
                 p.attackTimer = 0
                 p._extraPending = 0
@@ -4290,6 +4654,12 @@
                 state.cannonballs = []
                 state.explosions = []
                 state._pendingBossRare = false
+                state.webZones = []
+                state.flashRed = 0
+                state.shakeTimer = 0
+                state.enrageWarnTimer = 0
+                p.poisonTimer = 0
+                p.poisonDps = 0
                 state.waveIdCounter = 0
                 state.currentWaveId = 0
                 state.waveSpawned = 0

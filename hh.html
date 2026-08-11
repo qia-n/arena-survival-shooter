@@ -1334,6 +1334,7 @@
                     angle: e.attackAngle,
                     // nova 释放冲击波稍长更震撼
                     life: e.attackType === 'nova' ? 0.4 : MELEE_ATTACK_FX_LIFE,
+                    maxLife: e.attackType === 'nova' ? 0.4 : MELEE_ATTACK_FX_LIFE,
                     radius: e.attackType === 'nova' ? MELEE_ATTACKS.nova.radius + e.radius : 0,
                 })
             }
@@ -3121,6 +3122,7 @@
                         ctx.globalAlpha = 1
                     } else if (fx.type === 'nova') {
                         // 蓄力拍击释放：白闪内圈 + 双环扩散冲击波
+                        const prog = 1 - fx.life / (fx.maxLife || MELEE_ATTACK_FX_LIFE)
                         const rr = 20 + prog * (fx.radius || 220)
                         ctx.globalAlpha = alpha
                         ctx.fillStyle = 'rgba(255,255,255,' + (0.5 * (1 - prog)).toFixed(3) + ')'

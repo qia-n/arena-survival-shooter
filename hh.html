@@ -3741,6 +3741,21 @@
                     }
                 }
 
+                // ---- 飘浮文字（世界层内，坐标跟随世界） ----
+                for (const ft of state.floatTexts) {
+                    const alpha = Math.max(0, Math.min(1, ft.life / 0.4))
+                    ctx.globalAlpha = alpha
+                    ctx.font = 'bold 16px monospace'
+                    ctx.textAlign = 'center'
+                    ctx.textBaseline = 'middle'
+                    ctx.shadowColor = ft.color
+                    ctx.shadowBlur = 8
+                    ctx.fillStyle = ft.color
+                    ctx.fillText(ft.text, ft.x, ft.y)
+                    ctx.shadowBlur = 0
+                }
+                ctx.globalAlpha = 1.0
+
                 ctx.restore()
 
                 // ---- 属性面板 ----
@@ -3774,21 +3789,6 @@
                     ctx.fillStyle = idx === 0 ? '#ff6b6b' : 'rgba(255,255,255,0.5)'
                     ctx.fillText(text, panelX + 10, panelY + 10 + idx * 17)
                 })
-
-                // ---- 飘浮文字 ----
-                for (const ft of state.floatTexts) {
-                    const alpha = Math.max(0, Math.min(1, ft.life / 0.4))
-                    ctx.globalAlpha = alpha
-                    ctx.font = 'bold 16px monospace'
-                    ctx.textAlign = 'center'
-                    ctx.textBaseline = 'middle'
-                    ctx.shadowColor = ft.color
-                    ctx.shadowBlur = 8
-                    ctx.fillStyle = ft.color
-                    ctx.fillText(ft.text, ft.x, ft.y)
-                    ctx.shadowBlur = 0
-                }
-                ctx.globalAlpha = 1.0
 
                 ctx.fillStyle = 'rgba(255,255,255,0.15)'
                 ctx.font = '10px monospace'

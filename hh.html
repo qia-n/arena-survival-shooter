@@ -1146,6 +1146,7 @@
                     dashCooldown: 0,
                     nextSkill: null,
                     lastSkill: null,
+                    _pendingSkill: null,
                 })
             }
 
@@ -2480,8 +2481,10 @@
                                     }
                                 }
                                 if (e.nextSkill && e.nextSkill !== 'dash') {
-                                    // 机动冲刺：落地后立即释放预定技能（距离不够也直接释放）
-                                    startMeleeWindup(e, e.nextSkill)
+                                    // 机动冲刺：落地后短暂收招停顿，再释放预定技能（给玩家反应时间）
+                                    e._pendingSkill = e.nextSkill
+                                    e.attackState = 'recover'
+                                    e.recoverTimer = 0.4
                                 } else {
                                     e.attackState = 'recover'
                                     e.recoverTimer = MELEE_BOSS_RECOVER
@@ -2490,8 +2493,15 @@
                         } else if (e.attackState === 'recover') {
                             e.recoverTimer -= dt
                             if (e.recoverTimer <= 0) {
-                                e.attackState = 'idle'
-                                e.attackTimer = 1.0
+                                if (e._pendingSkill) {
+                                    const s = e._pendingSkill
+                                    e._pendingSkill = null
+                                    // 冲刺补位完成：释放预定技能
+                                    startMeleeWindup(e, s)
+                                } else {
+                                    e.attackState = 'idle'
+                                    e.attackTimer = 1.0
+                                }
                             }
                         }
                     } else {

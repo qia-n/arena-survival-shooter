@@ -2072,7 +2072,7 @@
                         const e = state.enemies[j]
                         if (proj.hitEnemies.has(e)) continue
                         if (dist(proj, e) < proj.radius + e.radius) {
-                            e.hp -= proj.damage
+                            e.hp = r2(e.hp - proj.damage)
                             e.flashTimer = 0.2
                             playHitSound(state.selectedGun)
                             spawnHitParticles(proj.x, proj.y, 16)

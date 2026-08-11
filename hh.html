@@ -1178,7 +1178,9 @@
                 const st = ENEMY_STATS[type] || ENEMY_STATS.melee
                 const speed = isBoss
                     ? Math.min(speedBase, 120)
-                    : Math.min(speedBase * st.spdMul, 220)
+                    : (type === 'bomber'
+                        ? state.player.speed * 0.85 // 自爆怪：恒定比玩家稍慢
+                        : Math.min(speedBase * st.spdMul, 220))
                 const hp = isBoss
                     ? Math.floor(32 * bossHpScale(state.wave))
                     : Math.floor(hpBase * waveFactor * (1 + state.wave * 0.12) * st.hpMul)

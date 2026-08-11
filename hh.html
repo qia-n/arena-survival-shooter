@@ -2425,8 +2425,8 @@
                             if (e.dashTimer <= 0) {
                                 // 到达：终点冲击特效 + 接触伤害
                                 spawnMeleeAttackFx(e)
-                                // 冲刺冷却 1s，防止高频冲刺
-                                e.dashCooldown = 1
+                                // 冲刺冷却 1.5s（覆盖选招间隔），防止高频冲刺
+                                e.dashCooldown = 1.5
                                 const reach = Math.hypot(p.x - e.x, p.y - e.y)
                                 if (reach < e.radius + p.radius + 50) {
                                     const damageAmount = e.damage

@@ -633,6 +633,47 @@
             const HEALER_RANGE = 150
             const HEALER_AMOUNT = 1.5
             const HEALER_INTERVAL = 2.5
+            const SNIPER_WINDUP = 1.0
+            const SNIPER_RANGE = 500
+            const BARRAGE_ANGLE = Math.PI / 6
+            const BARRAGE_COUNT = 5
+
+            // 敌人类型属性倍率（血量/伤害/移速）与出场配置（解锁波次、每波上限）
+            const ENEMY_STATS = {
+                melee: { hpMul: 1.0, dmgMul: 1.0, spdMul: 1.0 },
+                ranged: { hpMul: 0.8, dmgMul: 0.9, spdMul: 0.9 },
+                bomber: { hpMul: 0.85, dmgMul: 1.0, spdMul: 0.75 },
+                splitter: { hpMul: 1.1, dmgMul: 1.0, spdMul: 1.0 },
+                charger: { hpMul: 1.3, dmgMul: 1.1, spdMul: 1.05 },
+                healer: { hpMul: 0.8, dmgMul: 0.5, spdMul: 0.85 },
+                sniper: { hpMul: 0.7, dmgMul: 1.2, spdMul: 0.8 },
+                shield: { hpMul: 2.0, dmgMul: 0.8, spdMul: 0.7 },
+                barrage: { hpMul: 1.2, dmgMul: 1.2, spdMul: 0.9 },
+            }
+            const SPECIAL_TYPES = {
+                bomber: { wave: 3, max: 4 },
+                splitter: { wave: 4, max: 4 },
+                charger: { wave: 5, max: 3 },
+                sniper: { wave: 6, max: 3 },
+                shield: { wave: 6, max: 3 },
+                healer: { wave: 7, max: 2 },
+                barrage: { wave: 8, max: 3 },
+            }
+            // 按波次选择敌人类型：特殊怪逐波解锁，且每种每波不超过上限
+            function pickEnemyType(wave, counts) {
+                const available = []
+                for (const [t, cfg] of Object.entries(SPECIAL_TYPES)) {
+                    if (wave >= cfg.wave && (counts[t] || 0) < cfg.max) available.push(t)
+                }
+                // 特殊怪总体出现率随波次提升（最高 50%）
+                const specialChance = Math.min(0.5, 0.08 + wave * 0.03)
+                if (available.length > 0 && Math.random() < specialChance) {
+                    const t = available[randInt(0, available.length - 1)]
+                    counts[t] = (counts[t] || 0) + 1
+                    return t
+                }
+                return Math.random() < 0.3 ? 'ranged' : 'melee'
+            }
             const BOSS_RADIUS = 30
             const MELEE_BOSS_RADIUS = 42
             const MELEE_BOSS_WINDUP = 0.7
@@ -1116,36 +1157,32 @@
                 return { x: rand(camX, vw), y: vh + margin }
             }
 
-            function spawnEnemy(isBoss = false) {
+            function spawnEnemy(isBoss = false, forcedType = null) {
                 const pos = spawnEdgePos()
                 let x = pos.x,
                     y = pos.y
 
                 const waveFactor = 1 + state.wave * 0.15
                 const speedBase = isBoss ? 40 : 40 + state.wave * 1.5
-                const speed = Math.min(speedBase, isBoss ? 120 : 220)
                 const hpBase = isBoss ? 30 : 3
-                const hp = isBoss
-                    ? Math.floor(32 * bossHpScale(state.wave))
-                    : Math.floor(hpBase * waveFactor * (1 + state.wave * 0.12))
                 const damageBase = isBoss ? 4 : 2
-                const damage = Math.floor(damageBase * (1 + state.wave * 0.1))
                 const radius = isBoss ? BOSS_RADIUS : ENEMY_RADIUS
 
                 let type = 'melee'
                 if (!isBoss) {
-                    // 特殊怪按波数渐进解锁：自爆/分裂/冲锋/治疗
-                    const wBomber = state.wave >= 3 ? 0.18 : 0
-                    const wSplitter = state.wave >= 4 ? 0.15 : 0
-                    const wCharger = state.wave >= 5 ? 0.12 : 0
-                    const wHealer = state.wave >= 7 ? 0.08 : 0
-                    const r = Math.random()
-                    if (r < wBomber) type = 'bomber'
-                    else if (r < wBomber + wSplitter) type = 'splitter'
-                    else if (r < wBomber + wSplitter + wCharger) type = 'charger'
-                    else if (r < wBomber + wSplitter + wCharger + wHealer) type = 'healer'
+                    if (forcedType) type = forcedType
                     else type = Math.random() < 0.3 ? 'ranged' : 'melee'
                 }
+
+                // 按类型差异化属性（血量/伤害/移速倍率）
+                const st = ENEMY_STATS[type] || ENEMY_STATS.melee
+                const speed = isBoss
+                    ? Math.min(speedBase, 120)
+                    : Math.min(speedBase * st.spdMul, 220)
+                const hp = isBoss
+                    ? Math.floor(32 * bossHpScale(state.wave))
+                    : Math.floor(hpBase * waveFactor * (1 + state.wave * 0.12) * st.hpMul)
+                const damage = Math.max(1, Math.floor(damageBase * (1 + state.wave * 0.1) * st.dmgMul))
 
                 state.enemies.push({
                     x,
@@ -1438,8 +1475,10 @@
                 const offset = parseInt(countOffsetSlider.value) || 0
                 if (!isBossWave) {
                     let count = Math.max(1, 3 + state.wave + offset)
+                    const typeCounts = {}
                     for (let i = 0; i < count; i++) {
-                        spawnEnemy(false)
+                        const t = pickEnemyType(state.wave, typeCounts)
+                        spawnEnemy(false, t)
                         state.waveSpawned++
                     }
                 }
@@ -2124,7 +2163,16 @@
                         const e = state.enemies[j]
                         if (proj.hitEnemies.has(e)) continue
                         if (dist(proj, e) < proj.radius + e.radius) {
-                            e.hp = r2(e.hp - proj.damage)
+                            let hitDmg = proj.damage
+                            if (e.type === 'shield') {
+                                // 护盾怪：从玩家方向打来的子弹被护盾减伤 50%（绕后/弹射可打全额）
+                                const hitAng = Math.atan2(proj.y - e.y, proj.x - e.x)
+                                const faceAng = Math.atan2(p.y - e.y, p.x - e.x)
+                                let da = Math.abs(hitAng - faceAng)
+                                if (da > Math.PI) da = Math.PI * 2 - da
+                                if (da < Math.PI / 2) hitDmg = hitDmg * 0.5
+                            }
+                            e.hp = r2(e.hp - hitDmg)
                             e.flashTimer = 0.2
                             playHitSound(state.selectedGun)
                             spawnHitParticles(proj.x, proj.y, 16)
@@ -2741,6 +2789,80 @@
                                 }
                             }
                         }
+                    } else if (e.type === 'sniper') {
+                        // ---- 狙击怪：超远距离蓄力瞄准 → 高伤狙击弹 ----
+                        const preferred = SNIPER_RANGE
+                        if (d2 < preferred - 60) {
+                            const angle = Math.atan2(e.y - p.y, e.x - p.x)
+                            const moveSpeed = e.speed * speedMult * 0.8
+                            e.x += Math.cos(angle) * moveSpeed * dt
+                            e.y += Math.sin(angle) * moveSpeed * dt
+                        } else if (d2 > preferred + 60) {
+                            const angle = Math.atan2(p.y - e.y, p.x - e.x)
+                            const moveSpeed = e.speed * speedMult * 0.7
+                            e.x += Math.cos(angle) * moveSpeed * dt
+                            e.y += Math.sin(angle) * moveSpeed * dt
+                        }
+                        e.x = clamp(e.x, -50, worldW + 50)
+                        e.y = clamp(e.y, -50, worldH + 50)
+                        if (e.chargeState === 'windup') {
+                            e.chargeWarnTimer -= dt
+                            if (e.chargeWarnTimer <= 0) {
+                                // 发射高伤狙击弹
+                                const a = Math.atan2(dy2, dx2)
+                                state.enemyProjectiles.push({
+                                    x: e.x,
+                                    y: e.y,
+                                    vx: Math.cos(a) * ENEMY_PROJECTILE_SPEED * 0.9,
+                                    vy: Math.sin(a) * ENEMY_PROJECTILE_SPEED * 0.9,
+                                    radius: 6,
+                                    damage: Math.max(1, Math.floor(e.damage * 2.5)),
+                                    life: 4,
+                                })
+                                e.chargeState = 'idle'
+                                e.rangedCooldown = 3.5
+                            }
+                        } else {
+                            e.rangedCooldown -= dt
+                            if (e.rangedCooldown <= 0 && d2 > 350) {
+                                e.chargeState = 'windup'
+                                e.chargeWarnTimer = SNIPER_WINDUP
+                                e.chargeAngle = Math.atan2(dy2, dx2)
+                            }
+                        }
+                    } else if (e.type === 'barrage') {
+                        // ---- 弹幕怪：近距离扇形散射 ----
+                        const preferred = 220
+                        if (d2 < preferred - 50) {
+                            const angle = Math.atan2(e.y - p.y, e.x - p.x)
+                            const moveSpeed = e.speed * speedMult * 0.8
+                            e.x += Math.cos(angle) * moveSpeed * dt
+                            e.y += Math.sin(angle) * moveSpeed * dt
+                        } else if (d2 > preferred + 50) {
+                            const angle = Math.atan2(p.y - e.y, p.x - e.x)
+                            const moveSpeed = e.speed * speedMult * 0.7
+                            e.x += Math.cos(angle) * moveSpeed * dt
+                            e.y += Math.sin(angle) * moveSpeed * dt
+                        }
+                        e.x = clamp(e.x, -50, worldW + 50)
+                        e.y = clamp(e.y, -50, worldH + 50)
+                        e.rangedCooldown -= dt
+                        if (e.rangedCooldown <= 0 && d2 < 400) {
+                            const base = Math.atan2(dy2, dx2)
+                            for (let bi = 0; bi < BARRAGE_COUNT; bi++) {
+                                const a = base - BARRAGE_ANGLE + (2 * BARRAGE_ANGLE) * (bi / (BARRAGE_COUNT - 1))
+                                state.enemyProjectiles.push({
+                                    x: e.x,
+                                    y: e.y,
+                                    vx: Math.cos(a) * 230,
+                                    vy: Math.sin(a) * 230,
+                                    radius: 4,
+                                    damage: Math.max(1, e.damage - 1),
+                                    life: 2.5,
+                                })
+                            }
+                            e.rangedCooldown = e.attackInterval
+                        }
                     } else {
                         // ---- 普通近战 / 分裂怪：追击 + 近身攻击 ----
                         if (d2 > 1) {
@@ -3144,6 +3266,9 @@
                         else if (e.type === 'splitter') { strokeC = 'rgba(190,90,230,0.9)'; fillC = 'rgba(180,80,220,0.15)' }
                         else if (e.type === 'charger') { strokeC = 'rgba(255,180,70,0.9)'; fillC = 'rgba(255,170,60,0.15)' }
                         else if (e.type === 'healer') { strokeC = 'rgba(100,230,140,0.9)'; fillC = 'rgba(80,220,120,0.15)' }
+                        else if (e.type === 'sniper') { strokeC = 'rgba(80,190,255,0.9)'; fillC = 'rgba(70,180,255,0.15)' }
+                        else if (e.type === 'shield') { strokeC = 'rgba(90,140,255,0.95)'; fillC = 'rgba(80,130,255,0.18)' }
+                        else if (e.type === 'barrage') { strokeC = 'rgba(80,230,210,0.9)'; fillC = 'rgba(70,220,200,0.15)' }
                         ctx.beginPath()
                         ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
                         if (e.flashTimer > 0) {
@@ -3206,6 +3331,25 @@
                         ctx.lineTo(e.x + cs, e.y)
                         ctx.moveTo(e.x, e.y - cs)
                         ctx.lineTo(e.x, e.y + cs)
+                        ctx.stroke()
+                    }
+                    if (e.type === 'sniper' && e.chargeState === 'windup') {
+                        // 狙击蓄力：红色瞄准线预警
+                        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 1000 * 10)
+                        ctx.beginPath()
+                        ctx.moveTo(e.x, e.y)
+                        ctx.lineTo(e.x + Math.cos(e.chargeAngle) * 600, e.y + Math.sin(e.chargeAngle) * 600)
+                        ctx.strokeStyle = 'rgba(255,80,80,' + (0.25 + 0.45 * pulse).toFixed(3) + ')'
+                        ctx.lineWidth = 1.5
+                        ctx.stroke()
+                    }
+                    if (e.type === 'shield') {
+                        // 面朝玩家的护盾弧
+                        const fa = Math.atan2(p.y - e.y, p.x - e.x)
+                        ctx.beginPath()
+                        ctx.arc(e.x, e.y, e.radius + 4, fa - Math.PI / 2, fa + Math.PI / 2)
+                        ctx.strokeStyle = 'rgba(90,160,255,0.95)'
+                        ctx.lineWidth = 3
                         ctx.stroke()
                     }
 

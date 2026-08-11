@@ -71,6 +71,24 @@
             color: #ddd;
             font-weight: 300;
         }
+        /* 左上角玩家血条（固定长度） */
+        .player-hp-bar {
+            width: 140px;
+            height: 10px;
+            margin-left: 14px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 5px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .player-hp-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff4d4d, #ff6b6b);
+            border-radius: 5px;
+            transition: width 0.15s linear;
+        }
         .arena-canvas-wrap {
             flex: 1;
             position: relative;
@@ -823,6 +841,9 @@
               <span class="arena-title">⚡ 竞技场
                 <button id="btnConfigToggle" style="margin-left:6px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#888;padding:0 8px;border-radius:3px;cursor:pointer;font-size:12px;">⚙</button>
               </span>
+              <div class="player-hp-bar" title="生命值">
+                <div class="player-hp-fill" id="playerHpFill"></div>
+              </div>
               <span class="arena-stats">
                 总击杀 <span id="totalKillsDisplay">0</span> ｜ 波次 <span id="waveDisplay">0</span> ｜ 生命 <span id="hpDisplay">10</span>
                 <button id="btnFullscreenHud" title="全屏" style="margin-left:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#888;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:12px;">⛶</button>
@@ -929,6 +950,7 @@
             const waveDisplay = $('#waveDisplay')
             const totalKillsDisplay = $('#totalKillsDisplay')
             const hpDisplay = $('#hpDisplay')
+            const playerHpFill = $('#playerHpFill')
             const bossBar = $('#bossBar')
             const homeOverlay = $('#homeOverlay')
             const gunList = $('#gunList')
@@ -1360,11 +1382,6 @@
                 }
                 if (state.wave % 5 === 0) {
                     spawnBoss()
-                    state.waveSpawned++
-                }
-                // [测试用] 第一波追加大型近战 Boss，测试完成后删除此块
-                if (state.wave === 1) {
-                    spawnMeleeBoss()
                     state.waveSpawned++
                 }
                 if (state.wave % 10 === 0) {
@@ -3294,6 +3311,9 @@
                 waveDisplay.textContent = state.wave
                 totalKillsDisplay.textContent = p.totalKills
                 hpDisplay.textContent = `${p.hp}/${p.maxHp}`
+                // 左上角固定长度血条
+                const hpPct = Math.max(0, Math.min(100, p.hp / p.maxHp * 100))
+                playerHpFill.style.width = hpPct.toFixed(1) + '%'
                 updateBossBar()
             }
 

@@ -1064,6 +1064,8 @@
             function randInt(min, max) { return Math.floor(rand(min, max + 1)) }
 
             function clamp(v, min, max) { return Math.max(min, Math.min(max, v)) }
+            // 数值统一保留 2 位小数，避免浮点误差累积
+            function r2(x) { return Math.round((x + Number.EPSILON) * 100) / 100 }
 
             function angleDelta(a, b) {
                 let diff = b - a
@@ -2076,7 +2078,7 @@
                             spawnHitParticles(proj.x, proj.y, 16)
 
                             if (p.lifeSteal > 0 && p.hp < p.maxHp) {
-                                p.hp = Math.min(p.hp + p.lifeSteal, p.maxHp)
+                                p.hp = r2(Math.min(p.hp + p.lifeSteal, p.maxHp))
                                 // 未满血时在玩家上方显示绿色数值反馈
                                 spawnFloatText(p.x, p.y - p.radius - 12, '+' + p.lifeSteal.toFixed(1), '#7CFC00')
                             }
@@ -2500,7 +2502,7 @@
                                     spawnMeleeAttackFx(e)
                                     if (meleeBossHitTest(e, p)) {
                                         const damageAmount = e.damage
-                                        p.hp -= damageAmount
+                                        p.hp = r2(p.hp - damageAmount)
                                         p.hurtFlashTimer = 0.2
                                         // 击退玩家
                                         const kd = d2 || 1
@@ -2540,7 +2542,7 @@
                                 const reach = Math.hypot(p.x - e.x, p.y - e.y)
                                 if (reach < e.radius + p.radius + 50) {
                                     const damageAmount = e.damage
-                                    p.hp -= damageAmount
+                                    p.hp = r2(p.hp - damageAmount)
                                     p.hurtFlashTimer = 0.2
                                     const kd = reach || 1
                                     p.x += ((p.x - e.x) / kd) * 140
@@ -2591,7 +2593,7 @@
                         e.attackCooldown -= dt
                         if (d2 < e.radius + p.radius && e.attackCooldown <= 0) {
                             const damageAmount = e.damage
-                            p.hp -= damageAmount
+                            p.hp = r2(p.hp - damageAmount)
                             p.hurtFlashTimer = 0.2
                             e.attackCooldown = e.attackInterval
                             if (p.hp <= 0) {
@@ -2614,7 +2616,7 @@
                             const db = dist(c, p)
                             if (db < c.blastRadius + p.radius) {
                                 const dmg = c.damage
-                                p.hp -= dmg
+                                p.hp = r2(p.hp - dmg)
                                 p.hurtFlashTimer = 0.2
                                 spawnPlayerHitParticles(p.x, p.y, 22)
                                 if (p.hp <= 0) {
@@ -2650,7 +2652,7 @@
 
                     if (dist(proj, p) < proj.radius + p.radius) {
                         const damageAmount = proj.damage
-                        p.hp -= damageAmount
+                        p.hp = r2(p.hp - damageAmount)
                         p.hurtFlashTimer = 0.2
                         spawnPlayerHitParticles(proj.x, proj.y, 18)
                         state.enemyProjectiles.splice(i, 1)
@@ -2696,8 +2698,7 @@
                     if (stealChance > 0) {
                         for (let si = 0; si < killed; si++) {
                             if (Math.random() < stealChance) {
-                                p.atk += STEAL_ATK_BONUS
-                                p.atk = Math.round(p.atk * 100) / 100
+                                p.atk = r2(p.atk + STEAL_ATK_BONUS)
                                 // 吸取成功：玩家身上向上飘浮金色文字反馈
                                 spawnFloatText(p.x, p.y - p.radius - 12, '+' + STEAL_ATK_BONUS.toFixed(1), '#ffd700')
                             }
@@ -3329,13 +3330,13 @@
                 const p = state.player
                 waveDisplay.textContent = state.wave
                 totalKillsDisplay.textContent = p.totalKills
-                // 血量显示取整（内部仍保留真实血量，回血可能产生小数）
+                // 右上角状态栏：整数显示
                 const hpShown = Math.floor(p.hp)
                 hpDisplay.textContent = `${hpShown}/${p.maxHp}`
-                // 左上角固定长度血条
+                // 左上角血条：显示 2 位小数
                 const hpPct = Math.max(0, Math.min(100, p.hp / p.maxHp * 100))
                 playerHpFill.style.width = hpPct.toFixed(1) + '%'
-                playerHpText.textContent = `${hpShown}/${p.maxHp}`
+                playerHpText.textContent = `${p.hp.toFixed(2)}/${p.maxHp}`
                 updateBossBar()
             }
 

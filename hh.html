@@ -2111,6 +2111,7 @@
                 state.enrageWarnTimer = 0
                 p.poisonTimer = 0
                 p.poisonDps = 0
+                p.mistPoisonTimer = 0
                             showBossUpgrade()
                         }
                     })
@@ -2125,6 +2126,7 @@
                 state.enrageWarnTimer = 0
                 p.poisonTimer = 0
                 p.poisonDps = 0
+                p.mistPoisonTimer = 0
                         showBossUpgrade()
                     }
                     return false
@@ -2368,16 +2370,21 @@
                     }
                     if (dist(z, p) < z.radius + p.radius) {
                         state._playerSlowed = true
-                        // 毒雾中毒：每 0.5s 跳 0.5 伤害 + 飘字（站毒雾持续掉血）
-                        p._mistTick = (p._mistTick || 0) + dt
-                        if (p._mistTick >= 0.5) {
-                            p._mistTick -= 0.5
-                            p.hp = r2(p.hp - 0.5)
-                            spawnFloatText(p.x, p.y - p.radius - 24, '-0.50', '#8bc34a')
-                            if (p.hp <= 0) {
-                                p.hp = 0
-                                gameOver()
-                            }
+                        // 进入毒雾即中毒 2.5s（站在雾内持续刷新，离开后继续掉血）
+                        p.mistPoisonTimer = 2.5
+                    }
+                }
+                // 毒雾中毒持续伤害（离开毒雾后仍持续）
+                if (p.mistPoisonTimer > 0) {
+                    p.mistPoisonTimer -= dt
+                    p._mistTick = (p._mistTick || 0) + dt
+                    if (p._mistTick >= 0.5) {
+                        p._mistTick -= 0.5
+                        p.hp = r2(p.hp - 0.5)
+                        spawnFloatText(p.x, p.y - p.radius - 24, '-0.50', '#8bc34a')
+                        if (p.hp <= 0) {
+                            p.hp = 0
+                            gameOver()
                         }
                     }
                 }
@@ -4687,6 +4694,7 @@
                 state.enrageWarnTimer = 0
                 p.poisonTimer = 0
                 p.poisonDps = 0
+                p.mistPoisonTimer = 0
                 p.hp = p.maxHp
                 p.attackTimer = 0
                 p._extraPending = 0
@@ -4736,6 +4744,7 @@
                 state.enrageWarnTimer = 0
                 p.poisonTimer = 0
                 p.poisonDps = 0
+                p.mistPoisonTimer = 0
                 state.waveIdCounter = 0
                 state.currentWaveId = 0
                 state.waveSpawned = 0

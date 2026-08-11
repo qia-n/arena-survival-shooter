@@ -1551,7 +1551,7 @@
                 state.shakePower = 11
                 state.enrageWarnTimer = 2.2
                 state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.5, maxLife: 0.5, radius: 280 })
-                state.attackFx.push({ type: 'blast', x: e.x, y: e.y, angle: 0, life: 0.35 })
+                state.attackFx.push({ type: 'blast', x: e.x, y: e.y, angle: 0, life: 0.35, maxLife: 0.35 })
                 // 红色粒子爆发
                 for (let k = 0; k < 44; k++) {
                     const a = rand(0, Math.PI * 2)
@@ -4092,7 +4092,7 @@
                         ctx.globalAlpha = 1
                     } else if (fx.type === 'blast') {
                         // 炮弹爆炸：橙红色扩散环 + 内圈闪光
-                        const rr = 20 + prog * 130
+                        const rr = Math.max(0, 20 + prog * 130)
                         ctx.globalAlpha = alpha
                         ctx.fillStyle = 'rgba(255,120,40,' + (0.25 * (1 - prog)).toFixed(3) + ')'
                         ctx.strokeStyle = 'rgba(255,200,100,' + (0.9 * alpha).toFixed(3) + ')'

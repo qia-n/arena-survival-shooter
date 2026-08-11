@@ -1401,7 +1401,7 @@
                         state.waveSpawned++
                     }
                 }
-                if (state.wave % 5 === 0) {
+                if (state.wave % 5 === 0 && state.wave % 10 !== 0) {
                     spawnBoss()
                     state.waveSpawned++
                 }

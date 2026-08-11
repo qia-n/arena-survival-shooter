@@ -73,9 +73,11 @@
         }
         /* 左上角玩家血条（固定长度） */
         .player-hp-bar {
-            width: 140px;
+            display: inline-block;
+            vertical-align: middle;
+            width: 700px;
             height: 10px;
-            margin-left: 14px;
+            margin-left: 10px;
             background: rgba(255, 255, 255, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.25);
             border-radius: 5px;
@@ -840,10 +842,10 @@
             <div class="arena-header">
               <span class="arena-title">⚡ 竞技场
                 <button id="btnConfigToggle" style="margin-left:6px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#888;padding:0 8px;border-radius:3px;cursor:pointer;font-size:12px;">⚙</button>
+                <div class="player-hp-bar" title="生命值">
+                  <div class="player-hp-fill" id="playerHpFill"></div>
+                </div>
               </span>
-              <div class="player-hp-bar" title="生命值">
-                <div class="player-hp-fill" id="playerHpFill"></div>
-              </div>
               <span class="arena-stats">
                 总击杀 <span id="totalKillsDisplay">0</span> ｜ 波次 <span id="waveDisplay">0</span> ｜ 生命 <span id="hpDisplay">10</span>
                 <button id="btnFullscreenHud" title="全屏" style="margin-left:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#888;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:12px;">⛶</button>

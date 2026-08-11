@@ -583,7 +583,7 @@
             const MELEE_BOSS_RECOVER = 0.3
             const MELEE_ATTACKS = {
                 fan: { radius: 220, halfAngle: Math.PI / 3 },
-                slam: { len: 200, halfW: 110 },
+                slam: { len: 100, halfW: 110 },
                 charge: { len: 420, halfW: 45 },
                 dash: { len: 600, halfW: 50 },
             }
@@ -1079,6 +1079,7 @@
                     dashLen: 0,
                     dashTimer: 0,
                     ghostTimer: 0,
+                    dashCooldown: 0,
                 })
             }
 
@@ -1128,6 +1129,7 @@
                     dashLen: 0,
                     dashTimer: 0,
                     ghostTimer: 0,
+                    dashCooldown: 0,
                 })
             }
 
@@ -1252,6 +1254,19 @@
                     })
                 }
                 state.attackFx.push({ type: 'blast', x: c.x, y: c.y, angle: 0, life: MELEE_ATTACK_FX_LIFE })
+            }
+
+            /* ─── 玩家受击击退残影 ────────────────── */
+            function spawnPlayerKnockbackTrail(x, y, dirX, dirY, dist) {
+                for (let g = 1; g <= 3; g++) {
+                    state.ghosts.push({
+                        x: x - dirX * dist * (g / 4),
+                        y: y - dirY * dist * (g / 4),
+                        radius: state.player.radius,
+                        life: 0.3,
+                        color: '#88ddff',
+                    })
+                }
             }
 
             /* ─── 大型近战 Boss 攻击特效 ─────────── */
@@ -2332,9 +2347,9 @@
                             e.attackTimer -= dt
                             if (e.attackTimer <= 0 && d2 < 650) {
                                 e.attackAngle = Math.atan2(dy2, dx2)
-                                // 按可用技能集选招（圆形 Boss 仅 slam + dash）
+                                // 按可用技能集选招（圆形 Boss 仅 slam + dash）；冲刺带冷却降频
                                 const skills = e.meleeSkills || ['fan', 'slam', 'charge', 'dash']
-                                if (skills.includes('dash') && d2 > 450) e.attackType = 'dash'
+                                if (skills.includes('dash') && d2 > 450 && e.dashCooldown <= 0) e.attackType = 'dash'
                                 else if (skills.includes('charge') && d2 > 320) e.attackType = 'charge'
                                 else if (skills.includes('fan') && d2 > 160) e.attackType = 'fan'
                                 else e.attackType = 'slam'
@@ -2365,6 +2380,7 @@
                                         p.y += (dy2 / kd) * 110
                                         p.x = clamp(p.x, 5, canvasW - 5)
                                         p.y = clamp(p.y, 5, canvasH - 5)
+                                        spawnPlayerKnockbackTrail(p.x, p.y, dx2 / kd, dy2 / kd, 110)
                                         spawnPlayerHitParticles(p.x, p.y, 22)
                                         if (p.hp <= 0) {
                                             p.hp = 0
@@ -2391,6 +2407,8 @@
                             if (e.dashTimer <= 0) {
                                 // 到达：终点冲击特效 + 接触伤害
                                 spawnMeleeAttackFx(e)
+                                // 冲刺冷却，降低触发频率
+                                e.dashCooldown = 4
                                 const reach = Math.hypot(p.x - e.x, p.y - e.y)
                                 if (reach < e.radius + p.radius + 50) {
                                     const damageAmount = e.damage
@@ -2401,6 +2419,7 @@
                                     p.y += ((p.y - e.y) / kd) * 140
                                     p.x = clamp(p.x, 5, canvasW - 5)
                                     p.y = clamp(p.y, 5, canvasH - 5)
+                                    spawnPlayerKnockbackTrail(p.x, p.y, (p.x - e.x) / kd, (p.y - e.y) / kd, 140)
                                     spawnPlayerHitParticles(p.x, p.y, 22)
                                     if (p.hp <= 0) {
                                         p.hp = 0
@@ -2818,7 +2837,7 @@
                 // ---- Boss 冲刺残影 ----
                 for (const g of state.ghosts) {
                     ctx.globalAlpha = Math.max(0, g.life / 0.35) * 0.35
-                    ctx.strokeStyle = '#ffd700'
+                    ctx.strokeStyle = g.color || '#ffd700'
                     ctx.lineWidth = 2
                     ctx.beginPath()
                     ctx.arc(g.x, g.y, g.radius, 0, Math.PI * 2)

@@ -1961,13 +1961,14 @@
             }
 
             /* ─── 发射子弹 ────────────────────────── */
-            function fireAttackBatch(target) {
+            function fireAttackBatch(target, angle, homing) {
                 const p = state.player
-                if (!target) return
+                if (!target && angle === undefined) return
 
                 playShootSound(state.selectedGun)
 
-                const baseAngle = Math.atan2(target.y - p.y, target.x - p.x)
+                // 提供 angle 时朝指定方向射击（键盘模式鼠标瞄准），否则朝目标敌人
+                const baseAngle = (angle !== undefined) ? angle : Math.atan2(target.y - p.y, target.x - p.x)
                 const currentSpeed = PROJECTILE_SPEED_BASE * p.bulletSpeedMult
 
                 const barrelLen = p.radius + 14

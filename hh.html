@@ -1150,6 +1150,7 @@
                     nextSkill: null,
                     lastSkill: null,
                     _pendingSkill: null,
+                    novaPulseTimer: 0,
                 })
             }
 
@@ -1331,7 +1332,9 @@
                     x: e.x,
                     y: e.y,
                     angle: e.attackAngle,
-                    life: MELEE_ATTACK_FX_LIFE,
+                    // nova 释放冲击波稍长更震撼
+                    life: e.attackType === 'nova' ? 0.4 : MELEE_ATTACK_FX_LIFE,
+                    radius: e.attackType === 'nova' ? MELEE_ATTACKS.nova.radius + e.radius : 0,
                 })
             }
 
@@ -2208,6 +2211,22 @@
                     }
                     if (e.flashTimer > 0) e.flashTimer -= dt
                     if (e.dashCooldown > 0) e.dashCooldown -= dt
+                    // nova 蓄力波纹：独立计时器按间隔生成，间隔随进度单调加速
+                    if (e.attackType === 'nova' && e.attackState === 'windup') {
+                        e.novaPulseTimer -= dt
+                        if (e.novaPulseTimer <= 0) {
+                            state.attackFx.push({
+                                type: 'novaPulse',
+                                x: e.x,
+                                y: e.y,
+                                radius: MELEE_ATTACKS.nova.radius + e.radius,
+                                life: 0.5,
+                                maxLife: 0.5,
+                            })
+                            const prog = 1 - e.windupTimer / MELEE_BOSS_NOVA_WINDUP
+                            e.novaPulseTimer = 1.2 - prog * 1.05
+                        }
+                    }
                     if (e.warn) {
                         e.warn.timer -= dt
                         if (e.warn.timer <= 0) e.warn = null
@@ -2954,25 +2973,12 @@
                         ctx.strokeStyle = 'rgba(255, 90, 90, ' + (0.55 + 0.35 * pulse).toFixed(3) + ')'
                         ctx.lineWidth = 2
                         if (e.attackType === 'nova') {
-                            // 蓄力特效：基础圆 + 扩散脉冲（由慢到快）
-                            const progress = 1 - e.windupTimer / MELEE_BOSS_NOVA_WINDUP
+                            // 基础蓄力圆（扩散波纹由 novaPulse 事件负责，节奏单调加速）
                             const r = MELEE_ATTACKS.nova.radius + e.radius
                             ctx.beginPath()
                             ctx.arc(0, 0, r, 0, Math.PI * 2)
                             ctx.fill()
                             ctx.stroke()
-                            const pulsePeriod = 1.2 - progress * 1.05
-                            const now = performance.now() / 1000
-                            const t0 = ((now % pulsePeriod) + pulsePeriod) % pulsePeriod
-                            for (let k = 0; k < 4; k++) {
-                                const ph = (((t0 - k * pulsePeriod * 0.5) % pulsePeriod) + pulsePeriod) % pulsePeriod / pulsePeriod
-                                const rr = r * (0.15 + 0.85 * ph)
-                                ctx.beginPath()
-                                ctx.arc(0, 0, rr, 0, Math.PI * 2)
-                                ctx.strokeStyle = 'rgba(255,120,60,' + (0.9 * (1 - ph) * (0.35 + progress * 0.65)).toFixed(3) + ')'
-                                ctx.lineWidth = 3
-                                ctx.stroke()
-                            }
                             ctx.restore()
                             continue
                         }
@@ -3114,15 +3120,33 @@
                         ctx.stroke()
                         ctx.globalAlpha = 1
                     } else if (fx.type === 'nova') {
-                        // 蓄力拍击：圆形扩散冲击波
-                        const rr = 20 + prog * (MELEE_ATTACKS.nova.radius + 20)
+                        // 蓄力拍击释放：白闪内圈 + 双环扩散冲击波
+                        const rr = 20 + prog * (fx.radius || 220)
                         ctx.globalAlpha = alpha
-                        ctx.fillStyle = 'rgba(255,150,60,' + (0.18 * (1 - prog)).toFixed(3) + ')'
-                        ctx.strokeStyle = 'rgba(255,220,140,' + (0.9 * alpha).toFixed(3) + ')'
+                        ctx.fillStyle = 'rgba(255,255,255,' + (0.5 * (1 - prog)).toFixed(3) + ')'
+                        ctx.beginPath()
+                        ctx.arc(0, 0, rr * 0.4, 0, Math.PI * 2)
+                        ctx.fill()
+                        ctx.strokeStyle = 'rgba(255,220,140,' + (0.95 * alpha).toFixed(3) + ')'
+                        ctx.lineWidth = 6
+                        ctx.beginPath()
+                        ctx.arc(0, 0, rr, 0, Math.PI * 2)
+                        ctx.stroke()
+                        ctx.strokeStyle = 'rgba(255,120,40,' + (0.6 * alpha).toFixed(3) + ')'
+                        ctx.lineWidth = 3
+                        ctx.beginPath()
+                        ctx.arc(0, 0, rr * 1.06, 0, Math.PI * 2)
+                        ctx.stroke()
+                        ctx.globalAlpha = 1
+                    } else if (fx.type === 'novaPulse') {
+                        // 蓄力波纹：单圈从内向外扩散 + 淡出
+                        const p = 1 - fx.life / fx.maxLife
+                        const rr = fx.radius * (0.15 + 0.85 * p)
+                        ctx.globalAlpha = Math.max(0, fx.life / fx.maxLife) * 0.8
+                        ctx.strokeStyle = 'rgba(255,120,60,0.9)'
                         ctx.lineWidth = 3
                         ctx.beginPath()
                         ctx.arc(0, 0, rr, 0, Math.PI * 2)
-                        ctx.fill()
                         ctx.stroke()
                         ctx.globalAlpha = 1
                     }

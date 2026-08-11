@@ -1467,9 +1467,10 @@
                 })
             }
 
-            function getUpgradeOptions(category, count = 3, rare = false) {
+            function getUpgradeOptions(category, count = 3, rare = false, extraIds = []) {
                 const categories = Array.isArray(category) ? category : [category]
-                const pool = getAvailableUpgrades().filter(item => categories.includes(item.category))
+                const pool = getAvailableUpgrades().filter(item =>
+                    categories.includes(item.category) || extraIds.includes(item.id))
                 const shuffled = pool.slice().sort(() => Math.random() - 0.5)
                 let options = shuffled.slice(0, count)
 
@@ -1557,7 +1558,7 @@
                     p.killsForNext = Math.floor(5 + p.level * p.level * 0.5 + state.wave * 2)
                     applyLevelUpBonus()
                     state.paused = true
-                    const options = getUpgradeOptions('base', 3, false)
+                    const options = getUpgradeOptions('base', 3, false, ['extraAttack', 'ricochet'])
                     renderUpgradeUI(options, () => {
                         if (state._pendingBossRare) {
                             state._pendingBossRare = false

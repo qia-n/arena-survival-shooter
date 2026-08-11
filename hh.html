@@ -2359,15 +2359,15 @@
                             e.attackTimer -= dt
                             if (e.attackTimer <= 0 && d2 < 650) {
                                 e.attackAngle = Math.atan2(dy2, dx2)
-                                // 按距离选招：仅当玩家进入对应攻击范围才触发，避免无效攻击
+                                // 按距离选招：触发距离 ≤ 技能判定覆盖范围，确保出手时玩家在覆盖内（提高命中率）
                                 const skills = e.meleeSkills || ['fan', 'slam', 'charge', 'dash']
                                 // 无中程技能的 Boss（圆形 Boss）：超出拍击范围即冲刺逼近，防止被无限拉扯风筝
                                 const hasMidSkill = skills.includes('fan') || skills.includes('charge')
                                 let chosen = null
                                 if (skills.includes('dash') && d2 > (hasMidSkill ? 450 : 150) && e.dashCooldown <= 0) chosen = 'dash'
-                                else if (skills.includes('charge') && d2 > 300 && d2 <= 460) chosen = 'charge'
-                                else if (skills.includes('fan') && d2 > 150 && d2 <= 280) chosen = 'fan'
-                                else if (skills.includes('slam') && d2 <= 150) chosen = 'slam'
+                                else if (skills.includes('charge') && d2 > 260 && d2 <= 400) chosen = 'charge'
+                                else if (skills.includes('fan') && d2 > 120 && d2 <= 200) chosen = 'fan'
+                                else if (skills.includes('slam') && d2 <= 100) chosen = 'slam'
                                 if (chosen) {
                                     e.attackType = chosen
                                     if (chosen === 'dash') {

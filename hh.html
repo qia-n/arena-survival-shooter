@@ -1496,14 +1496,22 @@
                     state.waveSpawned++
                 }
                 if (isBossWave) {
-                    // Boss 出现：清场全部非 Boss 敌人（含所有特殊怪：自爆/分裂/冲锋/治疗/狙击/护盾/弹幕及分裂小怪），
-                    // 不计入击杀统计，仅触发死亡粒子特效
+                    // Boss 出现：清场全部非 Boss 敌人（含所有特殊怪及分裂小怪），
+                    // 计入玩家总击杀与升级所需击杀，满足升级则触发属性选择
+                    let cleared = 0
                     for (let i = state.enemies.length - 1; i >= 0; i--) {
                         const e = state.enemies[i]
                         if (!e.isBoss) {
                             spawnDeathPowder(e.x, e.y, 55)
                             state.enemies.splice(i, 1)
+                            cleared++
                         }
+                    }
+                    if (cleared > 0) {
+                        const p = state.player
+                        p.totalKills += cleared
+                        p.currentKills += cleared
+                        checkUpgradeAndBoss()
                     }
                 }
                 updateUI()

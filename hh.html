@@ -1785,11 +1785,6 @@
                         state.waveSpawned++
                     }
                 }
-                // [测试用] 第一波追加母体 Boss，测试完成后删除此块
-                if (state.wave === 1) {
-                    spawnMotherBoss()
-                    state.waveSpawned++
-                }
                 if (state.wave % 5 === 0 && state.wave % 10 !== 0) {
                     spawnBoss()
                     state.waveSpawned++

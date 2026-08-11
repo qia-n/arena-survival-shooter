@@ -1,0 +1,655 @@
+
+        /* ===== 全局重置 & 基础 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: #0c1017;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #ddd;
+        }
+        #app {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* ===== Arena 样式 (从原代码 style.textContent 提取) ===== */
+        .arena-root {
+            --text: #ddd;
+            --border: rgba(255, 255, 255, 0.2);
+            --accent: #88ddff;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #ddd;
+        }
+        .arena-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.7);
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            color: var(--text);
+            flex-shrink: 0;
+        }
+        .arena-title {
+            font-weight: 400;
+            color: #fff;
+            letter-spacing: 1px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .arena-stats {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #999;
+        }
+        .arena-stats span {
+            color: #ddd;
+            font-weight: 300;
+        }
+        /* 左上角玩家血条（固定长度） */
+        .arena-lvl {
+            color: #ffd700;
+            font-size: 13px;
+            font-weight: 500;
+            margin-left: 10px;
+            margin-right: 4px;
+            white-space: nowrap;
+            align-self: center;
+        }
+        .player-hp-bar {
+            position: relative;
+            width: 40%;
+            height: 20px;
+            margin-left: 10px;
+            margin-right: auto;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 5px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .player-hp-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff4d4d, #ff6b6b);
+            border-radius: 5px;
+            transition: width 0.15s linear;
+        }
+        .player-hp-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+            pointer-events: none;
+        }
+        .arena-canvas-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+            min-height: 0;
+        }
+        #arenaCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            cursor: crosshair;
+        }
+
+        /* 移动端虚拟摇杆 */
+        .joy-base {
+            position: absolute;
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.08);
+            display: none;
+            z-index: 30;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .joy-knob {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        /* 竖屏：中间偏下 */
+        @media (orientation: portrait) {
+            .joy-base {
+                left: 50%;
+                bottom: 16%;
+                transform: translateX(-50%);
+            }
+        }
+        /* 横屏：左下角 */
+        @media (orientation: landscape) {
+            .joy-base {
+                left: 40px;
+                bottom: 40px;
+                transform: none;
+            }
+        }
+
+        /* Boss 血条（支持多 Boss 竖排） */
+        .boss-bar {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(460px, 78%);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 15;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+        .boss-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .boss-bar-name {
+            font-size: 12px;
+            color: #ffd700;
+            white-space: nowrap;
+            letter-spacing: 1px;
+        }
+        .boss-bar-track {
+            flex: 1;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .boss-bar-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff4d4d, #ff8844);
+            border-radius: 5px;
+            transition: width 0.1s linear;
+        }
+        .boss-bar-hp {
+            font-size: 11px;
+            color: #fff;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        .arena-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            backdrop-filter: blur(2px);
+        }
+        .arena-modal {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 24px 28px;
+            max-width: 480px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+        .arena-modal h2 {
+            margin: 0 0 4px 0;
+            color: #fff;
+            font-weight: 300;
+            letter-spacing: 2px;
+            font-size: 20px;
+        }
+        .arena-modal .sub {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .gun-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .gun-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #ddd;
+        }
+        .gun-card:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+            transform: scale(1.01);
+        }
+        .gun-card .icon {
+            font-size: 28px;
+            width: 40px;
+            text-align: center;
+        }
+        .gun-card .info {
+            flex: 1;
+        }
+        .gun-card .name {
+            font-weight: 400;
+            color: #fff;
+            font-size: 16px;
+        }
+        .gun-card .desc {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .gun-card .stats {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .gun-card .stats span {
+            color: #aaa;
+        }
+        .gun-card.selected {
+            border-color: #4da3ff;
+            background: rgba(77, 163, 255, 0.12);
+            box-shadow: 0 0 12px rgba(77, 163, 255, 0.25);
+        }
+        .gun-card.selected .badge {
+            background: #4da3ff;
+            color: #fff;
+        }
+        /* 操作方式选择 */
+        .control-mode-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .control-mode-card {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #ddd;
+        }
+        .control-mode-card:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .control-mode-card.selected {
+            border-color: #4da3ff;
+            background: rgba(77, 163, 255, 0.12);
+            box-shadow: 0 0 12px rgba(77, 163, 255, 0.25);
+        }
+        .control-mode-card .cm-title {
+            font-size: 14px;
+            color: #fff;
+        }
+        .control-mode-card .cm-desc {
+            font-size: 12px;
+            color: #888;
+        }
+        .auto-fire-opt {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #bbb;
+            cursor: pointer;
+        }
+        .gun-card .badge {
+            padding: 2px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            font-size: 10px;
+            color: #888;
+        }
+        .gun-manage-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .manage-card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .manage-card .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .manage-card .header .name {
+            font-weight: 400;
+            color: #fff;
+            font-size: 15px;
+        }
+        .manage-card .header .actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .manage-card .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px 16px;
+            font-size: 11px;
+            color: #888;
+        }
+        .manage-card .details span {
+            color: #aaa;
+        }
+        .manage-card .details .label {
+            color: #666;
+        }
+        .manage-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            color: #aaa;
+            padding: 2px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .manage-btn:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .manage-btn.danger:hover {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+        }
+        .manage-btn.preview:hover {
+            border-color: #88ddff;
+            color: #88ddff;
+        }
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .form-row label {
+            font-size: 11px;
+            color: #888;
+        }
+        .form-row input,
+        .form-row select {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            padding: 4px 6px;
+            color: #ddd;
+            font-size: 13px;
+            outline: none;
+            transition: border 0.15s;
+        }
+        .form-row input:focus,
+        .form-row select:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .form-row select option {
+            background: #111;
+            color: #ddd;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 16px;
+        }
+        .arena-upgrade-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .arena-upgrade-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #ddd;
+            gap: 8px;
+        }
+        .arena-upgrade-item:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+            transform: scale(1.01);
+        }
+        .arena-upgrade-item .ug-label {
+            font-weight: 300;
+            color: #fff;
+        }
+        .arena-upgrade-item .ug-desc {
+            font-size: 12px;
+            color: #888;
+            text-align: right;
+        }
+        .arena-upgrade-item.rare {
+            border-color: #f1c40f;
+            background: rgba(241, 196, 15, 0.05);
+        }
+        .arena-upgrade-item.rare .ug-label {
+            color: #f1c40f;
+        }
+        .arena-gameover-stats {
+            text-align: left;
+            padding: 8px 0;
+            color: #aaa;
+        }
+        .arena-gameover-stats p {
+            margin: 6px 0;
+            font-size: 14px;
+        }
+        .arena-gameover-stats strong {
+            color: #fff;
+            font-weight: 300;
+        }
+        .arena-btn-primary {
+            margin-top: 12px;
+            padding: 8px 24px;
+            background: transparent;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: all .15s;
+            letter-spacing: 1px;
+        }
+        .arena-btn-primary:hover {
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .arena-btn-secondary {
+            padding: 4px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            background: transparent;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all .15s;
+        }
+        .arena-btn-secondary:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+        .arena-config {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.85);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 20;
+            backdrop-filter: blur(4px);
+        }
+        .arena-config-title {
+            font-weight: 300;
+            font-size: 14px;
+            color: #ccc;
+            letter-spacing: 1px;
+        }
+        .arena-config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .arena-config-item label {
+            font-size: 12px;
+            color: #888;
+        }
+        .arena-config-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 1px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1px solid #aaa;
+            cursor: pointer;
+        }
+        .arena-config-actions .arena-btn-secondary {
+            font-size: 11px;
+        }
+        #btnConfigToggle {
+            margin-left: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: transparent;
+            color: #888;
+            padding: 2px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all .15s;
+        }
+        #btnConfigToggle:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        /* 响应式微调 */
+        @media (max-width: 640px) {
+            .arena-header {
+                font-size: 11px;
+                padding: 4px 10px;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .arena-stats {
+                font-size: 10px;
+                flex-wrap: wrap;
+            }
+            .arena-modal {
+                padding: 16px 16px;
+                max-width: 95%;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .manage-card .details {
+                grid-template-columns: 1fr 1fr;
+            }
+            .gun-card {
+                padding: 10px 12px;
+                flex-wrap: wrap;
+            }
+            .arena-upgrade-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .arena-upgrade-item .ug-desc {
+                text-align: left;
+            }
+        }
+    

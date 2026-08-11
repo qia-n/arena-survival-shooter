@@ -3084,6 +3084,61 @@
                     ctx.lineTo(worldW, y)
                     ctx.stroke()
                 }
+
+                // ---- 地面装饰（地图纹理，提供移动参照物） ----
+                if (!state._terrain) {
+                    state._terrain = []
+                    const n = Math.floor(120 * WORLD_ZOOM)
+                    for (let i = 0; i < n; i++) {
+                        state._terrain.push({
+                            x: Math.random() * worldW,
+                            y: Math.random() * worldH,
+                            type: randInt(0, 3),
+                            size: rand(6, 16),
+                        })
+                    }
+                }
+                for (const t of state._terrain) {
+                    if (t.x < camX - 30 || t.x > camX + canvasW + 30 || t.y < camY - 30 || t.y > camY + canvasH + 30) continue
+                    if (t.type === 0) {
+                        // 岩石：灰蓝色多边形
+                        ctx.beginPath()
+                        ctx.moveTo(t.x - t.size, t.y + t.size * 0.3)
+                        ctx.lineTo(t.x - t.size * 0.5, t.y - t.size * 0.7)
+                        ctx.lineTo(t.x + t.size * 0.6, t.y - t.size * 0.4)
+                        ctx.lineTo(t.x + t.size, t.y + t.size * 0.5)
+                        ctx.closePath()
+                        ctx.fillStyle = 'rgba(130,150,190,0.15)'
+                        ctx.fill()
+                    } else if (t.type === 1) {
+                        // 草丛：绿色短线簇
+                        ctx.strokeStyle = 'rgba(90,180,120,0.25)'
+                        ctx.lineWidth = 1.5
+                        for (let g = -1; g <= 1; g++) {
+                            ctx.beginPath()
+                            ctx.moveTo(t.x + g * t.size * 0.4, t.y)
+                            ctx.lineTo(t.x + g * t.size * 0.6, t.y - t.size * 0.9)
+                            ctx.stroke()
+                        }
+                    } else if (t.type === 2) {
+                        // 裂缝：暗色折线
+                        ctx.strokeStyle = 'rgba(0,0,0,0.18)'
+                        ctx.lineWidth = 1.5
+                        ctx.beginPath()
+                        ctx.moveTo(t.x - t.size, t.y)
+                        ctx.lineTo(t.x - t.size * 0.2, t.y + t.size * 0.3)
+                        ctx.lineTo(t.x + t.size * 0.4, t.y - t.size * 0.2)
+                        ctx.lineTo(t.x + t.size, t.y + t.size * 0.2)
+                        ctx.stroke()
+                    } else {
+                        // 色斑：半透明深色圆（地面阴影）
+                        ctx.beginPath()
+                        ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(0,0,0,0.12)'
+                        ctx.fill()
+                    }
+                }
+
                 if (!state._stars) {
                     state._stars = []
                     for (let i = 0; i < Math.floor(40 * WORLD_ZOOM); i++) {

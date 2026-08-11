@@ -3090,12 +3090,24 @@
                     state._terrain = []
                     const n = Math.floor(120 * WORLD_ZOOM)
                     for (let i = 0; i < n; i++) {
-                        state._terrain.push({
+                        const type = randInt(0, 3)
+                        const t = {
                             x: Math.random() * worldW,
                             y: Math.random() * worldH,
-                            type: randInt(0, 3),
-                            size: rand(6, 16),
-                        })
+                            type,
+                            size: rand(8, 20),
+                        }
+                        if (type === 3) {
+                            // 色斑：预生成不规则多边形顶点（避免每帧随机抖动）
+                            const sides = randInt(4, 7)
+                            t.verts = []
+                            for (let s = 0; s < sides; s++) {
+                                const a = (s / sides) * Math.PI * 2
+                                const rr = t.size * (0.6 + Math.random() * 0.8)
+                                t.verts.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr })
+                            }
+                        }
+                        state._terrain.push(t)
                     }
                 }
                 for (const t of state._terrain) {
@@ -3121,20 +3133,27 @@
                             ctx.stroke()
                         }
                     } else if (t.type === 2) {
-                        // 裂缝：浅色折线
-                        ctx.strokeStyle = 'rgba(255,255,255,0.16)'
-                        ctx.lineWidth = 1.5
+                        // 裂缝：明显的中灰折线
+                        ctx.strokeStyle = 'rgba(190,200,220,0.45)'
+                        ctx.lineWidth = 2.5
                         ctx.beginPath()
-                        ctx.moveTo(t.x - t.size, t.y)
-                        ctx.lineTo(t.x - t.size * 0.2, t.y + t.size * 0.3)
-                        ctx.lineTo(t.x + t.size * 0.4, t.y - t.size * 0.2)
-                        ctx.lineTo(t.x + t.size, t.y + t.size * 0.2)
+                        ctx.moveTo(t.x - t.size, t.y - t.size * 0.3)
+                        ctx.lineTo(t.x - t.size * 0.3, t.y + t.size * 0.2)
+                        ctx.lineTo(t.x + t.size * 0.4, t.y - t.size * 0.3)
+                        ctx.lineTo(t.x + t.size, t.y + t.size * 0.4)
                         ctx.stroke()
                     } else {
-                        // 色斑：半透明浅色圆（地面亮斑）
+                        // 色斑：不规则浅色块（模拟地面水渍，预生成顶点）
+                        ctx.fillStyle = 'rgba(255,255,255,0.15)'
                         ctx.beginPath()
-                        ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2)
-                        ctx.fillStyle = 'rgba(255,255,255,0.12)'
+                        for (let v = 0; v < t.verts.length; v++) {
+                            const vv = t.verts[v]
+                            const px = t.x + vv.x
+                            const py = t.y + vv.y
+                            if (v === 0) ctx.moveTo(px, py)
+                            else ctx.lineTo(px, py)
+                        }
+                        ctx.closePath()
                         ctx.fill()
                     }
                 }
@@ -3145,8 +3164,8 @@
                         state._stars.push({
                             x: Math.random() * worldW,
                             y: Math.random() * worldH,
-                            size: Math.random() * 2 + 0.8,
-                            alpha: Math.random() * 0.45 + 0.1
+                            size: Math.random() * 2.5 + 1.2,
+                            alpha: Math.random() * 0.5 + 0.3
                         })
                     }
                 }

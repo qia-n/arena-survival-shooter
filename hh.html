@@ -3334,19 +3334,19 @@
                             ctx.lineWidth = 2
                         }
                         ctx.stroke()
-                        ctx.fillStyle = 'rgba(199,146,234,0.12)'
+                        ctx.fillStyle = 'rgba(199,146,234,0.22)'
                         ctx.fill()
                     } else {
                         // 普通敌人：按类型着色（melee 白 / bomber 红 / splitter 紫 / charger 橙 / healer 绿）
                         let strokeC = 'rgba(255,255,255,0.6)'
-                        let fillC = 'rgba(255,255,255,0.08)'
-                        if (e.type === 'bomber') { strokeC = 'rgba(255,90,70,0.9)'; fillC = 'rgba(255,80,60,0.15)' }
-                        else if (e.type === 'splitter') { strokeC = 'rgba(190,90,230,0.9)'; fillC = 'rgba(180,80,220,0.15)' }
-                        else if (e.type === 'charger') { strokeC = 'rgba(255,180,70,0.9)'; fillC = 'rgba(255,170,60,0.15)' }
-                        else if (e.type === 'healer') { strokeC = 'rgba(100,230,140,0.9)'; fillC = 'rgba(80,220,120,0.15)' }
-                        else if (e.type === 'sniper') { strokeC = 'rgba(80,190,255,0.9)'; fillC = 'rgba(70,180,255,0.15)' }
-                        else if (e.type === 'shield') { strokeC = 'rgba(90,140,255,0.95)'; fillC = 'rgba(80,130,255,0.18)' }
-                        else if (e.type === 'barrage') { strokeC = 'rgba(80,230,210,0.9)'; fillC = 'rgba(70,220,200,0.15)' }
+                        let fillC = 'rgba(255,255,255,0.18)'
+                        if (e.type === 'bomber') { strokeC = 'rgba(255,90,70,0.9)'; fillC = 'rgba(255,80,60,0.28)' }
+                        else if (e.type === 'splitter') { strokeC = 'rgba(190,90,230,0.9)'; fillC = 'rgba(180,80,220,0.28)' }
+                        else if (e.type === 'charger') { strokeC = 'rgba(255,180,70,0.9)'; fillC = 'rgba(255,170,60,0.28)' }
+                        else if (e.type === 'healer') { strokeC = 'rgba(100,230,140,0.9)'; fillC = 'rgba(80,220,120,0.28)' }
+                        else if (e.type === 'sniper') { strokeC = 'rgba(80,190,255,0.9)'; fillC = 'rgba(70,180,255,0.28)' }
+                        else if (e.type === 'shield') { strokeC = 'rgba(90,140,255,0.95)'; fillC = 'rgba(80,130,255,0.3)' }
+                        else if (e.type === 'barrage') { strokeC = 'rgba(80,230,210,0.9)'; fillC = 'rgba(70,220,200,0.28)' }
                         ctx.beginPath()
                         ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
                         if (e.flashTimer > 0) {
@@ -3357,10 +3357,9 @@
                             ctx.lineWidth = 1
                         }
                         ctx.stroke()
-                        if (e.type !== 'melee' && e.type !== 'ranged') {
-                            ctx.fillStyle = fillC
-                            ctx.fill()
-                        }
+                        // 所有敌人填充内部（半透明）
+                        ctx.fillStyle = fillC
+                        ctx.fill()
                     }
 
                     if (e.isBoss) {

@@ -2953,13 +2953,34 @@
                         ctx.fillStyle = 'rgba(255, 60, 60, ' + (0.10 + 0.16 * pulse).toFixed(3) + ')'
                         ctx.strokeStyle = 'rgba(255, 90, 90, ' + (0.55 + 0.35 * pulse).toFixed(3) + ')'
                         ctx.lineWidth = 2
+                        if (e.attackType === 'nova') {
+                            // 蓄力特效：基础圆 + 扩散脉冲（由慢到快）
+                            const progress = 1 - e.windupTimer / MELEE_BOSS_NOVA_WINDUP
+                            const r = MELEE_ATTACKS.nova.radius + e.radius
+                            ctx.beginPath()
+                            ctx.arc(0, 0, r, 0, Math.PI * 2)
+                            ctx.fill()
+                            ctx.stroke()
+                            const pulsePeriod = 1.2 - progress * 1.05
+                            const now = performance.now() / 1000
+                            const t0 = ((now % pulsePeriod) + pulsePeriod) % pulsePeriod
+                            for (let k = 0; k < 4; k++) {
+                                const ph = (((t0 - k * pulsePeriod * 0.5) % pulsePeriod) + pulsePeriod) % pulsePeriod / pulsePeriod
+                                const rr = r * (0.15 + 0.85 * ph)
+                                ctx.beginPath()
+                                ctx.arc(0, 0, rr, 0, Math.PI * 2)
+                                ctx.strokeStyle = 'rgba(255,120,60,' + (0.9 * (1 - ph) * (0.35 + progress * 0.65)).toFixed(3) + ')'
+                                ctx.lineWidth = 3
+                                ctx.stroke()
+                            }
+                            ctx.restore()
+                            continue
+                        }
                         ctx.beginPath()
                         if (e.attackType === 'fan') {
                             ctx.moveTo(0, 0)
                             ctx.arc(0, 0, MELEE_ATTACKS.fan.radius + e.radius, -MELEE_ATTACKS.fan.halfAngle, MELEE_ATTACKS.fan.halfAngle)
                             ctx.closePath()
-                        } else if (e.attackType === 'nova') {
-                            ctx.arc(0, 0, MELEE_ATTACKS.nova.radius + e.radius, 0, Math.PI * 2)
                         } else if (e.attackType === 'slam') {
                             ctx.rect(e.radius, -MELEE_ATTACKS.slam.halfW, MELEE_ATTACKS.slam.len, MELEE_ATTACKS.slam.halfW * 2)
                         } else if (e.attackType === 'dash') {

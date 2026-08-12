@@ -2969,9 +2969,6 @@
                 state.flashRed = 0
                 state.shakeTimer = 0
                 state.enrageWarnTimer = 0
-                p.poisonTimer = 0
-                p.poisonDps = 0
-                p.mistPoisonTimer = 0
                 state.waveIdCounter = 0
                 state.currentWaveId = 0
                 state.waveSpawned = 0
@@ -2979,6 +2976,9 @@
                 pauseOverlay.style.display = 'none'
 
                 const p = state.player
+                p.poisonTimer = 0
+                p.poisonDps = 0
+                p.mistPoisonTimer = 0
                 p.x = worldW / 2
                 p.y = worldH / 2
                 camX = clamp(p.x - canvasW / 2, 0, Math.max(0, worldW - canvasW))

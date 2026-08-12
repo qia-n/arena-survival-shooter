@@ -1335,6 +1335,8 @@
                     maxHp: hp,
                     speed: 30,
                     damage,
+                    enraged: false,
+                    skillScale: 1,
                     isBoss: true,
                     bossName: '⚔ 近战首领',
                     isMeleeBoss: true,
@@ -1372,20 +1374,21 @@
                 const ly = -(p.x - e.x) * sinA + (p.y - e.y) * cosA
                 const pad = 10
                 // 判定从 Boss 身体边缘起算（+e.radius），与预警视觉一致
+                const sk = e.skillScale || 1
                 if (e.attackType === 'fan') {
-                    const r = MELEE_ATTACKS.fan.radius + pad + e.radius
+                    const r = MELEE_ATTACKS.fan.radius * sk + pad + e.radius
                     if (Math.hypot(lx, ly) > r) return false
-                    return Math.abs(Math.atan2(ly, lx)) <= MELEE_ATTACKS.fan.halfAngle + 0.15
+                    return Math.abs(Math.atan2(ly, lx)) <= MELEE_ATTACKS.fan.halfAngle * sk + 0.15
                 } else if (e.attackType === 'nova') {
-                    const r = MELEE_ATTACKS.nova.radius + pad + e.radius
+                    const r = MELEE_ATTACKS.nova.radius * sk + pad + e.radius
                     return Math.hypot(lx, ly) <= r
                 } else if (e.attackType === 'slam') {
-                    const len = MELEE_ATTACKS.slam.len + pad + e.radius
-                    const halfW = MELEE_ATTACKS.slam.halfW + pad
+                    const len = MELEE_ATTACKS.slam.len * sk + pad + e.radius
+                    const halfW = MELEE_ATTACKS.slam.halfW * sk + pad
                     return lx >= -pad && lx <= len && Math.abs(ly) <= halfW
                 } else {
-                    const len = MELEE_ATTACKS.charge.len + pad + e.radius
-                    const halfW = MELEE_ATTACKS.charge.halfW + pad
+                    const len = MELEE_ATTACKS.charge.len * sk + pad + e.radius
+                    const halfW = MELEE_ATTACKS.charge.halfW * sk + pad
                     return lx >= -pad && lx <= len && Math.abs(ly) <= halfW
                 }
             }
@@ -1444,6 +1447,8 @@
                     maxHp: hp,
                     speed: 26,
                     damage,
+                    enraged: false,
+                    skillScale: 1,
                     isBoss: true,
                     bossName: '🎯 远程首领',
                     isArtilleryBoss: true,
@@ -1539,8 +1544,11 @@
                 })
             }
 
-            // 狂暴变化特效：红闪 + 震屏 + 冲击波 + 体型增大 + 警告
-            function triggerMotherEnrage(e) {
+            // 狂暴变化特效（所有大型 Boss 通用）：红闪 + 震屏 + 冲击波 + 体型增大 + 警告
+            // 粒子色：母体绿 / 远程青蓝 / 近战橙红
+            function triggerBossEnrage(e) {
+                e.enraged = true
+                e.skillScale = 1.15
                 e.radius = e.radius * 1.3
                 state.flashRed = 0.6
                 state.shakeTimer = 0.5
@@ -1548,7 +1556,8 @@
                 state.enrageWarnTimer = 2.2
                 state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.5, maxLife: 0.5, radius: 280 })
                 state.attackFx.push({ type: 'blast', x: e.x, y: e.y, angle: 0, life: 0.35, maxLife: 0.35 })
-                // 红色粒子爆发
+                const cA = e.isMotherBoss ? '#39ff14' : (e.isArtilleryBoss ? '#4dd0ff' : '#ff9d3c')
+                const cB = e.isMotherBoss ? '#00c853' : (e.isArtilleryBoss ? '#1e88ff' : '#ff5722')
                 for (let k = 0; k < 44; k++) {
                     const a = rand(0, Math.PI * 2)
                     const sp = rand(100, 380)
@@ -1559,7 +1568,7 @@
                         vy: Math.sin(a) * sp,
                         size: rand(3, 10),
                         life: rand(0.4, 0.9),
-                        color: Math.random() < 0.5 ? '#39ff14' : '#00c853',
+                        color: Math.random() < 0.5 ? cA : cB,
                     })
                 }
             }
@@ -1568,8 +1577,7 @@
             function updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult) {
                 // 狂暴被动（hp ≤ 50%）
                 if (!e.enraged && e.hp <= e.maxHp * 0.5) {
-                    e.enraged = true
-                    triggerMotherEnrage(e)
+                    triggerBossEnrage(e)
                 }
 
                 // 慢速周旋：保持中距离（不追击）
@@ -1692,16 +1700,16 @@
                     e.skillAngle = Math.atan2(pl.y - e.y, pl.x - e.x)
                     e.skillPhase = randInt(1, 3)
                     e.skillTimer = 0.7
-                    e.warn = { type: 'fan', x: e.x, y: e.y, angle: e.skillAngle, radius: 520, timer: 0.7 }
+                    e.warn = { type: 'fan', x: e.x, y: e.y, angle: e.skillAngle, radius: 520 * (e.enraged ? 1.15 : 1), timer: 0.7 }
                 } else if (e.skillIndex === 1) {
                     // 技能2：全屏环形散射 16 颗
                     e.skillState = 'skill2'
                     e.skillTimer = 0.7
-                    e.warn = { type: 'ring', x: e.x, y: e.y, radius: 640, timer: 0.7 }
+                    e.warn = { type: 'ring', x: e.x, y: e.y, radius: 640 * (e.enraged ? 1.15 : 1), timer: 0.7 }
                 } else {
-                    // 技能3：大量轰炸——快速出现 15-20 个预警点，再依次降落
+                    // 技能3：大量轰炸——快速出现 15-20 个预警点，再依次降落（普通形态 2/3 数量）
                     e.skillState = 'skill3'
-                    e.bombCount = randInt(15, 20)
+                    e.bombCount = e.enraged ? randInt(15, 20) : randInt(10, 13)
                     e.bombPlan = []
                     e.bombSpawnTimer = 0
                 }
@@ -1710,7 +1718,8 @@
             function finishArtillerySkill(e) {
                 e.skillState = 'idle'
                 e.skillIndex = (e.skillIndex + 1) % 3
-                e.skillTimer = 3.0
+                // 技能间隔：普通形态 3.0*1.3（频率更低）/ 狂暴 3.0*0.8（频率更高）
+                e.skillTimer = 3.0 * (e.enraged ? 0.8 : 1.3)
                 e.warn = null
                 e.bombPlan = []
             }
@@ -2781,7 +2790,7 @@
                                 type: 'novaPulse',
                                 x: e.x,
                                 y: e.y,
-                                radius: MELEE_ATTACKS.nova.radius + e.radius,
+                                radius: MELEE_ATTACKS.nova.radius * (e.skillScale || 1) + e.radius,
                                 life: 0.5,
                                 maxLife: 0.5,
                             })
@@ -2803,6 +2812,11 @@
 
                     if (e.isArtilleryBoss) {
                         // ---- 大型远程 Boss：技能状态机 ----
+                        if (!e.enraged && e.hp <= e.maxHp * 0.5) triggerBossEnrage(e)
+                        // 伤害倍率：普通 0.8 / 狂暴 1.3；范围倍率：狂暴 1.15；子弹密度：普通 2/3
+                        const artDmgF = e.enraged ? 1.3 : 0.8
+                        const artSk = e.enraged ? 1.15 : 1
+                        const artDensity = e.enraged ? 1 : 2 / 3
                         const keepDist = 320
                         if (e.skillState === 'idle') {
                             // 风筝走位：保持中距离
@@ -2833,10 +2847,11 @@
                                     vy: Math.sin(a) * 120,
                                     radius: 14,
                                     fuse: 1.2,
-                                    damage: e.damage,
+                                    damage: r2(e.damage * artDmgF),
                                     life: 6,
                                 })
-                                e.normalTimer = e.normalInterval
+                                // 普通攻击频率：普通形态更慢 / 狂暴略快
+                                e.normalTimer = e.normalInterval * (e.enraged ? 0.85 : 1.3)
                             }
 
                             // 技能调度：间隔结束 → 远离则位移，否则直接技能
@@ -2870,17 +2885,17 @@
                             // 技能1：扇形散射 1-3 波
                             e.skillTimer -= dt
                             if (e.skillTimer <= 0) {
-                                const halfA = Math.PI / 3
-                                const bulletCount = 20
+                                const halfA = (Math.PI / 3) * artSk
+                                const bulletCount = Math.round(20 * artDensity)
                                 for (let bi = 0; bi < bulletCount; bi++) {
-                                    const a = e.skillAngle - halfA + (2 * halfA) * (bi / (bulletCount - 1))
+                                    const a = e.skillAngle - halfA + (2 * halfA) * (bi / Math.max(1, bulletCount - 1))
                                     state.enemyProjectiles.push({
                                         x: e.x,
                                         y: e.y,
                                         vx: Math.cos(a) * 280,
                                         vy: Math.sin(a) * 280,
                                         radius: 5,
-                                        damage: Math.max(1, e.damage - 1),
+                                        damage: Math.max(1, r2(e.damage * artDmgF - 1)),
                                         life: 3,
                                     })
                                 }
@@ -2895,7 +2910,7 @@
                             // 技能2：全屏环形散射 16 颗
                             e.skillTimer -= dt
                             if (e.skillTimer <= 0) {
-                                for (let bi = 0; bi < 120; bi++) {
+                                for (let bi = 0; bi < Math.round(120 * artDensity); bi++) {
                                     const a = (bi / 16) * Math.PI * 2
                                     state.enemyProjectiles.push({
                                         x: e.x,
@@ -2903,7 +2918,7 @@
                                         vx: Math.cos(a) * 300,
                                         vy: Math.sin(a) * 300,
                                         radius: 5,
-                                        damage: Math.max(1, e.damage - 1),
+                                        damage: Math.max(1, r2(e.damage * artDmgF - 1)),
                                         life: 3,
                                     })
                                 }
@@ -2935,8 +2950,8 @@
                                         targetY: bp.y,
                                         fallSpeed: 1200,
                                         radius: 16,
-                                        blastRadius: 40,
-                                        damage: e.damage,
+                                        blastRadius: 40 * artSk,
+                                        damage: r2(e.damage * artDmgF),
                                         tail: 0,
                                         life: 4,
                                     })
@@ -2982,6 +2997,8 @@
                         updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult)
                     } else if (e.isMeleeBoss) {
                         // ---- 大型近战 Boss：攻击状态机 ----
+                        if (!e.enraged && e.hp <= e.maxHp * 0.5) triggerBossEnrage(e)
+                        const meleeDmgF = e.enraged ? 1.3 : 0.8
                         if (e.attackState === 'idle') {
                             if (d2 > 1) {
                                 const moveSpeed = e.speed * speedMult
@@ -2997,11 +3014,12 @@
                                 const skill = rollMeleeSkill(e)
                                 e.nextSkill = skill
                                 const r = e.radius
+                                const sk = e.skillScale || 1
                                 let cover = 0
-                                if (skill === 'slam') cover = MELEE_ATTACKS.slam.len + 10
-                                else if (skill === 'fan') cover = MELEE_ATTACKS.fan.radius + 10
-                                else if (skill === 'charge') cover = MELEE_ATTACKS.charge.len + 10
-                                else if (skill === 'nova') cover = MELEE_ATTACKS.nova.radius + 10
+                                if (skill === 'slam') cover = MELEE_ATTACKS.slam.len * sk + 10
+                                else if (skill === 'fan') cover = MELEE_ATTACKS.fan.radius * sk + 10
+                                else if (skill === 'charge') cover = MELEE_ATTACKS.charge.len * sk + 10
+                                else if (skill === 'nova') cover = MELEE_ATTACKS.nova.radius * sk + 10
                                 if (skill === 'dash') {
                                     // 抽到冲刺：直接冲刺（技能本身）
                                     startMeleeDash(e)
@@ -3026,7 +3044,7 @@
                                 } else {
                                     spawnMeleeAttackFx(e)
                                     if (meleeBossHitTest(e, p)) {
-                                        const damageAmount = e.damage
+                                        const damageAmount = r2(e.damage * meleeDmgF)
                                         p.hp = r2(p.hp - damageAmount)
                                         p.hurtFlashTimer = 0.2
                                         // 击退玩家
@@ -3043,7 +3061,7 @@
                                         }
                                     }
                                     e.attackState = 'recover'
-                                    e.recoverTimer = MELEE_BOSS_RECOVER
+                                    e.recoverTimer = MELEE_BOSS_RECOVER * (e.enraged ? 0.7 : 1.2)
                                 }
                             }
                         } else if (e.attackState === 'dash') {
@@ -3066,7 +3084,7 @@
                                 e.dashCooldown = 2
                                 const reach = Math.hypot(p.x - e.x, p.y - e.y)
                                 if (reach < e.radius + p.radius + 50) {
-                                    const damageAmount = e.damage
+                                    const damageAmount = r2(e.damage * meleeDmgF)
                                     p.hp = r2(p.hp - damageAmount)
                                     p.hurtFlashTimer = 0.2
                                     const kd = reach || 1
@@ -3088,7 +3106,7 @@
                                     e.recoverTimer = 0.6
                                 } else {
                                     e.attackState = 'recover'
-                                    e.recoverTimer = MELEE_BOSS_RECOVER
+                                    e.recoverTimer = MELEE_BOSS_RECOVER * (e.enraged ? 0.7 : 1.2)
                                 }
                             }
                         } else if (e.attackState === 'recover') {
@@ -3101,7 +3119,7 @@
                                     startMeleeWindup(e, s)
                                 } else {
                                     e.attackState = 'idle'
-                                    e.attackTimer = 1.0
+                                    e.attackTimer = e.enraged ? 0.8 : 1.2
                                 }
                             }
                         }
@@ -3492,23 +3510,6 @@
                 }
                 ctx.translate(-camX + shakeX, -camY + shakeY)
 
-                const gridSize = 60
-                ctx.strokeStyle = 'rgba(255,255,255,0.20)'
-                ctx.lineWidth = 0.5
-                // 只画视口内的网格（大世界性能优化）
-                for (let x = Math.max(gridSize, Math.floor(camX / gridSize) * gridSize); x < camX + canvasW; x += gridSize) {
-                    ctx.beginPath()
-                    ctx.moveTo(x, 0)
-                    ctx.lineTo(x, worldH)
-                    ctx.stroke()
-                }
-                for (let y = Math.max(gridSize, Math.floor(camY / gridSize) * gridSize); y < camY + canvasH; y += gridSize) {
-                    ctx.beginPath()
-                    ctx.moveTo(0, y)
-                    ctx.lineTo(worldW, y)
-                    ctx.stroke()
-                }
-
                 // ---- 地面装饰（地图纹理，提供移动参照物） ----
                 if (!state._terrain) {
                     state._terrain = []
@@ -3830,18 +3831,22 @@
                         if (e.flashTimer > 0) {
                             ctx.strokeStyle = '#fff'
                             ctx.lineWidth = 2.5
+                        } else if (e.enraged) {
+                            ctx.strokeStyle = 'rgba(255,110,80,1)'
+                            ctx.lineWidth = 3
                         } else {
                             ctx.strokeStyle = 'rgba(205,160,240,1)'
                             ctx.lineWidth = 2
                         }
                         ctx.stroke()
-                        ctx.fillStyle = 'rgba(199,146,234,0.22)'
+                        ctx.fillStyle = e.enraged ? 'rgba(255,90,60,0.3)' : 'rgba(199,146,234,0.22)'
                         ctx.fill()
                     } else {
                         // 普通敌人：按类型着色（melee 白 / bomber 红 / splitter 紫 / charger 橙 / healer 绿）
                         let strokeC = 'rgba(255,255,255,0.6)'
                         let fillC = 'rgba(255,255,255,0.18)'
-                        if (e.type === 'bomber') { strokeC = 'rgba(255,90,70,0.9)'; fillC = 'rgba(255,80,60,0.28)' }
+                        if (e.isMeleeBoss && e.enraged) { strokeC = 'rgba(255,150,70,1)'; fillC = 'rgba(255,130,50,0.35)' }
+                        else if (e.type === 'bomber') { strokeC = 'rgba(255,90,70,0.9)'; fillC = 'rgba(255,80,60,0.28)' }
                         else if (e.type === 'splitter') { strokeC = 'rgba(190,90,230,0.9)'; fillC = 'rgba(180,80,220,0.28)' }
                         else if (e.type === 'charger') { strokeC = 'rgba(255,180,70,0.9)'; fillC = 'rgba(255,170,60,0.28)' }
                         else if (e.type === 'healer') { strokeC = 'rgba(100,230,140,0.9)'; fillC = 'rgba(80,220,120,0.28)' }
@@ -3976,9 +3981,10 @@
                         ctx.fillStyle = 'rgba(255, 60, 60, ' + (0.10 + 0.16 * pulse).toFixed(3) + ')'
                         ctx.strokeStyle = 'rgba(255, 90, 90, ' + (0.55 + 0.35 * pulse).toFixed(3) + ')'
                         ctx.lineWidth = 2
+                        const wsk = e.skillScale || 1
                         if (e.attackType === 'nova') {
                             // 基础蓄力圆（扩散波纹由 novaPulse 事件负责，节奏单调加速）
-                            const r = MELEE_ATTACKS.nova.radius + e.radius
+                            const r = MELEE_ATTACKS.nova.radius * wsk + e.radius
                             ctx.beginPath()
                             ctx.arc(0, 0, r, 0, Math.PI * 2)
                             ctx.fill()
@@ -3989,14 +3995,14 @@
                         ctx.beginPath()
                         if (e.attackType === 'fan') {
                             ctx.moveTo(0, 0)
-                            ctx.arc(0, 0, MELEE_ATTACKS.fan.radius + e.radius, -MELEE_ATTACKS.fan.halfAngle, MELEE_ATTACKS.fan.halfAngle)
+                            ctx.arc(0, 0, MELEE_ATTACKS.fan.radius * wsk + e.radius, -MELEE_ATTACKS.fan.halfAngle * wsk, MELEE_ATTACKS.fan.halfAngle * wsk)
                             ctx.closePath()
                         } else if (e.attackType === 'slam') {
-                            ctx.rect(e.radius, -MELEE_ATTACKS.slam.halfW, MELEE_ATTACKS.slam.len, MELEE_ATTACKS.slam.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.slam.halfW * wsk, MELEE_ATTACKS.slam.len * wsk, MELEE_ATTACKS.slam.halfW * wsk * 2)
                         } else if (e.attackType === 'dash') {
-                            ctx.rect(e.radius, -MELEE_ATTACKS.dash.halfW, e.dashLen || MELEE_ATTACKS.dash.len, MELEE_ATTACKS.dash.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.dash.halfW * wsk, e.dashLen || MELEE_ATTACKS.dash.len, MELEE_ATTACKS.dash.halfW * wsk * 2)
                         } else {
-                            ctx.rect(e.radius, -MELEE_ATTACKS.charge.halfW, MELEE_ATTACKS.charge.len, MELEE_ATTACKS.charge.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.charge.halfW * wsk, MELEE_ATTACKS.charge.len * wsk, MELEE_ATTACKS.charge.halfW * wsk * 2)
                         }
                         ctx.fill()
                         ctx.stroke()

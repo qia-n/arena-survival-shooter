@@ -1571,7 +1571,7 @@
                                 type: 'novaPulse',
                                 x: e.x,
                                 y: e.y,
-                                radius: MELEE_ATTACKS.nova.radius + e.radius,
+                                radius: MELEE_ATTACKS.nova.radius * (e.skillScale || 1) + e.radius,
                                 life: 0.5,
                                 maxLife: 0.5,
                             })
@@ -1753,23 +1753,6 @@
                     shakeY = (Math.random() - 0.5) * state.shakePower
                 }
                 ctx.translate(-camX + shakeX, -camY + shakeY)
-
-                const gridSize = 60
-                ctx.strokeStyle = 'rgba(255,255,255,0.20)'
-                ctx.lineWidth = 0.5
-                // 只画视口内的网格（大世界性能优化）
-                for (let x = Math.max(gridSize, Math.floor(camX / gridSize) * gridSize); x < camX + canvasW; x += gridSize) {
-                    ctx.beginPath()
-                    ctx.moveTo(x, 0)
-                    ctx.lineTo(x, worldH)
-                    ctx.stroke()
-                }
-                for (let y = Math.max(gridSize, Math.floor(camY / gridSize) * gridSize); y < camY + canvasH; y += gridSize) {
-                    ctx.beginPath()
-                    ctx.moveTo(0, y)
-                    ctx.lineTo(worldW, y)
-                    ctx.stroke()
-                }
 
                 // ---- 地面装饰（地图纹理，提供移动参照物） ----
                 if (!state._terrain) {
@@ -2092,18 +2075,22 @@
                         if (e.flashTimer > 0) {
                             ctx.strokeStyle = '#fff'
                             ctx.lineWidth = 2.5
+                        } else if (e.enraged) {
+                            ctx.strokeStyle = 'rgba(255,110,80,1)'
+                            ctx.lineWidth = 3
                         } else {
                             ctx.strokeStyle = 'rgba(205,160,240,1)'
                             ctx.lineWidth = 2
                         }
                         ctx.stroke()
-                        ctx.fillStyle = 'rgba(199,146,234,0.22)'
+                        ctx.fillStyle = e.enraged ? 'rgba(255,90,60,0.3)' : 'rgba(199,146,234,0.22)'
                         ctx.fill()
                     } else {
                         // 普通敌人：按类型着色（melee 白 / bomber 红 / splitter 紫 / charger 橙 / healer 绿）
                         let strokeC = 'rgba(255,255,255,0.6)'
                         let fillC = 'rgba(255,255,255,0.18)'
-                        if (e.type === 'bomber') { strokeC = 'rgba(255,90,70,0.9)'; fillC = 'rgba(255,80,60,0.28)' }
+                        if (e.isMeleeBoss && e.enraged) { strokeC = 'rgba(255,150,70,1)'; fillC = 'rgba(255,130,50,0.35)' }
+                        else if (e.type === 'bomber') { strokeC = 'rgba(255,90,70,0.9)'; fillC = 'rgba(255,80,60,0.28)' }
                         else if (e.type === 'splitter') { strokeC = 'rgba(190,90,230,0.9)'; fillC = 'rgba(180,80,220,0.28)' }
                         else if (e.type === 'charger') { strokeC = 'rgba(255,180,70,0.9)'; fillC = 'rgba(255,170,60,0.28)' }
                         else if (e.type === 'healer') { strokeC = 'rgba(100,230,140,0.9)'; fillC = 'rgba(80,220,120,0.28)' }
@@ -2238,9 +2225,10 @@
                         ctx.fillStyle = 'rgba(255, 60, 60, ' + (0.10 + 0.16 * pulse).toFixed(3) + ')'
                         ctx.strokeStyle = 'rgba(255, 90, 90, ' + (0.55 + 0.35 * pulse).toFixed(3) + ')'
                         ctx.lineWidth = 2
+                        const wsk = e.skillScale || 1
                         if (e.attackType === 'nova') {
                             // 基础蓄力圆（扩散波纹由 novaPulse 事件负责，节奏单调加速）
-                            const r = MELEE_ATTACKS.nova.radius + e.radius
+                            const r = MELEE_ATTACKS.nova.radius * wsk + e.radius
                             ctx.beginPath()
                             ctx.arc(0, 0, r, 0, Math.PI * 2)
                             ctx.fill()
@@ -2251,14 +2239,14 @@
                         ctx.beginPath()
                         if (e.attackType === 'fan') {
                             ctx.moveTo(0, 0)
-                            ctx.arc(0, 0, MELEE_ATTACKS.fan.radius + e.radius, -MELEE_ATTACKS.fan.halfAngle, MELEE_ATTACKS.fan.halfAngle)
+                            ctx.arc(0, 0, MELEE_ATTACKS.fan.radius * wsk + e.radius, -MELEE_ATTACKS.fan.halfAngle * wsk, MELEE_ATTACKS.fan.halfAngle * wsk)
                             ctx.closePath()
                         } else if (e.attackType === 'slam') {
-                            ctx.rect(e.radius, -MELEE_ATTACKS.slam.halfW, MELEE_ATTACKS.slam.len, MELEE_ATTACKS.slam.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.slam.halfW * wsk, MELEE_ATTACKS.slam.len * wsk, MELEE_ATTACKS.slam.halfW * wsk * 2)
                         } else if (e.attackType === 'dash') {
-                            ctx.rect(e.radius, -MELEE_ATTACKS.dash.halfW, e.dashLen || MELEE_ATTACKS.dash.len, MELEE_ATTACKS.dash.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.dash.halfW * wsk, e.dashLen || MELEE_ATTACKS.dash.len, MELEE_ATTACKS.dash.halfW * wsk * 2)
                         } else {
-                            ctx.rect(e.radius, -MELEE_ATTACKS.charge.halfW, MELEE_ATTACKS.charge.len, MELEE_ATTACKS.charge.halfW * 2)
+                            ctx.rect(e.radius, -MELEE_ATTACKS.charge.halfW * wsk, MELEE_ATTACKS.charge.len * wsk, MELEE_ATTACKS.charge.halfW * wsk * 2)
                         }
                         ctx.fill()
                         ctx.stroke()

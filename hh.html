@@ -976,7 +976,7 @@
                 hitDecay: 7,
                 hitVolume: 0.35,
                 gunType: 'gatling',
-                magSize: 120,
+                magSize: 200,
                 reloadTime: 2.5,
                 barrelCount: 7,
             }, {
@@ -1079,6 +1079,7 @@
                     speedMul: 1,
                     shotgunSpread: 50,
                     gatlingBarrel: 0,
+                    gatlingSpin: 0,
                 },
 
                 enemies: [],
@@ -2517,6 +2518,14 @@
             }
 
             /* ─── 发射子弹 ────────────────────────── */
+            // 加特林启动预热：转速低时射速慢，逐渐加速到峰值（最低 35% 射速）
+            function gunAttackInterval(p) {
+                if (p.gunType === 'gatling') {
+                    return 1 / (p.attackSpeed * Math.max(0.35, p.gatlingSpin || 0))
+                }
+                return 1 / p.attackSpeed
+            }
+
             function fireAttackBatch(target, angle, homing, consumeAmmo) {
                 const p = state.player
                 if (!target && angle === undefined) return
@@ -2643,12 +2652,13 @@
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
                     for (let s = 0; s < 4; s++) {
-                        // 长条形火花流：速度几乎统一（避免后面的火花追上前面的），连续 tick 自然排成前伸弹流
+                        // 长条形火花流：速度几乎统一（避免后面的火花追上前面的），起点沿方向错开避免重叠
                         const a = baseAngle + rand(-0.012, 0.012)
                         const spd = currentSpeed * (0.97 + Math.random() * 0.06)
+                        const off = s * 2.5
                         state.projectiles.push({
-                            x: sgx,
-                            y: sgy,
+                            x: sgx + Math.cos(a) * off,
+                            y: sgy + Math.sin(a) * off,
                             vx: Math.cos(a) * spd,
                             vy: Math.sin(a) * spd,
                             length: rand(3, 8),
@@ -2957,9 +2967,13 @@
                                 p._extraPending = 0
                                 p._extraTimer = 0
                             }
-                            p.attackTimer = 1 / p.attackSpeed
+                            p.attackTimer = gunAttackInterval(p)
+                            // 加特林预热：持续射击转速提升
+                            if (p.gunType === 'gatling') p.gatlingSpin = Math.min(1, (p.gatlingSpin || 0) + 0.045)
                         } else {
                             p.attackTimer = 0.05
+                            // 停止射击：转速衰减
+                            if (p.gunType === 'gatling') p.gatlingSpin = Math.max(0, (p.gatlingSpin || 0) - 0.03)
                         }
                     } else if (nearest && nearDist < p.range && !p.reloading) {
                         fireAttackBatch(nearest)
@@ -2970,9 +2984,13 @@
                             p._extraPending = 0
                             p._extraTimer = 0
                         }
-                        p.attackTimer = 1 / p.attackSpeed
+                        p.attackTimer = gunAttackInterval(p)
+                        // 加特林预热：持续射击转速提升
+                        if (p.gunType === 'gatling') p.gatlingSpin = Math.min(1, (p.gatlingSpin || 0) + 0.045)
                     } else {
                         p.attackTimer = 0.05
+                        // 停止射击：转速衰减
+                        if (p.gunType === 'gatling') p.gatlingSpin = Math.max(0, (p.gatlingSpin || 0) - 0.03)
                     }
                 }
 
@@ -5289,10 +5307,11 @@
                 p.reloadTimer = 0
                 p.reloadTimeMult = 1
                 p.ammoCounter = 0
-                // 加特林移速 -25%，其余武器不受影响
-                p.speedMul = p.gunType === 'gatling' ? 0.75 : 1
+                // 加特林移速 -30%（弹容增大后持续火力更久，移速进一步降低平衡）
+                p.speedMul = p.gunType === 'gatling' ? 0.7 : 1
                 p.shotgunSpread = gun.spreadDeg || 50
                 p.gatlingBarrel = 0
+                p.gatlingSpin = 0
 
                 p.totalKills = 0
                 p.currentKills = 0

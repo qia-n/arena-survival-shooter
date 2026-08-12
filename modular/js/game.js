@@ -2707,10 +2707,13 @@
                     row.className = 'boss-bar-row'
                     const name = b.bossName || '👑 首领'
                     const pct = Math.max(0, Math.min(100, b.hp / b.maxHp * 100))
+                    // 霸体条（无数值）：有霸体上限才显示
+                    const armorPct = b.maxArmor > 0 ? Math.max(0, Math.min(100, b.armor / b.maxArmor * 100)) : 0
                     row.innerHTML =
                         `<span class="boss-bar-name">${name}</span>` +
                         `<div class="boss-bar-track"><div class="boss-bar-fill" style="width:${pct.toFixed(1)}%"></div></div>` +
-                        `<span class="boss-bar-hp">${Math.max(0, Math.ceil(b.hp))} / ${b.maxHp}</span>`
+                        `<span class="boss-bar-hp">${Math.max(0, Math.ceil(b.hp))} / ${b.maxHp}</span>` +
+                        (b.maxArmor > 0 ? `<div class="boss-bar-armor"><div class="boss-bar-armor-fill" style="width:${armorPct.toFixed(1)}%"></div></div>` : '')
                     bossBar.appendChild(row)
                 })
             }

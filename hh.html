@@ -1035,7 +1035,7 @@
                 gunType: 'ultraman',
                 magSize: 0,
                 reloadTime: 0,
-                barrelCount: 10,
+                barrelCount: 12,
             }, ]
 
             function genId() {
@@ -2801,14 +2801,14 @@
                     const rangeMult = 1 + (p.beamRange || 0)
                     const beamLife = 0.45 * rangeMult
                     const beamDmg = r2(p.atk * 0.18 * boost)
-                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 10
+                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 12
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 16
                         // 每 tick 从多个枪口中随机取 6 个，各发射 1 颗粒子（速度随机，逐段追进）
                         for (let s = 0; s < 6; s++) {
                             const bi = randInt(0, barrels - 1)
                             const bAng = (bi / barrels) * Math.PI * 2
-                            const bR = p.radius + 6
+                            const bR = p.radius + 14
                             const mox = Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 10 - Math.sin(baseAngle) * off
                             const moy = Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 10 + Math.cos(baseAngle) * off
                             const a = baseAngle + rand(-0.012, 0.012)
@@ -2818,8 +2818,8 @@
                                 y: p.y + moy,
                                 vx: Math.cos(a) * spd,
                                 vy: Math.sin(a) * spd,
-                                length: rand(2, 4),
-                                width: 1,
+                                length: rand(1.5, 3),
+                                width: 0.7,
                                 sparkLine: true,
                                 sparkColor: '#8fe8ff',
                                 damage: beamDmg,

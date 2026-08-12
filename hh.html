@@ -2522,11 +2522,23 @@
                 if (!target && angle === undefined) return
 
                 // 弹夹机制：无限弹药（magSize=0）不扣；额外攻击（consumeAmmo=false）不消耗弹药；弹尽自动换弹
+                // 冲锋枪：每发射 4 颗才消耗 1 发弹药（ammoCounter 累计）
                 if (p.magSize > 0 && consumeAmmo !== false) {
-                    p.magAmmo = Math.max(0, p.magAmmo - 1)
-                    if (p.magAmmo <= 0 && !p.reloading) {
-                        p.reloading = true
-                        p.reloadTimer = ((state.selectedGun && state.selectedGun.reloadTime) || 1.5) * (p.reloadTimeMult || 1)
+                    if (p.gunType === 'smg') {
+                        p.ammoCounter = (p.ammoCounter || 0) + 1
+                        if (p.ammoCounter % 4 === 0) {
+                            p.magAmmo = Math.max(0, p.magAmmo - 1)
+                            if (p.magAmmo <= 0 && !p.reloading) {
+                                p.reloading = true
+                                p.reloadTimer = ((state.selectedGun && state.selectedGun.reloadTime) || 1.5) * (p.reloadTimeMult || 1)
+                            }
+                        }
+                    } else {
+                        p.magAmmo = Math.max(0, p.magAmmo - 1)
+                        if (p.magAmmo <= 0 && !p.reloading) {
+                            p.reloading = true
+                            p.reloadTimer = ((state.selectedGun && state.selectedGun.reloadTime) || 1.5) * (p.reloadTimeMult || 1)
+                        }
                     }
                 }
 
@@ -2580,7 +2592,7 @@
                     return
                 }
 
-                // ---- 冲锋枪：1 发弹药 = 4 颗实际子弹（沿瞄准方向小散布，支持平行弹道） ----
+                // ---- 冲锋枪：连续单发（1 攻速 tick = 1 颗），支持平行弹道；弹药每 4 颗扣 1 发 ----
                 if (p.gunType === 'smg') {
                     const tmpAngles = []
                     if (p.parallelCount > 0) {
@@ -2594,52 +2606,13 @@
                         tmpAngles.push({ angle: baseAngle, ox: 0, oy: 0 })
                     }
                     for (const b of tmpAngles) {
-                        for (let s = 0; s < 4; s++) {
-                            const a = b.angle + rand(-0.025, 0.025)
-                            state.projectiles.push({
-                                x: gx + (b.ox || 0),
-                                y: gy + (b.oy || 0),
-                                vx: Math.cos(a) * currentSpeed,
-                                vy: Math.sin(a) * currentSpeed,
-                                length: p.bulletLength || 14,
-                                width: p.bulletWidth || 1.8,
-                                damage: p.atk,
-                                life: 2.5,
-                                isHoming: false,
-                                isChild: false,
-                                splitRemain: p.splitLevel,
-                                pierceRemain: p.pierceCount,
-                                hitEnemies: new Set(),
-                                radius: 6,
-                                ricochetRemain: p.ricochetCount,
-                                _trailTimer: 0,
-                            })
-                        }
-                    }
-                    p.attackDirection.x = -Math.cos(baseAngle)
-                    p.attackDirection.y = -Math.sin(baseAngle)
-                    p.attackEffectTimer = 0.1
-                    return
-                }
-
-                // ---- 加特林：1 发弹药 = 10 颗实际子弹；多枪口轮转 ----
-                if (p.gunType === 'gatling') {
-                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 7
-                    for (let s = 0; s < 10; s++) {
-                        const bi = p.gatlingBarrel % barrels
-                        p.gatlingBarrel++
-                        const bAng = (bi / barrels) * Math.PI * 2
-                        const bR = p.radius + 6
-                        const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
-                        const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
-                        const a = baseAngle + rand(-0.03, 0.03)
                         state.projectiles.push({
-                            x: sgx,
-                            y: sgy,
-                            vx: Math.cos(a) * currentSpeed,
-                            vy: Math.sin(a) * currentSpeed,
-                            length: p.bulletLength || 16,
-                            width: p.bulletWidth || 2,
+                            x: gx + (b.ox || 0),
+                            y: gy + (b.oy || 0),
+                            vx: Math.cos(b.angle) * currentSpeed,
+                            vy: Math.sin(b.angle) * currentSpeed,
+                            length: p.bulletLength || 14,
+                            width: p.bulletWidth || 1.8,
                             damage: p.atk,
                             life: 2.5,
                             isHoming: false,
@@ -2647,11 +2620,44 @@
                             splitRemain: p.splitLevel,
                             pierceRemain: p.pierceCount,
                             hitEnemies: new Set(),
-                            radius: 5,
+                            radius: 6,
                             ricochetRemain: p.ricochetCount,
                             _trailTimer: 0,
                         })
                     }
+                    p.attackDirection.x = -Math.cos(baseAngle)
+                    p.attackDirection.y = -Math.sin(baseAngle)
+                    p.attackEffectTimer = 0.1
+                    return
+                }
+
+                // ---- 加特林：连续单发（1 攻速 tick = 1 颗），多枪口轮转，每发扣 1 弹药 ----
+                if (p.gunType === 'gatling') {
+                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 7
+                    const bi = p.gatlingBarrel % barrels
+                    p.gatlingBarrel++
+                    const bAng = (bi / barrels) * Math.PI * 2
+                    const bR = p.radius + 6
+                    const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
+                    const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
+                    state.projectiles.push({
+                        x: sgx,
+                        y: sgy,
+                        vx: dirX * currentSpeed,
+                        vy: dirY * currentSpeed,
+                        length: p.bulletLength || 16,
+                        width: p.bulletWidth || 2,
+                        damage: p.atk,
+                        life: 2.5,
+                        isHoming: false,
+                        isChild: false,
+                        splitRemain: p.splitLevel,
+                        pierceRemain: p.pierceCount,
+                        hitEnemies: new Set(),
+                        radius: 5,
+                        ricochetRemain: p.ricochetCount,
+                        _trailTimer: 0,
+                    })
                     p.attackDirection.x = -Math.cos(baseAngle)
                     p.attackDirection.y = -Math.sin(baseAngle)
                     p.attackEffectTimer = 0.06
@@ -5275,6 +5281,7 @@
                 p.reloading = false
                 p.reloadTimer = 0
                 p.reloadTimeMult = 1
+                p.ammoCounter = 0
                 // 加特林移速 -25%，其余武器不受影响
                 p.speedMul = p.gunType === 'gatling' ? 0.75 : 1
                 p.shotgunSpread = gun.spreadDeg || 50

@@ -1314,18 +1314,18 @@
                     const bR = p.radius + 6
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
-                    for (let s = 0; s < 4; s++) {
-                        // 粒子射线：长拖尾光束段 + 等速前进 + 起点错开组成连续光束（无超车、无重叠）
-                        const a = baseAngle + rand(-0.012, 0.012)
-                        const spd = currentSpeed
-                        const off = s * 4
+                    for (let s = 0; s < 3; s++) {
+                        // 真实加特林火力压制：细弹头沿瞄准直线等速等距排成一列（火线弹流）
+                        // 弹头 12-16px < 间距 22px，不重叠；等速前进，不超车
+                        const a = baseAngle + rand(-0.009, 0.009)
+                        const off = s * 22
                         state.projectiles.push({
                             x: sgx + Math.cos(a) * off,
                             y: sgy + Math.sin(a) * off,
-                            vx: Math.cos(a) * spd,
-                            vy: Math.sin(a) * spd,
-                            length: rand(25, 55),
-                            width: 1,
+                            vx: Math.cos(a) * currentSpeed,
+                            vy: Math.sin(a) * currentSpeed,
+                            length: rand(12, 16),
+                            width: 1.2,
                             damage: r2(p.atk * 0.25),
                             life: 1.2,
                             isHoming: false,

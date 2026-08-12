@@ -608,7 +608,11 @@
             /* ─── 升级系统 ────────────────────────── */
             function applyLevelUpBonus() {
                 const p = state.player
-                p.maxHp += 3
+                // 升级奖励随波数成长（敌人随波变强，固定值后期不够看）
+                const hpBonus = Math.floor(2 + state.wave * 0.3)
+                const atkBonus = r2(0.4 + state.wave * 0.08)
+                p.maxHp += hpBonus
+                p.atk = r2(p.atk + atkBonus)
                 p.hp = p.maxHp
             }
 

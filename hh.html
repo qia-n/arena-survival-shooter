@@ -1115,7 +1115,6 @@
                     beamPierce: 0,
                     beamBurn: 0,
                     beamRange: 0,
-                    beamBarrel: 0,
                 },
 
                 enemies: [],
@@ -2806,19 +2805,19 @@
                     const barrelSpacing = 4
                     const totalW = (barrels - 1) * barrelSpacing
                     const activeBarrels = 8
-                    // 枪口轮转：每 tick 取连续 activeBarrels 个枪口，每个发射 1 颗
-                    // 保证每个枪口位置持续产出粒子 → 同线前后粒子速度随机 → 后面的追上前面（追进效果）
-                    const startBarrel = (p.beamBarrel || 0) % barrels
+                    // 固定横排中部 8 个枪口，每 tick 都发射（不轮转）：
+                    // 同一枪口每 tick 都有前后粒子 → 速度随机差异 → 后面的快粒子追上前面（追进效果）
+                    const startBi = Math.floor((barrels - activeBarrels) / 2)
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 16
                         for (let s = 0; s < activeBarrels; s++) {
-                            const bi = (startBarrel + s) % barrels
+                            const bi = startBi + s
                             // 枪口横排：沿垂直瞄准方向排布（宽度 = 枪口数 × 间距）
                             const bx = bi * barrelSpacing - totalW / 2
                             const mox = Math.cos(baseAngle) * (p.radius + 8) - Math.sin(baseAngle) * (bx + off)
                             const moy = Math.sin(baseAngle) * (p.radius + 8) + Math.cos(baseAngle) * (bx + off)
                             const a = baseAngle + rand(-0.012, 0.012)
-                            const spd = currentSpeed * rand(0.6, 1.4)
+                            const spd = currentSpeed * rand(0.5, 1.5)
                             state.projectiles.push({
                                 x: p.x + mox,
                                 y: p.y + moy,
@@ -2842,8 +2841,6 @@
                             })
                         }
                     }
-                    // 推进枪口轮转（每个枪口位置持续产出粒子 → 同线追进）
-                    p.beamBarrel = (startBarrel + activeBarrels) % barrels
                     // 枪口青蓝火花粒子
                     for (let f = 0; f < 2; f++) {
                         const fa = baseAngle + rand(-0.25, 0.25)
@@ -5571,7 +5568,6 @@
                 p.beamPierce = 0
                 p.beamBurn = 0
                 p.beamRange = 0
-                p.beamBarrel = 0
 
                 p.totalKills = 0
                 p.currentKills = 0

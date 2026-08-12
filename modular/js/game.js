@@ -601,16 +601,6 @@
                         const p = state.player
                         p.totalKills += cleared
                         p.currentKills += cleared
-                        // 清场击杀也触发攻击吸取（与普通击杀一致）
-                        const stealChance = p.stealLevel > 0 ? STEAL_CHANCES[p.stealLevel] : 0
-                        if (stealChance > 0) {
-                            for (let si = 0; si < cleared; si++) {
-                                if (Math.random() < stealChance) {
-                                    p.atk = r2(p.atk + STEAL_ATK_BONUS)
-                                    spawnFloatText(p.x, p.y - p.radius - 12, '+' + STEAL_ATK_BONUS.toFixed(1), '#ffd700')
-                                }
-                            }
-                        }
                         checkUpgradeAndBoss()
                     }
                 }

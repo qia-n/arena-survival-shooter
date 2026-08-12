@@ -331,7 +331,7 @@
                 gunType: 'ultraman',
                 magSize: 0,
                 reloadTime: 0,
-                barrelCount: 12,
+                barrelCount: 16,
             }, ]
 
             function genId() {
@@ -1463,8 +1463,8 @@
                     const boost = 1 + (p.beamBoost || 0)
                     const rangeMult = 1 + (p.beamRange || 0)
                     const beamLife = 0.45 * rangeMult
-                    const beamDmg = r2(p.atk * 0.18 * boost)
-                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 12
+                    const beamDmg = r2(p.atk * 0.12 * boost)
+                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 16
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 16
                         // 每 tick 从多个枪口中随机取 6 个，各发射 1 颗粒子（速度随机，逐段追进）

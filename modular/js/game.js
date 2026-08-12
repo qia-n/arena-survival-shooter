@@ -272,7 +272,7 @@
                 hitDecay: 7,
                 hitVolume: 0.35,
                 gunType: 'gatling',
-                magSize: 200,
+                magSize: 500,
                 reloadTime: 2.5,
                 barrelCount: 7,
             }, {

@@ -1315,17 +1315,17 @@
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
                     // 枪口持续火光粒子
-                    for (let f = 0; f < 2; f++) {
-                        const fa = baseAngle + rand(-0.3, 0.3)
-                        const fs = rand(140, 340)
+                    for (let f = 0; f < 3; f++) {
+                        const fa = baseAngle + rand(-0.35, 0.35)
+                        const fs = rand(150, 380)
                         state.particles.push({
                             x: sgx,
                             y: sgy,
                             vx: Math.cos(fa) * fs,
                             vy: Math.sin(fa) * fs,
-                            size: rand(2, 5),
-                            life: rand(0.08, 0.18),
-                            color: Math.random() < 0.5 ? '#ffcc66' : '#ff9955',
+                            size: rand(2, 6),
+                            life: rand(0.08, 0.2),
+                            color: Math.random() < 0.5 ? '#ffdd77' : '#ffaa55',
                         })
                     }
                     // 高速火花弹：2 颗/次、错开 22px ≈ tick 间距、速度 ×2.2、spark 渐隐拖尾渲染
@@ -2294,26 +2294,23 @@
 
                 // ---- 玩家子弹 ----
                 for (const proj of state.projectiles) {
-                    // 高速火花（加特林）：头部亮点 + 渐隐拖尾，视觉暂留连成火线
+                    // 高速火花（加特林）：细亮渐隐火花线（头亮尾暗、无圆头），体现速度与火力
                     if (proj.spark) {
                         const sa = Math.atan2(proj.vy, proj.vx)
-                        const tail = 20
+                        const tail = 30
                         const tx = proj.x - Math.cos(sa) * tail
                         const ty = proj.y - Math.sin(sa) * tail
                         const grad = ctx.createLinearGradient(proj.x, proj.y, tx, ty)
-                        grad.addColorStop(0, 'rgba(255,225,150,0.95)')
-                        grad.addColorStop(0.35, 'rgba(255,165,60,0.5)')
-                        grad.addColorStop(1, 'rgba(255,120,40,0)')
+                        grad.addColorStop(0, 'rgba(255,240,180,1)')
+                        grad.addColorStop(0.25, 'rgba(255,190,90,0.85)')
+                        grad.addColorStop(0.6, 'rgba(255,140,50,0.35)')
+                        grad.addColorStop(1, 'rgba(255,110,40,0)')
                         ctx.strokeStyle = grad
                         ctx.lineWidth = 1.2
                         ctx.beginPath()
                         ctx.moveTo(proj.x, proj.y)
                         ctx.lineTo(tx, ty)
                         ctx.stroke()
-                        ctx.beginPath()
-                        ctx.arc(proj.x, proj.y, 2, 0, Math.PI * 2)
-                        ctx.fillStyle = 'rgba(255,235,170,0.95)'
-                        ctx.fill()
                         continue
                     }
                     const len = proj.length || 12

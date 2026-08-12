@@ -411,6 +411,7 @@
                     beamPierce: 0,
                     beamBurn: 0,
                     beamRange: 0,
+                    beamBarrel: 0,
                 },
 
                 enemies: [],
@@ -1467,12 +1468,14 @@
                     const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 16
                     const barrelSpacing = 4
                     const totalW = (barrels - 1) * barrelSpacing
-                    const midBarrel = Math.floor(barrels / 2)
+                    const activeBarrels = 8
+                    // 枪口轮转：每 tick 取连续 activeBarrels 个枪口，每个发射 1 颗
+                    // 保证每个枪口位置持续产出粒子 → 同线前后粒子速度随机 → 后面的追上前面（追进效果）
+                    const startBarrel = (p.beamBarrel || 0) % barrels
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 16
-                        // 每 tick 从中部枪口密集取 10 个发射（居中且密集）
-                        for (let s = 0; s < 10; s++) {
-                            const bi = midBarrel + randInt(-5, 5)
+                        for (let s = 0; s < activeBarrels; s++) {
+                            const bi = (startBarrel + s) % barrels
                             // 枪口横排：沿垂直瞄准方向排布（宽度 = 枪口数 × 间距）
                             const bx = bi * barrelSpacing - totalW / 2
                             const mox = Math.cos(baseAngle) * (p.radius + 8) - Math.sin(baseAngle) * (bx + off)
@@ -1502,6 +1505,8 @@
                             })
                         }
                     }
+                    // 推进枪口轮转（每个枪口位置持续产出粒子 → 同线追进）
+                    p.beamBarrel = (startBarrel + activeBarrels) % barrels
                     // 枪口青蓝火花粒子
                     for (let f = 0; f < 2; f++) {
                         const fa = baseAngle + rand(-0.25, 0.25)
@@ -3647,6 +3652,7 @@
                 p.beamPierce = 0
                 p.beamBurn = 0
                 p.beamRange = 0
+                p.beamBarrel = 0
 
                 p.totalKills = 0
                 p.currentKills = 0

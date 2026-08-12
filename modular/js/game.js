@@ -1647,7 +1647,7 @@
                 // ---- 二阶段触发：大型 Boss 死亡时 30% 概率原地进化复活（回满血、变身演出） ----
                 for (let di = deadEnemies.length - 1; di >= 0; di--) {
                     const e = deadEnemies[di]
-                    if ((e.isMeleeBoss || e.isArtilleryBoss || e.isMotherBoss) && !e.stage2 && Math.random() < 0.3) {
+                    if (e.isLargeBoss && !e.stage2 && Math.random() < 0.3) {
                         startBossPhase(e, 'revive')
                         deadEnemies.splice(di, 1)
                     }

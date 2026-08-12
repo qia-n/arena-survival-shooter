@@ -1283,6 +1283,7 @@
                     isBoss,
                     bossName: isBoss ? '👑 首领' : undefined,
                     isMeleeBoss: isBoss,
+                    isLargeBoss: false,
                     meleeSkills: isBoss ? ['slam', 'dash'] : undefined,
                     type,
                     attackCooldown: 0,
@@ -1337,6 +1338,7 @@
                     damage,
                     enraged: false,
                     skillScale: 1,
+                    isLargeBoss: true,
                     stage2: false,
                     phaseMode: null,
                     phaseTimer: 0,
@@ -1453,6 +1455,7 @@
                     damage,
                     enraged: false,
                     skillScale: 1,
+                    isLargeBoss: true,
                     stage2: false,
                     phaseMode: null,
                     phaseTimer: 0,
@@ -1521,6 +1524,7 @@
                     webCooldown: 5.0,
                     shockCooldown: 8.0,
                     enraged: false,
+                    isLargeBoss: true,
                     stage2: false,
                     phaseMode: null,
                     phaseTimer: 0,
@@ -3110,8 +3114,9 @@
                         updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult)
                     } else if (e.isMeleeBoss) {
                         // ---- 大型近战 Boss：攻击状态机 ----
-                        if (!e.enraged && e.hp <= e.maxHp * 0.5) startBossPhase(e, e.stage2 ? 'enrage2' : 'enrage1')
-                        const meleeDmgF = bossStageF(e).dmg
+                        if (e.isLargeBoss && !e.enraged && e.hp <= e.maxHp * 0.5) startBossPhase(e, e.stage2 ? 'enrage2' : 'enrage1')
+                        // 普通 Boss（isMeleeBoss 但非大型）不参与阶段档位缩放
+                        const meleeDmgF = e.isLargeBoss ? bossStageF(e).dmg : 1
                         if (e.attackState === 'idle') {
                             if (d2 > 1) {
                                 const moveSpeed = e.speed * speedMult
@@ -3174,7 +3179,7 @@
                                         }
                                     }
                                     e.attackState = 'recover'
-                                    e.recoverTimer = MELEE_BOSS_RECOVER * bossStageF(e).recover
+                                    e.recoverTimer = MELEE_BOSS_RECOVER * (e.isLargeBoss ? bossStageF(e).recover : 1)
                                 }
                             }
                         } else if (e.attackState === 'dash') {
@@ -3219,7 +3224,7 @@
                                     e.recoverTimer = 0.6
                                 } else {
                                     e.attackState = 'recover'
-                                    e.recoverTimer = MELEE_BOSS_RECOVER * bossStageF(e).recover
+                                    e.recoverTimer = MELEE_BOSS_RECOVER * (e.isLargeBoss ? bossStageF(e).recover : 1)
                                 }
                             }
                         } else if (e.attackState === 'recover') {
@@ -3232,7 +3237,7 @@
                                     startMeleeWindup(e, s)
                                 } else {
                                     e.attackState = 'idle'
-                                    e.attackTimer = 1 / bossStageF(e).freq
+                                    e.attackTimer = e.isLargeBoss ? 1 / bossStageF(e).freq : 1.0
                                 }
                             }
                         }
@@ -3500,7 +3505,7 @@
                 // ---- 二阶段触发：大型 Boss 死亡时 30% 概率原地进化复活（回满血、变身演出） ----
                 for (let di = deadEnemies.length - 1; di >= 0; di--) {
                     const e = deadEnemies[di]
-                    if ((e.isMeleeBoss || e.isArtilleryBoss || e.isMotherBoss) && !e.stage2 && Math.random() < 0.3) {
+                    if (e.isLargeBoss && !e.stage2 && Math.random() < 0.3) {
                         startBossPhase(e, 'revive')
                         deadEnemies.splice(di, 1)
                     }

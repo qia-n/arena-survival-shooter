@@ -1456,28 +1456,28 @@
                     return
                 }
 
-                // ---- 奥特曼：大量粒子射线（速度差异逐段追进，奥特曼粒子射线观感） ----
+                // ---- 奥特曼：等距长方长条形射线（沿直线等距排布的长条粒子，不锥形不追进） ----
                 if (p.gunType === 'ultraman') {
                     const beams = 1 + (p.beamDouble || 0)
                     const boost = 1 + (p.beamBoost || 0)
                     const rangeMult = 1 + (p.beamRange || 0)
-                    const beamLife = 0.45 * rangeMult
-                    const beamDmg = r2(p.atk * 0.22 * boost)
+                    const beamLife = 0.6 * rangeMult
+                    const beamDmg = r2(p.atk * 0.25 * boost)
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 20
                         const sgx2 = p.x + Math.cos(baseAngle) * barrelLen - Math.sin(baseAngle) * off
                         const sgy2 = p.y + Math.sin(baseAngle) * barrelLen + Math.cos(baseAngle) * off
-                        // 大量粒子（每 tick 5 颗），速度随机差异形成逐段追进的粒子射线
-                        for (let s = 0; s < 5; s++) {
-                            const a = baseAngle + rand(-0.05, 0.05)
-                            const spd = currentSpeed * rand(0.7, 1.4)
+                        // 每 tick 3 颗长条粒子，沿方向等距错开 20px（= tick 间距），等速前进组成等距长条射线
+                        for (let s = 0; s < 3; s++) {
+                            const a = baseAngle + rand(-0.01, 0.01)
+                            const o2 = s * 20
                             state.projectiles.push({
-                                x: sgx2,
-                                y: sgy2,
-                                vx: Math.cos(a) * spd,
-                                vy: Math.sin(a) * spd,
-                                length: rand(2, 4),
-                                width: 0.9,
+                                x: sgx2 + Math.cos(a) * o2,
+                                y: sgy2 + Math.sin(a) * o2,
+                                vx: Math.cos(a) * currentSpeed * 0.5,
+                                vy: Math.sin(a) * currentSpeed * 0.5,
+                                length: rand(12, 16),
+                                width: 2,
                                 sparkLine: true,
                                 sparkColor: '#8fe8ff',
                                 damage: beamDmg,
@@ -2475,13 +2475,13 @@
                     if (proj.sparkLine) {
                         const alpha = Math.max(0, proj.life / 0.3)
                         ctx.globalAlpha = alpha
-                        const sl = 6
+                        const sl = proj.length || 6
                         const sang = Math.atan2(proj.vy, proj.vx)
                         ctx.beginPath()
                         ctx.moveTo(proj.x, proj.y)
                         ctx.lineTo(proj.x + Math.cos(sang) * sl, proj.y + Math.sin(sang) * sl)
                         ctx.strokeStyle = proj.sparkColor || '#ffcc44'
-                        ctx.lineWidth = 1.2
+                        ctx.lineWidth = proj.width || 1.2
                         ctx.stroke()
                         ctx.globalAlpha = 1
                         continue

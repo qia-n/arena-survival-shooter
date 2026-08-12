@@ -198,7 +198,7 @@
                 bulletWidth: 1.5,
                 atk: 2,
                 range: 240,
-                attackSpeed: 1.6,
+                attackSpeed: 0.9,
                 bulletSpeedMult: 1.2,
                 bulletCount: 1,
                 pierceCount: 0,
@@ -256,7 +256,7 @@
                 bulletWidth: 2,
                 atk: 0.8,
                 range: 360,
-                attackSpeed: 14,
+                attackSpeed: 4,
                 bulletSpeedMult: 1,
                 bulletCount: 1,
                 pierceCount: 0,
@@ -938,8 +938,10 @@
                     // 散弹枪：不能用分裂/弹射（喷发式射线）
                     if (item.id === 'split' && gtype === 'shotgun') return false
                     if (item.id === 'ricochet' && gtype === 'shotgun') return false
-                    // 冲锋枪：没有攻击速度概念
-                    if (item.id === 'atkSpeed' && gtype === 'smg') return false
+                    // 加特林：攻速固定，不允许选择攻击速度
+                    if (item.id === 'atkSpeed' && gtype === 'gatling') return false
+                    // 狙击枪：不允许选择子弹速度
+                    if (item.id === 'bulletSpeed' && gtype === 'sniper') return false
                     // 收束扩散：散弹枪专属
                     if (item.id === 'spreadFocus' && gtype !== 'shotgun') return false
                     // 弹药扩充/换弹加速：无限弹药武器不出现
@@ -1178,12 +1180,12 @@
             }
 
             /* ─── 发射子弹 ────────────────────────── */
-            function fireAttackBatch(target, angle, homing) {
+            function fireAttackBatch(target, angle, homing, consumeAmmo) {
                 const p = state.player
                 if (!target && angle === undefined) return
 
-                // 弹夹机制：无限弹药（magSize=0）不扣；有弹夹则消耗 1 发，弹尽自动进入换弹
-                if (p.magSize > 0) {
+                // 弹夹机制：无限弹药（magSize=0）不扣；额外攻击（consumeAmmo=false）不消耗弹药；弹尽自动换弹
+                if (p.magSize > 0 && consumeAmmo !== false) {
                     p.magAmmo = Math.max(0, p.magAmmo - 1)
                     if (p.magAmmo <= 0 && !p.reloading) {
                         p.reloading = true
@@ -1206,31 +1208,34 @@
                 const perpX = -Math.sin(baseAngle)
                 const perpY = Math.cos(baseAngle)
 
-                // ---- 散弹枪：喷发式长短不一射线，扇形从枪口喷出（不能用分裂/弹射/平行） ----
+                // ---- 散弹枪：粒子喷射（扇形喷出密集火花粒子，短生命，近距离命中多=高伤） ----
                 if (p.gunType === 'shotgun') {
                     const spreadRad = (p.shotgunSpread || 50) * Math.PI / 180
                     const pellets = (state.selectedGun && state.selectedGun.pelletCount) || 9
                     for (let bi = 0; bi < pellets; bi++) {
-                        const a = baseAngle - spreadRad / 2 + spreadRad * (bi / (pellets - 1)) + rand(-0.02, 0.02)
-                        const spd = currentSpeed * (0.9 + Math.random() * 0.3)
-                        state.projectiles.push({
-                            x: gx,
-                            y: gy,
-                            vx: Math.cos(a) * spd,
-                            vy: Math.sin(a) * spd,
-                            length: rand(60, 150),
-                            width: p.bulletWidth * rand(0.6, 1.1),
-                            damage: r2(p.atk * 0.35),
-                            life: 0.22,
-                            isHoming: false,
-                            isChild: true,
-                            splitRemain: 0,
-                            pierceRemain: 0,
-                            hitEnemies: new Set(),
-                            radius: 3,
-                            ricochetRemain: 0,
-                            _trailTimer: 0,
-                        })
+                        const baseA = baseAngle - spreadRad / 2 + spreadRad * (bi / (pellets - 1))
+                        for (let s = 0; s < 3; s++) {
+                            const a = baseA + rand(-0.05, 0.05)
+                            const spd = currentSpeed * (0.85 + Math.random() * 0.4)
+                            state.projectiles.push({
+                                x: gx,
+                                y: gy,
+                                vx: Math.cos(a) * spd,
+                                vy: Math.sin(a) * spd,
+                                length: rand(3, 8),
+                                width: 1.2,
+                                damage: r2(p.atk * 0.12),
+                                life: rand(0.15, 0.25),
+                                isHoming: false,
+                                isChild: true,
+                                splitRemain: 0,
+                                pierceRemain: 0,
+                                hitEnemies: new Set(),
+                                radius: 2.5,
+                                ricochetRemain: 0,
+                                _trailTimer: 0,
+                            })
+                        }
                     }
                     p.attackDirection.x = -Math.cos(baseAngle)
                     p.attackDirection.y = -Math.sin(baseAngle)
@@ -1238,36 +1243,81 @@
                     return
                 }
 
-                // ---- 加特林：多枪口轮转单发（不能选散射/平行，分裂/弹射/穿透可用） ----
-                if (p.gunType === 'gatling') {
-                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 7
-                    const bi = p.gatlingBarrel % barrels
-                    p.gatlingBarrel++
-                    const bAng = (bi / barrels) * Math.PI * 2
-                    const bR = p.radius + 6
-                    const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
-                    const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
-                    state.projectiles.push({
-                        x: sgx,
-                        y: sgy,
-                        vx: dirX * currentSpeed,
-                        vy: dirY * currentSpeed,
-                        length: p.bulletLength || 16,
-                        width: p.bulletWidth || 2,
-                        damage: p.atk,
-                        life: 2.5,
-                        isHoming: false,
-                        isChild: false,
-                        splitRemain: p.splitLevel,
-                        pierceRemain: p.pierceCount,
-                        hitEnemies: new Set(),
-                        radius: 6,
-                        ricochetRemain: p.ricochetCount,
-                        _trailTimer: 0,
-                    })
+                // ---- 冲锋枪：1 发弹药 = 4 颗实际子弹（沿瞄准方向小散布，支持平行弹道） ----
+                if (p.gunType === 'smg') {
+                    const tmpAngles = []
+                    if (p.parallelCount > 0) {
+                        const total = 1 + p.parallelCount
+                        const totalWidth = (total - 1) * PARALLEL_STEP
+                        for (let i = 0; i < total; i++) {
+                            const offset = -totalWidth / 2 + i * PARALLEL_STEP
+                            tmpAngles.push({ angle: baseAngle, ox: perpX * offset, oy: perpY * offset })
+                        }
+                    } else {
+                        tmpAngles.push({ angle: baseAngle, ox: 0, oy: 0 })
+                    }
+                    for (const b of tmpAngles) {
+                        for (let s = 0; s < 4; s++) {
+                            const a = b.angle + rand(-0.025, 0.025)
+                            state.projectiles.push({
+                                x: gx + (b.ox || 0),
+                                y: gy + (b.oy || 0),
+                                vx: Math.cos(a) * currentSpeed,
+                                vy: Math.sin(a) * currentSpeed,
+                                length: p.bulletLength || 14,
+                                width: p.bulletWidth || 1.8,
+                                damage: p.atk,
+                                life: 2.5,
+                                isHoming: false,
+                                isChild: false,
+                                splitRemain: p.splitLevel,
+                                pierceRemain: p.pierceCount,
+                                hitEnemies: new Set(),
+                                radius: 6,
+                                ricochetRemain: p.ricochetCount,
+                                _trailTimer: 0,
+                            })
+                        }
+                    }
                     p.attackDirection.x = -Math.cos(baseAngle)
                     p.attackDirection.y = -Math.sin(baseAngle)
-                    p.attackEffectTimer = 0.08
+                    p.attackEffectTimer = 0.1
+                    return
+                }
+
+                // ---- 加特林：1 发弹药 = 10 颗实际子弹；多枪口轮转 ----
+                if (p.gunType === 'gatling') {
+                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 7
+                    for (let s = 0; s < 10; s++) {
+                        const bi = p.gatlingBarrel % barrels
+                        p.gatlingBarrel++
+                        const bAng = (bi / barrels) * Math.PI * 2
+                        const bR = p.radius + 6
+                        const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
+                        const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
+                        const a = baseAngle + rand(-0.03, 0.03)
+                        state.projectiles.push({
+                            x: sgx,
+                            y: sgy,
+                            vx: Math.cos(a) * currentSpeed,
+                            vy: Math.sin(a) * currentSpeed,
+                            length: p.bulletLength || 16,
+                            width: p.bulletWidth || 2,
+                            damage: p.atk,
+                            life: 2.5,
+                            isHoming: false,
+                            isChild: false,
+                            splitRemain: p.splitLevel,
+                            pierceRemain: p.pierceCount,
+                            hitEnemies: new Set(),
+                            radius: 5,
+                            ricochetRemain: p.ricochetCount,
+                            _trailTimer: 0,
+                        })
+                    }
+                    p.attackDirection.x = -Math.cos(baseAngle)
+                    p.attackDirection.y = -Math.sin(baseAngle)
+                    p.attackEffectTimer = 0.06
                     return
                 }
 
@@ -1587,11 +1637,12 @@
                                 nearest2 = e }
                         }
                         if (state.controlMode === 'keyboard') {
-                            // 键盘模式：追加攻击沿鼠标瞄准方向
+                            // 键盘模式：追加攻击沿鼠标瞄准方向（不消耗弹药）
                             const aimAngle = Math.atan2(state.targetY - p.y, state.targetX - p.x)
-                            fireAttackBatch(null, aimAngle, false)
+                            fireAttackBatch(null, aimAngle, false, false)
                         } else if (nearest2 && nearDist2 < p.range) {
-                            fireAttackBatch(nearest2)
+                            // 自动模式：追加攻击朝最近敌人（不消耗弹药）
+                            fireAttackBatch(nearest2, undefined, undefined, false)
                         }
                         p._extraPending--
                         if (p._extraPending > 0) {
@@ -2800,6 +2851,22 @@
                     ctx.stroke()
                 }
 
+                // 玩家头顶弹药条（有弹夹武器）：发射一次减一格，换弹中显示黄色进度
+                if (p.magSize > 0) {
+                    const bw = 36
+                    const bh = 4
+                    const bx = p.x - bw / 2
+                    const by = p.y - p.radius - 12
+                    const reloadTotal = ((state.selectedGun && state.selectedGun.reloadTime) || 1.5) * (p.reloadTimeMult || 1)
+                    const ammoPct = p.reloading
+                        ? Math.max(0, Math.min(1, 1 - p.reloadTimer / reloadTotal))
+                        : Math.max(0, Math.min(1, p.magAmmo / p.magSize))
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)'
+                    ctx.fillRect(bx, by, bw, bh)
+                    ctx.fillStyle = p.reloading ? '#ffd35c' : '#88ddff'
+                    ctx.fillRect(bx, by, bw * ammoPct, bh)
+                }
+
                 const fd = p.facingDir
                 const barrelLen = p.radius + 14
                 ctx.beginPath()
@@ -3485,6 +3552,16 @@
                 if (KEY_MAP[e.key]) state.keys[KEY_MAP[e.key]] = true
                 if (e.key === 'x' || e.key === 'X') {
                     if (canTogglePause()) togglePause()
+                }
+                if (e.key === 'q' || e.key === 'Q') {
+                    // 手动换弹：无需等弹尽
+                    const pp = state.player
+                    if (state.selectedGun && !state.gameOver && !state.paused && !state.gamePaused &&
+                        pp.magSize > 0 && !pp.reloading && pp.magAmmo < pp.magSize) {
+                        pp.reloading = true
+                        pp.reloadTimer = ((state.selectedGun && state.selectedGun.reloadTime) || 1.5) * (pp.reloadTimeMult || 1)
+                        spawnFloatText(pp.x, pp.y - pp.radius - 16, '换弹中…', '#88ddff')
+                    }
                 }
                 if (e.key === 'Escape') {
                     // 1. 全屏中：退出全屏（并阻止继续触发暂停）

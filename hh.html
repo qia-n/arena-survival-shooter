@@ -688,8 +688,6 @@
             const HEALER_INTERVAL = 2.5
             const SNIPER_WINDUP = 1.0
             const SNIPER_RANGE = 750
-            const BARRAGE_ANGLE = Math.PI / 6
-            const BARRAGE_COUNT = 5
 
             // 敌人类型属性倍率（血量/伤害/移速）与出场配置（解锁波次、每波上限）
             const ENEMY_STATS = {
@@ -701,7 +699,6 @@
                 healer: { hpMul: 0.8, dmgMul: 0.5, spdMul: 0.85 },
                 sniper: { hpMul: 0.7, dmgMul: 1.2, spdMul: 0.8 },
                 shield: { hpMul: 2.0, dmgMul: 0.8, spdMul: 0.7 },
-                barrage: { hpMul: 1.2, dmgMul: 1.2, spdMul: 0.9 },
             }
             const SPECIAL_TYPES = {
                 bomber: { wave: 3, max: 4 },
@@ -710,7 +707,6 @@
                 sniper: { wave: 6, max: 3 },
                 shield: { wave: 6, max: 3 },
                 healer: { wave: 7, max: 2 },
-                barrage: { wave: 8, max: 3 },
             }
             // 按波次选择敌人类型：特殊怪逐波解锁，且每种每波不超过上限
             function pickEnemyType(wave, counts) {
@@ -1822,7 +1818,7 @@
             /* ─── 升级系统 ────────────────────────── */
             function applyLevelUpBonus() {
                 const p = state.player
-                p.maxHp += 2
+                p.maxHp += 3
                 p.hp = p.maxHp
             }
 
@@ -3262,39 +3258,6 @@
                                 e.chargeAngle = Math.atan2(dy2, dx2)
                             }
                         }
-                    } else if (e.type === 'barrage') {
-                        // ---- 弹幕怪：近距离扇形散射 ----
-                        const preferred = 220
-                        if (d2 < preferred - 50) {
-                            const angle = Math.atan2(e.y - p.y, e.x - p.x)
-                            const moveSpeed = e.speed * speedMult * 0.8
-                            e.x += Math.cos(angle) * moveSpeed * dt
-                            e.y += Math.sin(angle) * moveSpeed * dt
-                        } else if (d2 > preferred + 50) {
-                            const angle = Math.atan2(p.y - e.y, p.x - e.x)
-                            const moveSpeed = e.speed * speedMult * 0.7
-                            e.x += Math.cos(angle) * moveSpeed * dt
-                            e.y += Math.sin(angle) * moveSpeed * dt
-                        }
-                        e.x = clamp(e.x, -50, worldW + 50)
-                        e.y = clamp(e.y, -50, worldH + 50)
-                        e.rangedCooldown -= dt
-                        if (e.rangedCooldown <= 0 && d2 < 400) {
-                            const base = Math.atan2(dy2, dx2)
-                            for (let bi = 0; bi < BARRAGE_COUNT; bi++) {
-                                const a = base - BARRAGE_ANGLE + (2 * BARRAGE_ANGLE) * (bi / (BARRAGE_COUNT - 1))
-                                state.enemyProjectiles.push({
-                                    x: e.x,
-                                    y: e.y,
-                                    vx: Math.cos(a) * 230,
-                                    vy: Math.sin(a) * 230,
-                                    radius: 4,
-                                    damage: Math.max(1, e.damage - 1),
-                                    life: 2.5,
-                                })
-                            }
-                            e.rangedCooldown = e.attackInterval
-                        }
                     } else {
                         // ---- 普通近战 / 分裂怪：追击 + 近身攻击 ----
                         if (d2 > 1) {
@@ -3880,7 +3843,6 @@
                         else if (e.type === 'healer') { strokeC = 'rgba(100,230,140,0.9)'; fillC = 'rgba(80,220,120,0.28)' }
                         else if (e.type === 'sniper') { strokeC = 'rgba(80,190,255,0.9)'; fillC = 'rgba(70,180,255,0.28)' }
                         else if (e.type === 'shield') { strokeC = 'rgba(90,140,255,0.95)'; fillC = 'rgba(80,130,255,0.3)' }
-                        else if (e.type === 'barrage') { strokeC = 'rgba(80,230,210,0.9)'; fillC = 'rgba(70,220,200,0.28)' }
                         ctx.beginPath()
                         ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
                         if (e.flashTimer > 0) {

@@ -1,63 +1,49 @@
-// 生成 modular/js/game.js（主游戏逻辑，敌人逻辑交给 EnemySystem）
+// 生成 modular/js/game.js（锚点定位版：删除敌人段，接入 EnemySystem）
 const fs = require('fs');
 const html = fs.readFileSync('hh.html', 'utf8');
-const lines = html.split('\n');
-let scriptStart = -1;
-for (let i = 0; i < lines.length; i++) if (lines[i].includes('<script>')) { scriptStart = i; break }
-const src = lines.slice(scriptStart + 1);
-// src[0] 对应文件第 (scriptStart+2) 行（1-based）
-const gi = (L) => L - (scriptStart + 2);
-const seg = (a, b) => {
-  const s = Math.max(0, gi(a));
-  const e = gi(b) + 1;
-  return e > s ? src.slice(s, e).join('\n') : ''
+const m = html.match(/<script>([\s\S]*?)<\/script>/);
+let S = m[1];
+
+// 删除 [startAnchor, endAnchor) 区间（保留 endAnchor），返回是否成功
+function cut(start, end) {
+  const i = S.indexOf(start);
+  if (i === -1) throw new Error('锚点未找到: ' + start);
+  const j = S.indexOf(end, i + start.length);
+  if (j === -1) throw new Error('锚点未找到: ' + end);
+  S = S.slice(0, i) + S.slice(j);
 }
 
-// 保留区间（文件行号）；删除敌人相关段
-let scriptEnd = -1;
-for (let i = 0; i < lines.length; i++) if (lines[i].includes('</script>')) { scriptEnd = i; break }
-const ranges = [
-  [1, 714],
-  [730, 1231],
-  [1233, 1235],
-  [1249, 1249],
-  [1323, 1323],
-  [1432, 1432],
-  [1479, 1479],
-  [1690, 1690],
-  [1739, 1739],
-  [1766, 1766],
-  [1767, 2797],
-  [3322, scriptEnd],
-];
-let out = '';
-for (const [a, b] of ranges) {
-  out += seg(a, b) + '\n';
-  // 敌人 AI 循环删除后，在波次管理段之后插入模块调用
-  if (a === 1767) {
-    out += '                // ---- 敌人 AI（逻辑在 enemies.js） ----\n                EnemySystem.updateEnemyAI(dt, speedMult)\n\n'
-  }
+// 1. 删除敌人配置/生成/AI 相关段
+cut('// 按波次选择敌人类型', 'const BOSS_RADIUS = 30');   // pickEnemyType（保留敌人常量供渲染用）
+cut('function bossHpScale', 'const WORLD_ZOOM = 2.5'); // bossHpScale（保留 WORLD_ZOOM）
+cut('function spawnEdgePos', '/* ─── 波次管理');       // spawnEdgePos ~ melee fx 全部
+
+// 2. 敌人 AI 循环 → EnemySystem 调用
+{
+  const aiStart = S.indexOf('// ---- 敌人 AI ----');
+  if (aiStart === -1) throw new Error('未找到 AI 循环');
+  const aiEnd = S.indexOf('// ---- 远程敌人子弹更新', aiStart);
+  if (aiEnd === -1) throw new Error('未找到远程子弹更新');
+  S = S.slice(0, aiStart) +
+    '                // ---- 敌人 AI（逻辑在 enemies.js） ----\n                EnemySystem.updateEnemyAI(dt, speedMult)\n\n                ' +
+    S.slice(aiEnd);
 }
 
-// AI 循环 → EnemySystem.updateEnemyAI 调用（已在拼接处插入）
+// 3. 调用点替换
+S = S.split('pickEnemyType(state.wave, typeCounts)').join('EnemySystem.pickEnemyType(state.wave, typeCounts)');
+S = S.split('explodeCannonball(c)').join('EnemySystem.explodeCannonball(c)');
+S = S.split('spawnEnemy(false, t)').join('EnemySystem.spawnEnemy(false, t)');
+S = S.split('spawnBoss()').join('EnemySystem.spawnBoss()');
+S = S.split('spawnMeleeBoss()').join('EnemySystem.spawnMeleeBoss()');
+S = S.split('spawnArtilleryBoss()').join('EnemySystem.spawnArtilleryBoss()');
+S = S.split('spawnMotherBoss()').join('EnemySystem.spawnMotherBoss()');
 
-// 调用点替换
-out = out.split('pickEnemyType(state.wave, typeCounts)').join('EnemySystem.pickEnemyType(state.wave, typeCounts)');
-out = out.split('explodeCannonball(c)').join('EnemySystem.explodeCannonball(c)');
-out = out.split('spawnEnemy(false, t)').join('EnemySystem.spawnEnemy(false, t)');
-out = out.split('spawnBoss()').join('EnemySystem.spawnBoss()');
-out = out.split('spawnMeleeBoss()').join('EnemySystem.spawnMeleeBoss()');
-out = out.split('spawnArtilleryBoss()').join('EnemySystem.spawnArtilleryBoss()');
-out = out.split('spawnMotherBoss()').join('EnemySystem.spawnMotherBoss()');
+// 4. resizeCanvas 同步世界尺寸
+S = S.replace('worldH = canvasH * WORLD_ZOOM', 'worldH = canvasH * WORLD_ZOOM\n                EnemySystem.setWorld(worldW, worldH)');
 
-// resizeCanvas 里同步世界尺寸给 EnemySystem（单行锚点，避免 CRLF 问题）
-out = out.replace('worldH = canvasH * WORLD_ZOOM', 'worldH = canvasH * WORLD_ZOOM\n                EnemySystem.setWorld(worldW, worldH)');
+// 5. setup 尾部注入依赖
+S = S.replace('            resizeCanvas()',
+  '            EnemySystem.init({\n                state,\n                worldW,\n                worldH,\n                view: () => ({ camX, camY, canvasW, canvasH }),\n                spawnFloatText,\n                spawnDeathPowder,\n                spawnHitParticles,\n                gameOver,\n                playShootSound,\n                playHitSound,\n            })\n\n            resizeCanvas()');
 
-// setup 尾部：注入依赖后启动
-out = out.replace(
-  '            resizeCanvas()',
-  '            EnemySystem.init({\n                state,\n                worldW,\n                worldH,\n                view: () => ({ camX, camY, canvasW, canvasH }),\n                spawnFloatText,\n                spawnDeathPowder,\n                spawnHitParticles,\n                gameOver,\n                playShootSound,\n                playHitSound,\n            })\n\n            resizeCanvas()'
-);
-
-fs.writeFileSync('modular/js/game.js', out);
-console.log('game.js 生成:', out.split('\n').length, '行');
+fs.writeFileSync('modular/js/game.js', S);
+console.log('game.js 生成:', S.split('\n').length, '行');

@@ -2,11 +2,7 @@
 const fs = require('fs');
 let body = fs.readFileSync('modular/js/_enemies_body.txt', 'utf8');
 
-// updateEnemyAI 内注入视口对象
-body = body.replace(
-  'function updateEnemyAI(dt, speedMult) {\n                const p = state.player\n                ',
-  'function updateEnemyAI(dt, speedMult) {\n                const p = state.player\n                const v = D.view()\n                '
-);
+// updateEnemyAI 内注入视口对象（已在 gen_enemies.js 完成）
 // 狙击怪 inView 用视口对象
 body = body.replace(
   'const inView = e.x > camX - 60 && e.x < camX + canvasW + 60 && e.y > camY - 60 && e.y < camY + canvasH + 60',

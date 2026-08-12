@@ -42,8 +42,6 @@
     healerInterval: 2.5,
     sniperWindup: 1.0,
     sniperRange: 750,
-    barrageAngle: Math.PI / 6,
-    barrageCount: 5,
 
     // ---- 敌人类型属性倍率（血量/伤害/移速） ----
     enemyStats: {
@@ -55,7 +53,6 @@
       healer: { hpMul: 0.8, dmgMul: 0.5, spdMul: 0.85 },
       sniper: { hpMul: 0.7, dmgMul: 1.2, spdMul: 0.8 },
       shield: { hpMul: 2.0, dmgMul: 0.8, spdMul: 0.7 },
-      barrage: { hpMul: 1.2, dmgMul: 1.2, spdMul: 0.9 },
     },
 
     // ---- 特殊怪出场配置（解锁波次、每波上限） ----
@@ -66,7 +63,6 @@
       sniper: { wave: 6, max: 3 },
       shield: { wave: 6, max: 3 },
       healer: { wave: 7, max: 2 },
-      barrage: { wave: 8, max: 3 },
     },
 
     // ---- 母体 Boss ----
@@ -141,8 +137,6 @@
   G.HEALER_INTERVAL = CFG.healerInterval
   G.SNIPER_WINDUP = CFG.sniperWindup
   G.SNIPER_RANGE = CFG.sniperRange
-  G.BARRAGE_ANGLE = CFG.barrageAngle
-  G.BARRAGE_COUNT = CFG.barrageCount
   G.ENEMY_STATS = CFG.enemyStats
   G.SPECIAL_TYPES = CFG.specialTypes
 })()

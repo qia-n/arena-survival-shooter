@@ -1,3 +1,4 @@
+
         // ================================================================
         //  竞技场 - 完整游戏逻辑
         //  原 module.exports.setup 内容，直接执行
@@ -22,8 +23,6 @@
             const HEALER_INTERVAL = 2.5
             const SNIPER_WINDUP = 1.0
             const SNIPER_RANGE = 750
-            const BARRAGE_ANGLE = Math.PI / 6
-            const BARRAGE_COUNT = 5
 
             // 敌人类型属性倍率（血量/伤害/移速）与出场配置（解锁波次、每波上限）
             const ENEMY_STATS = {
@@ -35,7 +34,6 @@
                 healer: { hpMul: 0.8, dmgMul: 0.5, spdMul: 0.85 },
                 sniper: { hpMul: 0.7, dmgMul: 1.2, spdMul: 0.8 },
                 shield: { hpMul: 2.0, dmgMul: 0.8, spdMul: 0.7 },
-                barrage: { hpMul: 1.2, dmgMul: 1.2, spdMul: 0.9 },
             }
             const SPECIAL_TYPES = {
                 bomber: { wave: 3, max: 4 },
@@ -44,7 +42,6 @@
                 sniper: { wave: 6, max: 3 },
                 shield: { wave: 6, max: 3 },
                 healer: { wave: 7, max: 2 },
-                barrage: { wave: 8, max: 3 },
             }
             const BOSS_RADIUS = 30
             const MELEE_BOSS_RADIUS = 42
@@ -549,16 +546,10 @@
 
             /* ─── 成长曲线 ────────────────────────── */
             // Boss 血量：激进指数成长
-            // 手机端世界缩放（相机方案）
             const WORLD_ZOOM = 2.5
 
-
-
-
-
-
-
-
+            /* ─── 生成敌人 ────────────────────────── */
+            // 在相机视口边缘外一点刷新（玩家附近，避免满地图找敌人）
             /* ─── 波次管理 ────────────────────────── */
             function startWave() {
                 if (state.gameOver || state.paused) return
@@ -617,7 +608,7 @@
             /* ─── 升级系统 ────────────────────────── */
             function applyLevelUpBonus() {
                 const p = state.player
-                p.maxHp += 2
+                p.maxHp += 3
                 p.hp = p.maxHp
             }
 
@@ -1590,48 +1581,8 @@
                     }
                 }
 
-                // ---- 敌人 AI（逻辑在 enemies.js） ----
+                                // ---- 敌人 AI（逻辑在 enemies.js） ----
                 EnemySystem.updateEnemyAI(dt, speedMult)
-
-
-                // ---- 炮弹更新（普通炮弹 + 轰炸炸弹） ----
-                for (let i = state.cannonballs.length - 1; i >= 0; i--) {
-                    const c = state.cannonballs[i]
-                    if (c.kind === 'bomb') {
-                        // 轰炸炸弹：垂直快速下落，带拖影
-                        c.y += c.fallSpeed * dt
-                        c.tail = Math.min(c.tail + c.fallSpeed * dt, 500)
-                        if (c.y >= c.targetY) {
-                            // 落地爆炸：范围伤害 + 特效
-                            const db = dist(c, p)
-                            if (db < c.blastRadius + p.radius) {
-                                const dmg = c.damage
-                                p.hp = r2(p.hp - dmg)
-                                p.hurtFlashTimer = 0.2
-                                spawnPlayerHitParticles(p.x, p.y, 22)
-                                if (p.hp <= 0) {
-                                    p.hp = 0
-                                    gameOver()
-                                }
-                            }
-                            state.attackFx.push({ type: 'blast', x: c.x, y: c.y, angle: 0, life: MELEE_ATTACK_FX_LIFE })
-                            state.cannonballs.splice(i, 1)
-                        }
-                    } else {
-                        // 普通炮弹：慢速飞行 + 引信
-                        c.x += c.vx * dt
-                        c.y += c.vy * dt
-                        c.fuse -= dt
-                        c.life -= dt
-                        let exploded = false
-                        if (dist(c, p) < c.radius + p.radius) exploded = true
-                        if (!exploded && (c.fuse <= 0 || c.life <= 0)) exploded = true
-                        if (exploded) {
-                            EnemySystem.explodeCannonball(c)
-                            state.cannonballs.splice(i, 1)
-                        }
-                    }
-                }
 
                 // ---- 远程敌人子弹更新 ----
                 for (let i = state.enemyProjectiles.length - 1; i >= 0; i--) {
@@ -2154,7 +2105,6 @@
                         else if (e.type === 'healer') { strokeC = 'rgba(100,230,140,0.9)'; fillC = 'rgba(80,220,120,0.28)' }
                         else if (e.type === 'sniper') { strokeC = 'rgba(80,190,255,0.9)'; fillC = 'rgba(70,180,255,0.28)' }
                         else if (e.type === 'shield') { strokeC = 'rgba(90,140,255,0.95)'; fillC = 'rgba(80,130,255,0.3)' }
-                        else if (e.type === 'barrage') { strokeC = 'rgba(80,230,210,0.9)'; fillC = 'rgba(70,220,200,0.28)' }
                         ctx.beginPath()
                         ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
                         if (e.flashTimer > 0) {
@@ -3312,3 +3262,4 @@
             })
 
         })(); // end IIFE
+    

@@ -16,7 +16,7 @@
 
   // ===== 敌人 / Boss 逻辑（从主文件抽取，函数体保持原样） =====
 
-            // 按波次选择敌人类型：特殊怪逐波解锁，且每种每波不超过上限
+// 按波次选择敌人类型：特殊怪逐波解锁，且每种每波不超过上限
             function pickEnemyType(wave, counts) {
                 const available = []
                 for (const [t, cfg] of Object.entries(SPECIAL_TYPES)) {
@@ -31,12 +31,17 @@
                 }
                 return Math.random() < 0.3 ? 'ranged' : 'melee'
             }
+            
 
-            function bossHpScale(wave) { return Math.pow(1.22, wave) }
+function bossHpScale(wave) { return Math.pow(1.22, wave) }
+            // 手机端世界缩放（相机方案）
+            const WORLD_ZOOM = 2.5
 
             /* ─── 生成敌人 ────────────────────────── */
             // 在相机视口边缘外一点刷新（玩家附近，避免满地图找敌人）
-            function spawnEdgePos() {
+            
+
+function spawnEdgePos() {
                 const v = D.view()
                 const margin = 40
                 const vw = v.camX + v.canvasW
@@ -48,7 +53,9 @@
                 return { x: rand(v.camX, vw), y: vh + margin }
             }
 
-            function spawnEnemy(isBoss = false, forcedType = null) {
+            
+
+function spawnEnemy(isBoss = false, forcedType = null) {
                 const pos = spawnEdgePos()
                 let x = pos.x,
                     y = pos.y
@@ -120,9 +127,13 @@
                 })
             }
 
-            function spawnBoss() { spawnEnemy(true) }
+            
 
-            /* ─── 大型近战 Boss（独立类型） ───────── */
+function spawnBoss() { spawnEnemy(true) }
+
+            
+
+/* ─── 大型近战 Boss（独立类型） ───────── */
             function spawnMeleeBoss() {
                 const pos = spawnEdgePos()
                 let x = pos.x,
@@ -232,7 +243,9 @@
             }
 
             /* ─── 大型远程 Boss（独立类型） ───────── */
-            function spawnArtilleryBoss() {
+            
+
+function spawnArtilleryBoss() {
                 const pos = spawnEdgePos()
                 let x = pos.x,
                     y = pos.y
@@ -278,7 +291,9 @@
                 })
             }
 
-            /* ─── 母体 Boss（召唤 + 束缚 + 冲击波 + 狂暴） ─ */
+            
+
+/* ─── 母体 Boss（召唤 + 束缚 + 冲击波 + 狂暴） ─ */
             function spawnMotherBoss() {
                 const pos = spawnEdgePos()
                 let x = pos.x,
@@ -489,7 +504,9 @@
                 }
             }
 
-            function startArtillerySkill(e) {
+            
+
+function startArtillerySkill(e) {
                 const pl = state.player
                 if (e.skillIndex === 0) {
                     // 技能1：扇形散射 1-3 波
@@ -538,7 +555,9 @@
                 state.attackFx.push({ type: 'blast', x: c.x, y: c.y, angle: 0, life: MELEE_ATTACK_FX_LIFE })
             }
 
-            /* ─── 玩家受击击退残影 ────────────────── */
+            
+
+/* ─── 玩家受击击退残影 ────────────────── */
             function spawnPlayerKnockbackTrail(x, y, dirX, dirY, dist) {
                 for (let g = 1; g <= 3; g++) {
                     state.ghosts.push({
@@ -565,7 +584,9 @@
                 })
             }
 
-                // ---- 敌人 AI（整循环） ----
+            
+
+// ---- 敌人 AI（整循环） ----
             function updateEnemyAI(dt, speedMult) {
                 const p = state.player
                 const v = D.view()
@@ -1036,39 +1057,6 @@
                                 e.chargeAngle = Math.atan2(dy2, dx2)
                             }
                         }
-                    } else if (e.type === 'barrage') {
-                        // ---- 弹幕怪：近距离扇形散射 ----
-                        const preferred = 220
-                        if (d2 < preferred - 50) {
-                            const angle = Math.atan2(e.y - p.y, e.x - p.x)
-                            const moveSpeed = e.speed * speedMult * 0.8
-                            e.x += Math.cos(angle) * moveSpeed * dt
-                            e.y += Math.sin(angle) * moveSpeed * dt
-                        } else if (d2 > preferred + 50) {
-                            const angle = Math.atan2(p.y - e.y, p.x - e.x)
-                            const moveSpeed = e.speed * speedMult * 0.7
-                            e.x += Math.cos(angle) * moveSpeed * dt
-                            e.y += Math.sin(angle) * moveSpeed * dt
-                        }
-                        e.x = clamp(e.x, -50, worldW + 50)
-                        e.y = clamp(e.y, -50, worldH + 50)
-                        e.rangedCooldown -= dt
-                        if (e.rangedCooldown <= 0 && d2 < 400) {
-                            const base = Math.atan2(dy2, dx2)
-                            for (let bi = 0; bi < BARRAGE_COUNT; bi++) {
-                                const a = base - BARRAGE_ANGLE + (2 * BARRAGE_ANGLE) * (bi / (BARRAGE_COUNT - 1))
-                                state.enemyProjectiles.push({
-                                    x: e.x,
-                                    y: e.y,
-                                    vx: Math.cos(a) * 230,
-                                    vy: Math.sin(a) * 230,
-                                    radius: 4,
-                                    damage: Math.max(1, e.damage - 1),
-                                    life: 2.5,
-                                })
-                            }
-                            e.rangedCooldown = e.attackInterval
-                        }
                     } else {
                         // ---- 普通近战 / 分裂怪：追击 + 近身攻击 ----
                         if (d2 > 1) {
@@ -1090,6 +1078,45 @@
                                 p.hp = 0
                                 D.gameOver()
                             }
+                        }
+                    }
+                }
+
+                // ---- 炮弹更新（普通炮弹 + 轰炸炸弹） ----
+                for (let i = state.cannonballs.length - 1; i >= 0; i--) {
+                    const c = state.cannonballs[i]
+                    if (c.kind === 'bomb') {
+                        // 轰炸炸弹：垂直快速下落，带拖影
+                        c.y += c.fallSpeed * dt
+                        c.tail = Math.min(c.tail + c.fallSpeed * dt, 500)
+                        if (c.y >= c.targetY) {
+                            // 落地爆炸：范围伤害 + 特效
+                            const db = dist(c, p)
+                            if (db < c.blastRadius + p.radius) {
+                                const dmg = c.damage
+                                p.hp = r2(p.hp - dmg)
+                                p.hurtFlashTimer = 0.2
+                                spawnPlayerHitParticles(p.x, p.y, 22)
+                                if (p.hp <= 0) {
+                                    p.hp = 0
+                                    D.gameOver()
+                                }
+                            }
+                            state.attackFx.push({ type: 'blast', x: c.x, y: c.y, angle: 0, life: MELEE_ATTACK_FX_LIFE })
+                            state.cannonballs.splice(i, 1)
+                        }
+                    } else {
+                        // 普通炮弹：慢速飞行 + 引信
+                        c.x += c.vx * dt
+                        c.y += c.vy * dt
+                        c.fuse -= dt
+                        c.life -= dt
+                        let exploded = false
+                        if (dist(c, p) < c.radius + p.radius) exploded = true
+                        if (!exploded && (c.fuse <= 0 || c.life <= 0)) exploded = true
+                        if (exploded) {
+                            explodeCannonball(c)
+                            state.cannonballs.splice(i, 1)
                         }
                     }
             }

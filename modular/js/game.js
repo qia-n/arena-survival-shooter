@@ -1481,7 +1481,7 @@
                                 y: p.y + moy,
                                 vx: Math.cos(a) * spd,
                                 vy: Math.sin(a) * spd,
-                                length: rand(1.5, 3),
+                                length: rand(4, 7),
                                 width: 0.7,
                                 sparkLine: true,
                                 sparkColor: '#8fe8ff',

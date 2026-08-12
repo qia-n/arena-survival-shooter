@@ -1463,7 +1463,7 @@
                     const boost = 1 + (p.beamBoost || 0)
                     const rangeMult = 1 + (p.beamRange || 0)
                     const beamLife = 0.45 * rangeMult
-                    const beamDmg = r2(p.atk * 0.12 * boost)
+                    const beamDmg = r2(p.atk * 0.1 * boost)
                     const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 16
                     const barrelSpacing = 4
                     const totalW = (barrels - 1) * barrelSpacing

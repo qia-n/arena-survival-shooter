@@ -303,6 +303,34 @@
                 gunType: 'sniper',
                 magSize: 4,
                 reloadTime: 3,
+            }, {
+                id: 'ultraman',
+                name: '奥特曼',
+                desc: '高速粒子射线，初始伤害极低，无限弹药',
+                icon: '⚡',
+                color: '#8fe8ff',
+                bulletLength: 5,
+                bulletWidth: 1,
+                atk: 0.6,
+                range: 400,
+                attackSpeed: 30,
+                bulletSpeedMult: 2,
+                bulletCount: 1,
+                pierceCount: 0,
+                extraAttackCount: 0,
+                firePattern: 'single',
+                spreadAngle: 0,
+                burstCount: 0,
+                burstDelay: 0.06,
+                shootDuration: 0.04,
+                shootDecay: 7,
+                shootVolume: 0.15,
+                hitDuration: 0.2,
+                hitDecay: 6,
+                hitVolume: 0.4,
+                gunType: 'ultraman',
+                magSize: 0,
+                reloadTime: 0,
             }, ]
 
             function genId() {
@@ -376,6 +404,12 @@
                     shotgunSpread: 50,
                     gatlingBarrel: 0,
                     gatlingSpin: 0,
+                    // 奥特曼专属强化
+                    beamBoost: 0,
+                    beamDouble: 0,
+                    beamPierce: 0,
+                    beamBurn: 0,
+                    beamRange: 0,
                 },
 
                 enemies: [],
@@ -924,6 +958,51 @@
                 apply: () => {
                     state.player.reloadTimeMult = Math.max(0.4, Math.round((state.player.reloadTimeMult || 1) * 0.85 * 100) / 100)
                 }
+            }, {
+                id: 'beamBoost',
+                label: '🌟 光束强化',
+                desc: '射线伤害 +30%',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    state.player.beamBoost = Math.round(((state.player.beamBoost || 0) + 0.3) * 100) / 100
+                }
+            }, {
+                id: 'beamDouble',
+                label: '🌟 双束射线',
+                desc: '射线分裂为平行双束 (上限 3 束)',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    state.player.beamDouble = Math.min(2, (state.player.beamDouble || 0) + 1)
+                }
+            }, {
+                id: 'beamPierce',
+                label: '🌟 贯穿射线',
+                desc: '射线穿透 +1 (上限 3)',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    state.player.beamPierce = Math.min(3, (state.player.beamPierce || 0) + 1)
+                }
+            }, {
+                id: 'beamBurn',
+                label: '🌟 灼烧射线',
+                desc: '命中附带 2s 灼烧持续伤害 (上限 3)',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    state.player.beamBurn = Math.min(3, (state.player.beamBurn || 0) + 1)
+                }
+            }, {
+                id: 'beamRange',
+                label: '🌟 射线延长',
+                desc: '射线射程 +30%',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    state.player.beamRange = Math.round(((state.player.beamRange || 0) + 0.3) * 100) / 100
+                }
             }, ]
 
             function getAvailableUpgrades() {
@@ -931,6 +1010,13 @@
                 const maxRange = Math.min(worldW, worldH)
                 const gtype = p.gunType || 'pistol'
                 return UPGRADE_POOL.filter(item => {
+                    // ---- 奥特曼：仅基础成长 + 专属射线卡（禁攻速/弹速/平行/散射/额外/弹射/分裂） ----
+                    if (gtype === 'ultraman') {
+                        if (['atkSpeed', 'bulletSpeed', 'parallel', 'scatter', 'extraAttack', 'ricochet', 'split', 'magUp', 'reloadSpeed', 'spreadFocus'].includes(item.id)) return false
+                        if (item.id === 'atk' || item.id === 'hp' || item.id === 'range' || item.id === 'lifeSteal' || item.id === 'atkSteal' || item.id === 'pierce') return true
+                        if (['beamBoost', 'beamDouble', 'beamPierce', 'beamBurn', 'beamRange'].includes(item.id)) return true
+                        return false
+                    }
                     // ---- 按武器类型限制弹道/攻速类属性 ----
                     // 冲锋枪/加特林/狙击枪：不能选散射
                     if (item.id === 'scatter' && ['smg', 'gatling', 'sniper'].includes(gtype)) return false
@@ -1370,6 +1456,64 @@
                     return
                 }
 
+                // ---- 奥特曼：高速粒子射线（双束平行 + 强化/贯穿/灼烧/延长专属强化） ----
+                if (p.gunType === 'ultraman') {
+                    const beams = 1 + (p.beamDouble || 0)
+                    const boost = 1 + (p.beamBoost || 0)
+                    const rangeMult = 1 + (p.beamRange || 0)
+                    const beamLife = 0.5 * rangeMult
+                    const beamDmg = r2(p.atk * 0.5 * boost)
+                    for (let b = 0; b < beams; b++) {
+                        const off = (b - (beams - 1) / 2) * 20
+                        const sgx2 = p.x + Math.cos(baseAngle) * barrelLen - Math.sin(baseAngle) * off
+                        const sgy2 = p.y + Math.sin(baseAngle) * barrelLen + Math.cos(baseAngle) * off
+                        // 每束：2 颗等距排布的细火花弹（视觉一段粒子射线）
+                        for (let s = 0; s < 2; s++) {
+                            const a = baseAngle + rand(-0.01, 0.01)
+                            const o2 = s * 24
+                            state.projectiles.push({
+                                x: sgx2 + Math.cos(a) * o2,
+                                y: sgy2 + Math.sin(a) * o2,
+                                vx: Math.cos(a) * currentSpeed,
+                                vy: Math.sin(a) * currentSpeed,
+                                length: 4,
+                                width: 0.9,
+                                sparkLine: true,
+                                sparkColor: '#8fe8ff',
+                                damage: beamDmg,
+                                life: beamLife,
+                                isHoming: false,
+                                isChild: true,
+                                splitRemain: 0,
+                                pierceRemain: p.pierceCount + (p.beamPierce || 0),
+                                burn: (p.beamBurn || 0) > 0,
+                                hitEnemies: new Set(),
+                                radius: 3,
+                                ricochetRemain: 0,
+                                _trailTimer: 0,
+                            })
+                        }
+                    }
+                    // 枪口青蓝火花粒子
+                    for (let f = 0; f < 2; f++) {
+                        const fa = baseAngle + rand(-0.25, 0.25)
+                        const fs = rand(120, 300)
+                        state.particles.push({
+                            x: gx,
+                            y: gy,
+                            vx: Math.cos(fa) * fs,
+                            vy: Math.sin(fa) * fs,
+                            size: rand(2, 5),
+                            life: rand(0.08, 0.18),
+                            color: Math.random() < 0.5 ? '#8fe8ff' : '#c8f4ff',
+                        })
+                    }
+                    p.attackDirection.x = -Math.cos(baseAngle)
+                    p.attackDirection.y = -Math.sin(baseAngle)
+                    p.attackEffectTimer = 0.05
+                    return
+                }
+
                 let angles = []
 
                 if (p.parallelCount > 0) {
@@ -1800,6 +1944,11 @@
                             } else {
                                 e.hp = r2(e.hp - hitDmg)
                             }
+                            // 灼烧射线（奥特曼专属）：命中附加 2s 灼烧 DoT
+                            if (proj.burn && e.hp > 0) {
+                                e.burnTimer = 2
+                                e.burnDps = Math.max(e.burnDps || 0, r2(p.atk * 0.5))
+                            }
                             e.flashTimer = 0.2
                             playHitSound(state.selectedGun)
                             spawnHitParticles(proj.x, proj.y, 16)
@@ -1979,6 +2128,22 @@
                         if (Math.abs(e.knockbackY) < 0.1) e.knockbackY = 0
                     }
                     if (e.flashTimer > 0) e.flashTimer -= dt
+                    // 灼烧持续伤害（奥特曼灼烧射线命中后 2s）
+                    if (e.burnTimer > 0) {
+                        e.burnTimer -= dt
+                        e.hp = r2(e.hp - (e.burnDps || 0) * dt)
+                        if (Math.random() < 0.3) {
+                            state.particles.push({
+                                x: e.x + rand(-e.radius * 0.6, e.radius * 0.6),
+                                y: e.y + rand(-e.radius * 0.6, e.radius * 0.6),
+                                vx: rand(-20, 20),
+                                vy: rand(-40, -10),
+                                size: rand(2, 4),
+                                life: rand(0.3, 0.6),
+                                color: '#ff9955',
+                            })
+                        }
+                    }
                     if (e.dashCooldown > 0) e.dashCooldown -= dt
                     // nova 蓄力波纹：独立计时器按间隔生成，间隔随进度单调加速
                     if (e.attackType === 'nova' && e.attackState === 'windup') {
@@ -2315,7 +2480,7 @@
                         ctx.beginPath()
                         ctx.moveTo(proj.x, proj.y)
                         ctx.lineTo(proj.x + Math.cos(sang) * sl, proj.y + Math.sin(sang) * sl)
-                        ctx.strokeStyle = '#ffcc44'
+                        ctx.strokeStyle = proj.sparkColor || '#ffcc44'
                         ctx.lineWidth = 1.2
                         ctx.stroke()
                         ctx.globalAlpha = 1
@@ -3348,7 +3513,7 @@
                     { key: 'hitDuration', label: '命中时长 (秒)', type: 'number', step: '0.01' },
                     { key: 'hitDecay', label: '命中衰减速度', type: 'number', step: '0.5' },
                     { key: 'hitVolume', label: '命中音量', type: 'number', step: '0.01' },
-                    { key: 'gunType', label: '武器类型 (pistol/shotgun/smg/gatling/sniper)', type: 'select', options: ['pistol', 'shotgun', 'smg', 'gatling', 'sniper'] },
+                    { key: 'gunType', label: '武器类型', type: 'select', options: ['pistol', 'shotgun', 'smg', 'gatling', 'sniper', 'ultraman'] },
                     { key: 'magSize', label: '弹夹容量 (0=无限)', type: 'number' },
                     { key: 'reloadTime', label: '换弹时间 (秒)', type: 'number', step: '0.1' },
                     { key: 'pelletCount', label: '散弹弹丸数', type: 'number' },
@@ -3468,6 +3633,12 @@
                 p.shotgunSpread = gun.spreadDeg || 50
                 p.gatlingBarrel = 0
                 p.gatlingSpin = 0
+                // 奥特曼专属强化重置
+                p.beamBoost = 0
+                p.beamDouble = 0
+                p.beamPierce = 0
+                p.beamBurn = 0
+                p.beamRange = 0
 
                 p.totalKills = 0
                 p.currentKills = 0

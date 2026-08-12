@@ -980,6 +980,20 @@
                     options = [...existing, ...rareBaseOptions]
                 }
 
+                // 二阶段 Boss 掉落：属性卡数值翻倍（clamp 到属性上限，已是翻倍卡的 base 补位不再叠加）
+                if (state._bossDoubleDrop) {
+                    state._bossDoubleDrop = false
+                    options = options.map(item => {
+                        if (item.label && item.label.includes('(翻倍)')) return item
+                        const copy = { ...item }
+                        copy.label = '✨ ' + copy.label + ' (翻倍)'
+                        copy.desc = copy.desc + ' ×2'
+                        const orig = copy.apply
+                        copy.apply = () => { orig(); orig() }
+                        return copy
+                    })
+                }
+
                 renderUpgradeUI(options, null)
                 upgradeOverlay.style.display = 'flex'
             }
@@ -1157,6 +1171,7 @@
                         state._playerSlowed = true
                         // 进入毒雾即中毒 2.5s（站在雾内持续刷新，离开后继续掉血）
                         p.mistPoisonTimer = 2.5
+                        p._mistDps = z.dps || 1
                     }
                 }
                 // 毒雾中毒持续伤害（离开毒雾后仍持续）
@@ -1165,8 +1180,9 @@
                     p._mistTick = (p._mistTick || 0) + dt
                     if (p._mistTick >= 0.5) {
                         p._mistTick -= 0.5
-                        p.hp = r2(p.hp - 0.5)
-                        spawnFloatText(p.x, p.y - p.radius - 24, '-0.50', '#8bc34a')
+                        const mistDmg = (p._mistDps || 1) * 0.5
+                        p.hp = r2(p.hp - mistDmg)
+                        spawnFloatText(p.x, p.y - p.radius - 24, '-' + mistDmg.toFixed(2), '#8bc34a')
                         if (p.hp <= 0) {
                             p.hp = 0
                             gameOver()
@@ -1603,7 +1619,7 @@
                         if (proj.kind === 'venom') {
                             // 毒液弹：附加中毒（4s 持续伤害，主伤害靠毒）
                             p.poisonTimer = 4
-                            p.poisonDps = 1.5
+                            p.poisonDps = proj.poisonDps || 1.5
                         }
                         state.enemyProjectiles.splice(i, 1)
                         if (p.hp <= 0) {
@@ -1627,6 +1643,16 @@
                         if (e.isBoss) bossKilled = true
                     }
                 }
+
+                // ---- 二阶段触发：大型 Boss 死亡时 30% 概率原地进化复活（回满血、变身演出） ----
+                for (let di = deadEnemies.length - 1; di >= 0; di--) {
+                    const e = deadEnemies[di]
+                    if ((e.isMeleeBoss || e.isArtilleryBoss || e.isMotherBoss) && !e.stage2 && Math.random() < 0.3) {
+                        startBossPhase(e, 'revive')
+                        deadEnemies.splice(di, 1)
+                    }
+                }
+                if (deadEnemies.length === 0 && bossKilled) bossKilled = false
 
                 for (const e of deadEnemies) {
                     if (e.waveId === state.currentWaveId) {
@@ -1701,7 +1727,11 @@
                         }
                     }
 
-                    if (bossKilled) state._pendingBossRare = true
+                    if (bossKilled) {
+                        state._pendingBossRare = true
+                        // 二阶段 Boss 击杀：掉落属性翻倍（数值 ×2，clamp 属性上限）
+                        state._bossDoubleDrop = deadEnemies.some(e => e.isBoss && e.stage2)
+                    }
                     checkUpgradeAndBoss()
                 }
 
@@ -2911,6 +2941,7 @@
                 state.cannonballs = []
                 state.explosions = []
                 state._pendingBossRare = false
+                state._bossDoubleDrop = false
                 state.webZones = []
                 state.flashRed = 0
                 state.shakeTimer = 0
@@ -2961,6 +2992,7 @@
                 state.cannonballs = []
                 state.explosions = []
                 state._pendingBossRare = false
+                state._bossDoubleDrop = false
                 state.webZones = []
                 state.flashRed = 0
                 state.shakeTimer = 0

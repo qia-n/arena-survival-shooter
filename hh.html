@@ -1337,6 +1337,10 @@
                     damage,
                     enraged: false,
                     skillScale: 1,
+                    stage2: false,
+                    phaseMode: null,
+                    phaseTimer: 0,
+                    baseRadius: MELEE_BOSS_RADIUS,
                     isBoss: true,
                     bossName: '⚔ 近战首领',
                     isMeleeBoss: true,
@@ -1449,6 +1453,10 @@
                     damage,
                     enraged: false,
                     skillScale: 1,
+                    stage2: false,
+                    phaseMode: null,
+                    phaseTimer: 0,
+                    baseRadius: 34,
                     isBoss: true,
                     bossName: '🎯 远程首领',
                     isArtilleryBoss: true,
@@ -1513,6 +1521,10 @@
                     webCooldown: 5.0,
                     shockCooldown: 8.0,
                     enraged: false,
+                    stage2: false,
+                    phaseMode: null,
+                    phaseTimer: 0,
+                    baseRadius: 38,
                     motherWarns: [],
                 })
             }
@@ -1544,21 +1556,21 @@
                 })
             }
 
-            // 狂暴变化特效（所有大型 Boss 通用）：红闪 + 震屏 + 冲击波 + 体型增大 + 警告
-            // 粒子色：母体绿 / 远程青蓝 / 近战橙红
-            function triggerBossEnrage(e) {
-                e.enraged = true
-                e.skillScale = 1.15
-                e.radius = e.radius * 1.3
-                state.flashRed = 0.6
-                state.shakeTimer = 0.5
-                state.shakePower = 11
-                state.enrageWarnTimer = 2.2
-                state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.5, maxLife: 0.5, radius: 280 })
-                state.attackFx.push({ type: 'blast', x: e.x, y: e.y, angle: 0, life: 0.35, maxLife: 0.35 })
-                const cA = e.isMotherBoss ? '#39ff14' : (e.isArtilleryBoss ? '#4dd0ff' : '#ff9d3c')
-                const cB = e.isMotherBoss ? '#00c853' : (e.isArtilleryBoss ? '#1e88ff' : '#ff5722')
-                for (let k = 0; k < 44; k++) {
+            // Boss 阶段数值档位：[一阶段普通, 一阶段狂暴, 二阶段普通, 二阶段狂暴]
+            // 伤害 / 技能范围 / 技能频率 / 技能后摇
+            function bossStageF(e) {
+                const i = (e.stage2 ? 2 : 0) + (e.enraged ? 1 : 0)
+                return {
+                    dmg: [0.8, 1.3, 1.2, 1.6][i],
+                    range: [1, 1.15, 1.1, 1.3][i],
+                    freq: [0.8, 1.25, 1.15, 1.4][i],
+                    recover: [1.2, 0.7, 0.85, 0.6][i],
+                }
+            }
+
+            // 粒子爆发（变身演出用）
+            function burstBossPhaseParticles(e, n, colors) {
+                for (let k = 0; k < n; k++) {
                     const a = rand(0, Math.PI * 2)
                     const sp = rand(100, 380)
                     state.particles.push({
@@ -1568,17 +1580,82 @@
                         vy: Math.sin(a) * sp,
                         size: rand(3, 10),
                         life: rand(0.4, 0.9),
-                        color: Math.random() < 0.5 ? cA : cB,
+                        color: colors[randInt(0, 1)],
                     })
+                }
+            }
+
+            // 触发 Boss 变身（三过渡统一入口）：enrage1（一阶段狂暴）/ revive（进化二阶段）/ enrage2（二阶段狂暴）
+            // 变身 2.6s：期间 Boss 原地不动、不攻击，可被伤害
+            function startBossPhase(e, mode) {
+                e.phaseMode = mode
+                e.phaseTimer = 2.6
+                e.phaseTotal = 2.6
+                // 清技能残留，防止变身中被旧预警/蓄力干扰
+                e.warn = null
+                e.bombPlan = []
+                e.attackState = 'idle'
+                e.skillState = 'idle'
+                e._pendingSkill = null
+                e.motherWarns = []
+                if (mode === 'revive') {
+                    // 进化二阶段：回满血 + 体型再增，金色/绿色回血粒子
+                    e.stage2 = true
+                    e.hp = e.maxHp
+                    state.flashRed = 0.5
+                    state.shakeTimer = 0.35
+                    state.shakePower = 8
+                    spawnFloatText(e.x, e.y - e.radius - 20, '💥 进化！', '#ffd700')
+                    burstBossPhaseParticles(e, 60, ['#7dff9b', '#ffd700'])
+                } else if (mode === 'enrage2') {
+                    // 二阶段狂暴：紫金粒子 + 强震屏 + 更强冲击波
+                    state.flashRed = 0.8
+                    state.shakeTimer = 0.8
+                    state.shakePower = 15
+                    state.enrageWarnTimer = 2.6
+                    state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.6, maxLife: 0.6, radius: 320 })
+                    burstBossPhaseParticles(e, 60, ['#b388ff', '#ffd700'])
+                } else {
+                    // 一阶段狂暴：红闪 + 震屏 + 粒子爆发
+                    state.flashRed = 0.7
+                    state.shakeTimer = 0.6
+                    state.shakePower = 12
+                    state.enrageWarnTimer = 2.6
+                    const cA = e.isMotherBoss ? '#39ff14' : (e.isArtilleryBoss ? '#4dd0ff' : '#ff9d3c')
+                    const cB = e.isMotherBoss ? '#00c853' : (e.isArtilleryBoss ? '#1e88ff' : '#ff5722')
+                    burstBossPhaseParticles(e, 46, [cA, cB])
+                }
+            }
+
+            // 变身进行：倒计时 → 结束时应用对应档位的体型/范围/狂暴状态
+            function bossPhaseTick(e, dt) {
+                e.phaseTimer -= dt
+                if (e.phaseTimer <= 0) {
+                    if (e.phaseMode === 'revive') {
+                        e.enraged = false
+                        e.radius = e.baseRadius * 1.3 * 1.2
+                    } else if (e.phaseMode === 'enrage2') {
+                        e.enraged = true
+                        e.radius = e.baseRadius * 1.3 * 1.2 * 1.35
+                    } else {
+                        e.enraged = true
+                        e.radius = e.baseRadius * 1.3
+                    }
+                    e.skillScale = bossStageF(e).range
+                    e.phaseMode = null
+                    e.attackTimer = 0.5
+                    e.skillTimer = 1.0
+                    state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.4, maxLife: 0.4, radius: 200 })
                 }
             }
 
             // 母体 AI：慢速周旋 + 毒液弹 + 召唤虫群 + 束缚陷阱 + 冲击波
             function updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult) {
-                // 狂暴被动（hp ≤ 50%）
-                if (!e.enraged && e.hp <= e.maxHp * 0.5) {
-                    triggerBossEnrage(e)
+                // 狂暴被动（hp ≤ 50%）→ 变身演出（二阶段狂暴为 enrage2）
+                if (!e.enraged && !e.phaseMode && e.hp <= e.maxHp * 0.5) {
+                    startBossPhase(e, e.stage2 ? 'enrage2' : 'enrage1')
                 }
+                const sf = bossStageF(e)
 
                 // 慢速周旋：保持中距离（不追击）
                 const preferred = 260
@@ -1599,7 +1676,7 @@
                 // 普通攻击：毒液弹（狂暴后双发）
                 e.venomCooldown -= dt
                 if (e.venomCooldown <= 0 && d2 < 700) {
-                    const shots = e.enraged ? 2 : 1
+                    const shots = e.stage2 ? (e.enraged ? 3 : 2) : (e.enraged ? 2 : 1)
                     for (let s = 0; s < shots; s++) {
                         const off = shots === 2 ? (s === 0 ? -0.14 : 0.14) : 0
                         const a = Math.atan2(dy2, dx2) + off
@@ -1610,20 +1687,21 @@
                             vx: Math.cos(a) * 150,
                             vy: Math.sin(a) * 150,
                             radius: 7,
-                            damage: Math.max(1, Math.floor(e.damage * 0.5)),
+                            damage: Math.max(1, Math.floor(r2(e.damage * 0.5 * sf.dmg))),
+                            poisonDps: r2(1.5 * sf.dmg),
                             life: 3.5,
                         })
                     }
-                    e.venomCooldown = e.enraged ? 1.6 : 2.5
+                    e.venomCooldown = 2.5 / sf.freq
                 }
 
                 // 技能1：孵化虫群（预警圈 → 小怪，场上上限 8）
                 e.spawnCooldown -= dt
                 if (e.spawnCooldown <= 0) {
-                    e.spawnCooldown = e.enraged ? 3.5 : 6
+                    e.spawnCooldown = 6 / sf.freq
                     const minions = state.enemies.filter(o => o.isMotherMinion).length
                     if (minions < 8) {
-                        const count = e.enraged ? randInt(3, 4) : randInt(2, 3)
+                        const count = e.stage2 ? randInt(3, 4) : (e.enraged ? randInt(3, 4) : randInt(2, 3))
                         for (let k = 0; k < count; k++) {
                             const a = rand(0, Math.PI * 2)
                             const dist2 = rand(60, 130)
@@ -1640,15 +1718,15 @@
                 // 技能2：束缚陷阱（玩家脚下，预警后生成减速区域）
                 e.webCooldown -= dt
                 if (e.webCooldown <= 0 && d2 < 600) {
-                    e.webCooldown = e.enraged ? 6 : 8
+                    e.webCooldown = 8 / sf.freq
                     e.motherWarns.push({ x: p.x, y: p.y, timer: 1.0, kind: 'web' })
                 }
 
                 // 技能3：虫群冲击波（环形散射）
                 e.shockCooldown -= dt
                 if (e.shockCooldown <= 0) {
-                    e.shockCooldown = e.enraged ? 7 : 10
-                    const n = e.enraged ? 16 : 12
+                    e.shockCooldown = 10 / sf.freq
+                    const n = e.stage2 ? 20 : (e.enraged ? 16 : 12)
                     for (let k = 0; k < n; k++) {
                         const a = (k / n) * Math.PI * 2
                         state.enemyProjectiles.push({
@@ -1658,7 +1736,7 @@
                             vx: Math.cos(a) * 160,
                             vy: Math.sin(a) * 160,
                             radius: 5,
-                            damage: Math.max(1, e.damage - 1),
+                            damage: Math.max(1, r2(e.damage * sf.dmg - 1)),
                             life: 2.5,
                         })
                     }
@@ -1683,7 +1761,7 @@
                     w.timer -= dt
                     if (w.timer <= 0) {
                         if (w.kind === 'web') {
-                            state.webZones.push({ x: w.x, y: w.y, radius: 90, life: 3 })
+                            state.webZones.push({ x: w.x, y: w.y, radius: 90, life: 3, dps: 1 * sf.dmg })
                         } else {
                             spawnMotherMinion(w.x, w.y, e)
                         }
@@ -1700,16 +1778,16 @@
                     e.skillAngle = Math.atan2(pl.y - e.y, pl.x - e.x)
                     e.skillPhase = randInt(1, 3)
                     e.skillTimer = 0.7
-                    e.warn = { type: 'fan', x: e.x, y: e.y, angle: e.skillAngle, radius: 520 * (e.enraged ? 1.15 : 1), timer: 0.7 }
+                    e.warn = { type: 'fan', x: e.x, y: e.y, angle: e.skillAngle, radius: 520 * bossStageF(e).range, timer: 0.7 }
                 } else if (e.skillIndex === 1) {
                     // 技能2：全屏环形散射 16 颗
                     e.skillState = 'skill2'
                     e.skillTimer = 0.7
-                    e.warn = { type: 'ring', x: e.x, y: e.y, radius: 640 * (e.enraged ? 1.15 : 1), timer: 0.7 }
+                    e.warn = { type: 'ring', x: e.x, y: e.y, radius: 640 * bossStageF(e).range, timer: 0.7 }
                 } else {
-                    // 技能3：大量轰炸——快速出现 15-20 个预警点，再依次降落（普通形态 2/3 数量）
+                    // 技能3：大量轰炸——快速出现 15-20 个预警点，再依次降落（一阶段普通形态 2/3 数量）
                     e.skillState = 'skill3'
-                    e.bombCount = e.enraged ? randInt(15, 20) : randInt(10, 13)
+                    e.bombCount = (e.stage2 || e.enraged) ? randInt(15, 20) : randInt(10, 13)
                     e.bombPlan = []
                     e.bombSpawnTimer = 0
                 }
@@ -1718,8 +1796,8 @@
             function finishArtillerySkill(e) {
                 e.skillState = 'idle'
                 e.skillIndex = (e.skillIndex + 1) % 3
-                // 技能间隔：普通形态 3.0*1.3（频率更低）/ 狂暴 3.0*0.8（频率更高）
-                e.skillTimer = 3.0 * (e.enraged ? 0.8 : 1.3)
+                // 技能间隔按阶段频率档位（普通形态更慢 / 狂暴更快）
+                e.skillTimer = 3.0 / bossStageF(e).freq
                 e.warn = null
                 e.bombPlan = []
             }
@@ -2199,6 +2277,20 @@
                     options = [...existing, ...rareBaseOptions]
                 }
 
+                // 二阶段 Boss 掉落：属性卡数值翻倍（clamp 到属性上限，已是翻倍卡的 base 补位不再叠加）
+                if (state._bossDoubleDrop) {
+                    state._bossDoubleDrop = false
+                    options = options.map(item => {
+                        if (item.label && item.label.includes('(翻倍)')) return item
+                        const copy = { ...item }
+                        copy.label = '✨ ' + copy.label + ' (翻倍)'
+                        copy.desc = copy.desc + ' ×2'
+                        const orig = copy.apply
+                        copy.apply = () => { orig(); orig() }
+                        return copy
+                    })
+                }
+
                 renderUpgradeUI(options, null)
                 upgradeOverlay.style.display = 'flex'
             }
@@ -2376,6 +2468,7 @@
                         state._playerSlowed = true
                         // 进入毒雾即中毒 2.5s（站在雾内持续刷新，离开后继续掉血）
                         p.mistPoisonTimer = 2.5
+                        p._mistDps = z.dps || 1
                     }
                 }
                 // 毒雾中毒持续伤害（离开毒雾后仍持续）
@@ -2384,8 +2477,9 @@
                     p._mistTick = (p._mistTick || 0) + dt
                     if (p._mistTick >= 0.5) {
                         p._mistTick -= 0.5
-                        p.hp = r2(p.hp - 0.5)
-                        spawnFloatText(p.x, p.y - p.radius - 24, '-0.50', '#8bc34a')
+                        const mistDmg = (p._mistDps || 1) * 0.5
+                        p.hp = r2(p.hp - mistDmg)
+                        spawnFloatText(p.x, p.y - p.radius - 24, '-' + mistDmg.toFixed(2), '#8bc34a')
                         if (p.hp <= 0) {
                             p.hp = 0
                             gameOver()
@@ -2810,13 +2904,32 @@
                         dy2 = p.y - e.y,
                         d2 = Math.hypot(dx2, dy2)
 
+                    // ---- 大型 Boss 变身演出（狂暴/二阶段过渡）：原地不动、不攻击，可被伤害 ----
+                    if ((e.isArtilleryBoss || e.isMeleeBoss || e.isMotherBoss) && e.phaseMode) {
+                        bossPhaseTick(e, dt)
+                        if (Math.random() < 0.3) {
+                            const pcol = e.phaseMode === 'revive' ? '#7dff9b' : (e.phaseMode === 'enrage2' ? '#b388ff' : '#ff9d3c')
+                            state.particles.push({
+                                x: e.x + rand(-e.radius, e.radius),
+                                y: e.y + rand(-e.radius, e.radius),
+                                vx: rand(-25, 25),
+                                vy: rand(-90, -15),
+                                size: rand(3, 7),
+                                life: rand(0.4, 0.8),
+                                color: pcol,
+                            })
+                        }
+                        continue
+                    }
+
                     if (e.isArtilleryBoss) {
                         // ---- 大型远程 Boss：技能状态机 ----
-                        if (!e.enraged && e.hp <= e.maxHp * 0.5) triggerBossEnrage(e)
-                        // 伤害倍率：普通 0.8 / 狂暴 1.3；范围倍率：狂暴 1.15；子弹密度：普通 2/3
-                        const artDmgF = e.enraged ? 1.3 : 0.8
-                        const artSk = e.enraged ? 1.15 : 1
-                        const artDensity = e.enraged ? 1 : 2 / 3
+                        if (!e.enraged && e.hp <= e.maxHp * 0.5) startBossPhase(e, e.stage2 ? 'enrage2' : 'enrage1')
+                        const sf = bossStageF(e)
+                        // 伤害倍率按阶段档位；范围倍率；子弹密度：一阶段普通 2/3，其余满额
+                        const artDmgF = sf.dmg
+                        const artSk = sf.range
+                        const artDensity = (e.stage2 || e.enraged) ? 1 : 2 / 3
                         const keepDist = 320
                         if (e.skillState === 'idle') {
                             // 风筝走位：保持中距离
@@ -2850,8 +2963,8 @@
                                     damage: r2(e.damage * artDmgF),
                                     life: 6,
                                 })
-                                // 普通攻击频率：普通形态更慢 / 狂暴略快
-                                e.normalTimer = e.normalInterval * (e.enraged ? 0.85 : 1.3)
+                                // 普通攻击频率按阶段档位
+                                e.normalTimer = e.normalInterval / bossStageF(e).freq
                             }
 
                             // 技能调度：间隔结束 → 远离则位移，否则直接技能
@@ -2997,8 +3110,8 @@
                         updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult)
                     } else if (e.isMeleeBoss) {
                         // ---- 大型近战 Boss：攻击状态机 ----
-                        if (!e.enraged && e.hp <= e.maxHp * 0.5) triggerBossEnrage(e)
-                        const meleeDmgF = e.enraged ? 1.3 : 0.8
+                        if (!e.enraged && e.hp <= e.maxHp * 0.5) startBossPhase(e, e.stage2 ? 'enrage2' : 'enrage1')
+                        const meleeDmgF = bossStageF(e).dmg
                         if (e.attackState === 'idle') {
                             if (d2 > 1) {
                                 const moveSpeed = e.speed * speedMult
@@ -3061,7 +3174,7 @@
                                         }
                                     }
                                     e.attackState = 'recover'
-                                    e.recoverTimer = MELEE_BOSS_RECOVER * (e.enraged ? 0.7 : 1.2)
+                                    e.recoverTimer = MELEE_BOSS_RECOVER * bossStageF(e).recover
                                 }
                             }
                         } else if (e.attackState === 'dash') {
@@ -3106,7 +3219,7 @@
                                     e.recoverTimer = 0.6
                                 } else {
                                     e.attackState = 'recover'
-                                    e.recoverTimer = MELEE_BOSS_RECOVER * (e.enraged ? 0.7 : 1.2)
+                                    e.recoverTimer = MELEE_BOSS_RECOVER * bossStageF(e).recover
                                 }
                             }
                         } else if (e.attackState === 'recover') {
@@ -3119,7 +3232,7 @@
                                     startMeleeWindup(e, s)
                                 } else {
                                     e.attackState = 'idle'
-                                    e.attackTimer = e.enraged ? 0.8 : 1.2
+                                    e.attackTimer = 1 / bossStageF(e).freq
                                 }
                             }
                         }
@@ -3359,7 +3472,7 @@
                         if (proj.kind === 'venom') {
                             // 毒液弹：附加中毒（4s 持续伤害，主伤害靠毒）
                             p.poisonTimer = 4
-                            p.poisonDps = 1.5
+                            p.poisonDps = proj.poisonDps || 1.5
                         }
                         state.enemyProjectiles.splice(i, 1)
                         if (p.hp <= 0) {
@@ -3383,6 +3496,16 @@
                         if (e.isBoss) bossKilled = true
                     }
                 }
+
+                // ---- 二阶段触发：大型 Boss 死亡时 30% 概率原地进化复活（回满血、变身演出） ----
+                for (let di = deadEnemies.length - 1; di >= 0; di--) {
+                    const e = deadEnemies[di]
+                    if ((e.isMeleeBoss || e.isArtilleryBoss || e.isMotherBoss) && !e.stage2 && Math.random() < 0.3) {
+                        startBossPhase(e, 'revive')
+                        deadEnemies.splice(di, 1)
+                    }
+                }
+                if (deadEnemies.length === 0 && bossKilled) bossKilled = false
 
                 for (const e of deadEnemies) {
                     if (e.waveId === state.currentWaveId) {
@@ -3457,7 +3580,11 @@
                         }
                     }
 
-                    if (bossKilled) state._pendingBossRare = true
+                    if (bossKilled) {
+                        state._pendingBossRare = true
+                        // 二阶段 Boss 击杀：掉落属性翻倍（数值 ×2，clamp 属性上限）
+                        state._bossDoubleDrop = deadEnemies.some(e => e.isBoss && e.stage2)
+                    }
                     checkUpgradeAndBoss()
                 }
 
@@ -4667,6 +4794,7 @@
                 state.cannonballs = []
                 state.explosions = []
                 state._pendingBossRare = false
+                state._bossDoubleDrop = false
                 state.webZones = []
                 state.flashRed = 0
                 state.shakeTimer = 0
@@ -4717,6 +4845,7 @@
                 state.cannonballs = []
                 state.explosions = []
                 state._pendingBossRare = false
+                state._bossDoubleDrop = false
                 state.webZones = []
                 state.flashRed = 0
                 state.shakeTimer = 0

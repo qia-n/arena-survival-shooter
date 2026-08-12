@@ -331,6 +331,7 @@
                 gunType: 'ultraman',
                 magSize: 0,
                 reloadTime: 0,
+                barrelCount: 10,
             }, ]
 
             function genId() {
@@ -1456,24 +1457,28 @@
                     return
                 }
 
-                // ---- 奥特曼：直线粒子射线（大量小粒子沿直线飞行，速度差异逐段追进，不锥形扩散） ----
+                // ---- 奥特曼：多射击口粒子射线（10 个环形枪口随机轮流发射，每颗速度随机，直线不锥形） ----
                 if (p.gunType === 'ultraman') {
                     const beams = 1 + (p.beamDouble || 0)
                     const boost = 1 + (p.beamBoost || 0)
                     const rangeMult = 1 + (p.beamRange || 0)
                     const beamLife = 0.45 * rangeMult
                     const beamDmg = r2(p.atk * 0.18 * boost)
+                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 10
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 16
-                        const sgx2 = p.x + Math.cos(baseAngle) * barrelLen - Math.sin(baseAngle) * off
-                        const sgy2 = p.y + Math.sin(baseAngle) * barrelLen + Math.cos(baseAngle) * off
-                        // 大量小粒子（每 tick 6 颗），方向严格直线（±0.7°），速度差异形成追进感
+                        // 每 tick 从多个枪口中随机取 6 个，各发射 1 颗粒子（速度随机，逐段追进）
                         for (let s = 0; s < 6; s++) {
+                            const bi = randInt(0, barrels - 1)
+                            const bAng = (bi / barrels) * Math.PI * 2
+                            const bR = p.radius + 6
+                            const mox = Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 10 - Math.sin(baseAngle) * off
+                            const moy = Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 10 + Math.cos(baseAngle) * off
                             const a = baseAngle + rand(-0.012, 0.012)
                             const spd = currentSpeed * rand(0.6, 1.4)
                             state.projectiles.push({
-                                x: sgx2,
-                                y: sgy2,
+                                x: p.x + mox,
+                                y: p.y + moy,
                                 vx: Math.cos(a) * spd,
                                 vy: Math.sin(a) * spd,
                                 length: rand(2, 4),

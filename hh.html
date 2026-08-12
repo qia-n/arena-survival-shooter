@@ -2643,9 +2643,9 @@
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
                     for (let s = 0; s < 4; s++) {
-                        // 长条形火花流：散布极小（±0.7°），速度差异拉出前后延伸的拖尾
+                        // 长条形火花流：速度几乎统一（避免后面的火花追上前面的），连续 tick 自然排成前伸弹流
                         const a = baseAngle + rand(-0.012, 0.012)
-                        const spd = currentSpeed * (0.7 + Math.random() * 0.5)
+                        const spd = currentSpeed * (0.97 + Math.random() * 0.06)
                         state.projectiles.push({
                             x: sgx,
                             y: sgy,

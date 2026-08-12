@@ -1315,16 +1315,16 @@
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
                     for (let s = 0; s < 4; s++) {
-                        // 长条形火花流：速度几乎统一（避免后面的火花追上前面的），起点沿方向错开避免重叠
+                        // 粒子射线：长拖尾光束段 + 等速前进 + 起点错开组成连续光束（无超车、无重叠）
                         const a = baseAngle + rand(-0.012, 0.012)
-                        const spd = currentSpeed * (0.97 + Math.random() * 0.06)
-                        const off = s * 2.5
+                        const spd = currentSpeed
+                        const off = s * 4
                         state.projectiles.push({
                             x: sgx + Math.cos(a) * off,
                             y: sgy + Math.sin(a) * off,
                             vx: Math.cos(a) * spd,
                             vy: Math.sin(a) * spd,
-                            length: rand(3, 8),
+                            length: rand(25, 55),
                             width: 1,
                             damage: r2(p.atk * 0.25),
                             life: 1.2,

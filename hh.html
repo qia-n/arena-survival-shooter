@@ -2665,20 +2665,20 @@
                             color: Math.random() < 0.5 ? '#ffdd77' : '#ffaa55',
                         })
                     }
-                    // 高速火花弹：2 颗/次、错开 22px ≈ tick 间距、速度 ×2.2、spark 渐隐拖尾渲染
-                    for (let s = 0; s < 2; s++) {
-                        const a = baseAngle + rand(-0.009, 0.009)
-                        const off = s * 22
+                    // 火花弹：受击火花样式的密集小圆点弹（向前喷溅，每颗算伤害）
+                    for (let s = 0; s < 4; s++) {
+                        const a = baseAngle + rand(-0.17, 0.17)
+                        const spd = currentSpeed * rand(0.8, 1.5)
                         state.projectiles.push({
-                            x: sgx + Math.cos(a) * off,
-                            y: sgy + Math.sin(a) * off,
-                            vx: Math.cos(a) * currentSpeed * 2.2,
-                            vy: Math.sin(a) * currentSpeed * 2.2,
-                            length: rand(2, 4),
+                            x: sgx,
+                            y: sgy,
+                            vx: Math.cos(a) * spd,
+                            vy: Math.sin(a) * spd,
+                            length: rand(2, 3),
                             width: 1,
-                            spark: true,
+                            sparkDot: true,
                             damage: r2(p.atk * 0.25),
-                            life: 0.35,
+                            life: rand(0.3, 0.45),
                             isHoming: false,
                             isChild: true,
                             splitRemain: 0,
@@ -4213,6 +4213,21 @@
 
                 // ---- 玩家子弹 ----
                 for (const proj of state.projectiles) {
+                    // 火花弹（加特林）：小圆点 + 短拖尾，像受击火花向前喷溅
+                    if (proj.sparkDot) {
+                        const sa = Math.atan2(proj.vy, proj.vx)
+                        ctx.beginPath()
+                        ctx.arc(proj.x, proj.y, 2, 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(255,215,130,0.95)'
+                        ctx.fill()
+                        ctx.strokeStyle = 'rgba(255,170,80,0.5)'
+                        ctx.lineWidth = 1
+                        ctx.beginPath()
+                        ctx.moveTo(proj.x, proj.y)
+                        ctx.lineTo(proj.x - Math.cos(sa) * 8, proj.y - Math.sin(sa) * 8)
+                        ctx.stroke()
+                        continue
+                    }
                     // 高速火花（加特林）：细亮渐隐火花线（头亮尾暗、无圆头），体现速度与火力
                     if (proj.spark) {
                         const sa = Math.atan2(proj.vy, proj.vx)

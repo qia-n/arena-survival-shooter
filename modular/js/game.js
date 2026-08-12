@@ -2744,6 +2744,10 @@
                         const name = GUNS.find(g => g.id === id)?.name
                         if (confirm(`确定删除枪械“${name}”吗？`)) {
                             GUNS = GUNS.filter(g => g.id !== id)
+                            // 若删的是当前选中的枪，清空选中让首页默认选第一把，避免悬空引用
+                            if (state.homeSelectedGun && state.homeSelectedGun.id === id) {
+                                state.homeSelectedGun = null
+                            }
                             renderAll()
                         }
                     })
@@ -2844,6 +2848,10 @@
                     if (index !== -1) {
                         GUNS[index] = { ...GUNS[index],
                             ...data }
+                        // 若首页当前选中的就是这把枪，同步到最新对象，否则开始游戏仍用旧数据
+                        if (state.homeSelectedGun && state.homeSelectedGun.id === GUNS[index].id) {
+                            state.homeSelectedGun = GUNS[index]
+                        }
                     }
                 } else {
                     GUNS.push(data)

@@ -243,6 +243,7 @@
                     scatterCount: 0,
                     ricochetCount: 0,
                     hurtFlashTimer: 0,
+                    invulnTimer: 0,
                     poisonTimer: 0,
                     poisonDps: 0,
                 },
@@ -1157,6 +1158,11 @@
                     p.hurtFlashTimer -= dt
                     if (p.hurtFlashTimer < 0) p.hurtFlashTimer = 0
                 }
+                // 受击无敌帧（防密集弹幕同帧多颗叠加秒杀）
+                if (p.invulnTimer > 0) {
+                    p.invulnTimer -= dt
+                    if (p.invulnTimer < 0) p.invulnTimer = 0
+                }
 
                 // ---- 束缚减速区域更新 + 中毒持续伤害（先于移动计算） ----
                 state._playerSlowed = false
@@ -1612,9 +1618,15 @@
                     proj.life -= dt
 
                     if (dist(proj, p) < proj.radius + p.radius) {
+                        if (p.invulnTimer > 0) {
+                            // 受击无敌帧内：弹幕被挡下但不造成伤害
+                            state.enemyProjectiles.splice(i, 1)
+                            continue
+                        }
                         const damageAmount = proj.damage
                         p.hp = r2(p.hp - damageAmount)
                         p.hurtFlashTimer = 0.2
+                        p.invulnTimer = 0.3
                         spawnPlayerHitParticles(proj.x, proj.y, 18)
                         if (proj.kind === 'venom') {
                             // 毒液弹：附加中毒（4s 持续伤害，主伤害靠毒）
@@ -2438,17 +2450,26 @@
                     ctx.restore()
                 }
 
-                // ---- 玩家（受伤闪红） ----
+                // ---- 玩家（受伤闪红；无敌帧闪烁） ----
+                if (p.invulnTimer > 0) {
+                    // 无敌帧：半透明闪烁提示
+                    const bl = 0.45 + 0.3 * Math.sin(performance.now() / 40)
+                    ctx.globalAlpha = bl
+                }
                 ctx.beginPath()
                 ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
                 if (p.hurtFlashTimer > 0) {
                     ctx.strokeStyle = '#ff0000'
                     ctx.lineWidth = 2.5
+                } else if (p.invulnTimer > 0) {
+                    ctx.strokeStyle = '#66ccff'
+                    ctx.lineWidth = 2
                 } else {
                     ctx.strokeStyle = '#fff'
                     ctx.lineWidth = 1.5
                 }
                 ctx.stroke()
+                if (p.invulnTimer > 0) ctx.globalAlpha = 1
 
                 // 中毒视觉：玩家身体泛绿光
                 if (p.poisonTimer > 0) {

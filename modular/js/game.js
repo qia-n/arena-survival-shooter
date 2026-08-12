@@ -1456,27 +1456,27 @@
                     return
                 }
 
-                // ---- 奥特曼：高速粒子射线（双束平行 + 强化/贯穿/灼烧/延长专属强化） ----
+                // ---- 奥特曼：大量粒子射线（速度差异逐段追进，奥特曼粒子射线观感） ----
                 if (p.gunType === 'ultraman') {
                     const beams = 1 + (p.beamDouble || 0)
                     const boost = 1 + (p.beamBoost || 0)
                     const rangeMult = 1 + (p.beamRange || 0)
-                    const beamLife = 0.5 * rangeMult
-                    const beamDmg = r2(p.atk * 0.5 * boost)
+                    const beamLife = 0.45 * rangeMult
+                    const beamDmg = r2(p.atk * 0.22 * boost)
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 20
                         const sgx2 = p.x + Math.cos(baseAngle) * barrelLen - Math.sin(baseAngle) * off
                         const sgy2 = p.y + Math.sin(baseAngle) * barrelLen + Math.cos(baseAngle) * off
-                        // 每束：2 颗等距排布的细火花弹（视觉一段粒子射线）
-                        for (let s = 0; s < 2; s++) {
-                            const a = baseAngle + rand(-0.01, 0.01)
-                            const o2 = s * 24
+                        // 大量粒子（每 tick 5 颗），速度随机差异形成逐段追进的粒子射线
+                        for (let s = 0; s < 5; s++) {
+                            const a = baseAngle + rand(-0.05, 0.05)
+                            const spd = currentSpeed * rand(0.7, 1.4)
                             state.projectiles.push({
-                                x: sgx2 + Math.cos(a) * o2,
-                                y: sgy2 + Math.sin(a) * o2,
-                                vx: Math.cos(a) * currentSpeed,
-                                vy: Math.sin(a) * currentSpeed,
-                                length: 4,
+                                x: sgx2,
+                                y: sgy2,
+                                vx: Math.cos(a) * spd,
+                                vy: Math.sin(a) * spd,
+                                length: rand(2, 4),
                                 width: 0.9,
                                 sparkLine: true,
                                 sparkColor: '#8fe8ff',

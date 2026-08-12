@@ -2802,15 +2802,17 @@
                     const beamLife = 0.45 * rangeMult
                     const beamDmg = r2(p.atk * 0.12 * boost)
                     const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 16
+                    const barrelSpacing = 9
+                    const totalW = (barrels - 1) * barrelSpacing
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 16
-                        // 每 tick 从多个枪口中随机取 6 个，各发射 1 颗粒子（速度随机，逐段追进）
-                        for (let s = 0; s < 6; s++) {
+                        // 每 tick 从横排枪口中随机取 8 个，各发射 1 颗粒子（速度随机，逐段追进）
+                        for (let s = 0; s < 8; s++) {
                             const bi = randInt(0, barrels - 1)
-                            const bAng = (bi / barrels) * Math.PI * 2
-                            const bR = p.radius + 14
-                            const mox = Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 10 - Math.sin(baseAngle) * off
-                            const moy = Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 10 + Math.cos(baseAngle) * off
+                            // 枪口横排：沿垂直瞄准方向排布（宽度 = 枪口数 × 间距）
+                            const bx = bi * barrelSpacing - totalW / 2
+                            const mox = Math.cos(baseAngle) * (p.radius + 8) - Math.sin(baseAngle) * (bx + off)
+                            const moy = Math.sin(baseAngle) * (p.radius + 8) + Math.cos(baseAngle) * (bx + off)
                             const a = baseAngle + rand(-0.012, 0.012)
                             const spd = currentSpeed * rand(0.6, 1.4)
                             state.projectiles.push({

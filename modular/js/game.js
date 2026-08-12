@@ -1328,30 +1328,42 @@
                             color: Math.random() < 0.5 ? '#ffdd77' : '#ffaa55',
                         })
                     }
-                    // 火花弹：受击火花样式的密集小圆点弹（向前喷溅，每颗算伤害）
-                    for (let s = 0; s < 4; s++) {
-                        const a = baseAngle + rand(-0.17, 0.17)
-                        const spd = currentSpeed * rand(0.8, 1.5)
-                        state.projectiles.push({
+                    // 视觉火花：受击火花样式的橙黄短丝（3-12px、短命渐隐），向瞄准方向喷涌
+                    const sparkColors = ['#ffaa44', '#ff8844', '#ffcc44', '#ffffff']
+                    for (let f = 0; f < 5; f++) {
+                        const fa = baseAngle + rand(-0.2, 0.2)
+                        const fs = rand(180, 420)
+                        state.particles.push({
                             x: sgx,
                             y: sgy,
-                            vx: Math.cos(a) * spd,
-                            vy: Math.sin(a) * spd,
-                            length: rand(2, 3),
-                            width: 1,
-                            sparkDot: true,
-                            damage: r2(p.atk * 0.25),
-                            life: rand(0.3, 0.45),
-                            isHoming: false,
-                            isChild: true,
-                            splitRemain: 0,
-                            pierceRemain: p.pierceCount,
-                            hitEnemies: new Set(),
-                            radius: 2.5,
-                            ricochetRemain: p.ricochetCount,
-                            _trailTimer: 0,
+                            vx: Math.cos(fa) * fs,
+                            vy: Math.sin(fa) * fs,
+                            size: rand(3, 9),
+                            life: rand(0.1, 0.25),
+                            color: sparkColors[randInt(0, sparkColors.length - 1)],
                         })
                     }
+                    // 实弹：1 颗细短火花丝（负责命中伤害，视觉与火花融为一体）
+                    const ba = baseAngle + rand(-0.02, 0.02)
+                    state.projectiles.push({
+                        x: sgx,
+                        y: sgy,
+                        vx: Math.cos(ba) * currentSpeed * 1.6,
+                        vy: Math.sin(ba) * currentSpeed * 1.6,
+                        length: 6,
+                        width: 1,
+                        sparkLine: true,
+                        damage: r2(p.atk * 0.6),
+                        life: 0.5,
+                        isHoming: false,
+                        isChild: true,
+                        splitRemain: 0,
+                        pierceRemain: p.pierceCount,
+                        hitEnemies: new Set(),
+                        radius: 3,
+                        ricochetRemain: p.ricochetCount,
+                        _trailTimer: 0,
+                    })
                     p.attackDirection.x = -Math.cos(baseAngle)
                     p.attackDirection.y = -Math.sin(baseAngle)
                     p.attackEffectTimer = 0.05
@@ -2294,6 +2306,21 @@
 
                 // ---- 玩家子弹 ----
                 for (const proj of state.projectiles) {
+                    // 火花实弹（加特林）：短火花丝 + 渐隐，与视觉火花粒子同款样式
+                    if (proj.sparkLine) {
+                        const alpha = Math.max(0, proj.life / 0.3)
+                        ctx.globalAlpha = alpha
+                        const sl = 6
+                        const sang = Math.atan2(proj.vy, proj.vx)
+                        ctx.beginPath()
+                        ctx.moveTo(proj.x, proj.y)
+                        ctx.lineTo(proj.x + Math.cos(sang) * sl, proj.y + Math.sin(sang) * sl)
+                        ctx.strokeStyle = '#ffcc44'
+                        ctx.lineWidth = 1.2
+                        ctx.stroke()
+                        ctx.globalAlpha = 1
+                        continue
+                    }
                     // 火花弹（加特林）：小圆点 + 短拖尾，像受击火花向前喷溅
                     if (proj.sparkDot) {
                         const sa = Math.atan2(proj.vy, proj.vx)

@@ -1465,13 +1465,14 @@
                     const beamLife = 0.45 * rangeMult
                     const beamDmg = r2(p.atk * 0.12 * boost)
                     const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 16
-                    const barrelSpacing = 9
+                    const barrelSpacing = 6
                     const totalW = (barrels - 1) * barrelSpacing
+                    const midBarrel = Math.floor(barrels / 2)
                     for (let b = 0; b < beams; b++) {
                         const off = (b - (beams - 1) / 2) * 16
-                        // 每 tick 从横排枪口中随机取 8 个，各发射 1 颗粒子（速度随机，逐段追进）
-                        for (let s = 0; s < 8; s++) {
-                            const bi = randInt(0, barrels - 1)
+                        // 每 tick 从中部枪口密集取 10 个发射（居中且密集）
+                        for (let s = 0; s < 10; s++) {
+                            const bi = midBarrel + randInt(-5, 5)
                             // 枪口横排：沿垂直瞄准方向排布（宽度 = 枪口数 × 间距）
                             const bx = bi * barrelSpacing - totalW / 2
                             const mox = Math.cos(baseAngle) * (p.radius + 8) - Math.sin(baseAngle) * (bx + off)

@@ -1305,7 +1305,7 @@
                     return
                 }
 
-                // ---- 加特林：火花喷射（每次射击喷出 4 颗小火花，面状散布 ±5°，单颗伤害低） ----
+                // ---- 加特林：高速火花粒子（亮点+渐隐拖尾，视觉暂留成火线）+ 枪口持续火光 ----
                 if (p.gunType === 'gatling') {
                     const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 7
                     const bi = p.gatlingBarrel % barrels
@@ -1314,19 +1314,34 @@
                     const bR = p.radius + 6
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
-                    for (let s = 0; s < 3; s++) {
-                        // 小火花密集火线：细碎火花（2-5px）沿直线均匀排布，高速喷涌有压制感
+                    // 枪口持续火光粒子
+                    for (let f = 0; f < 2; f++) {
+                        const fa = baseAngle + rand(-0.3, 0.3)
+                        const fs = rand(140, 340)
+                        state.particles.push({
+                            x: sgx,
+                            y: sgy,
+                            vx: Math.cos(fa) * fs,
+                            vy: Math.sin(fa) * fs,
+                            size: rand(2, 5),
+                            life: rand(0.08, 0.18),
+                            color: Math.random() < 0.5 ? '#ffcc66' : '#ff9955',
+                        })
+                    }
+                    // 高速火花弹：2 颗/次、错开 22px ≈ tick 间距、速度 ×2.2、spark 渐隐拖尾渲染
+                    for (let s = 0; s < 2; s++) {
                         const a = baseAngle + rand(-0.009, 0.009)
-                        const off = s * 8
+                        const off = s * 22
                         state.projectiles.push({
                             x: sgx + Math.cos(a) * off,
                             y: sgy + Math.sin(a) * off,
-                            vx: Math.cos(a) * currentSpeed,
-                            vy: Math.sin(a) * currentSpeed,
-                            length: rand(2, 5),
+                            vx: Math.cos(a) * currentSpeed * 2.2,
+                            vy: Math.sin(a) * currentSpeed * 2.2,
+                            length: rand(2, 4),
                             width: 1,
+                            spark: true,
                             damage: r2(p.atk * 0.25),
-                            life: 1.2,
+                            life: 0.35,
                             isHoming: false,
                             isChild: true,
                             splitRemain: 0,
@@ -2279,6 +2294,28 @@
 
                 // ---- 玩家子弹 ----
                 for (const proj of state.projectiles) {
+                    // 高速火花（加特林）：头部亮点 + 渐隐拖尾，视觉暂留连成火线
+                    if (proj.spark) {
+                        const sa = Math.atan2(proj.vy, proj.vx)
+                        const tail = 20
+                        const tx = proj.x - Math.cos(sa) * tail
+                        const ty = proj.y - Math.sin(sa) * tail
+                        const grad = ctx.createLinearGradient(proj.x, proj.y, tx, ty)
+                        grad.addColorStop(0, 'rgba(255,225,150,0.95)')
+                        grad.addColorStop(0.35, 'rgba(255,165,60,0.5)')
+                        grad.addColorStop(1, 'rgba(255,120,40,0)')
+                        ctx.strokeStyle = grad
+                        ctx.lineWidth = 1.2
+                        ctx.beginPath()
+                        ctx.moveTo(proj.x, proj.y)
+                        ctx.lineTo(tx, ty)
+                        ctx.stroke()
+                        ctx.beginPath()
+                        ctx.arc(proj.x, proj.y, 2, 0, Math.PI * 2)
+                        ctx.fillStyle = 'rgba(255,235,170,0.95)'
+                        ctx.fill()
+                        continue
+                    }
                     const len = proj.length || 12
                     const endX = proj.x + (proj.vx / Math.hypot(proj.vx, proj.vy)) * len
                     const endY = proj.y + (proj.vy / Math.hypot(proj.vx, proj.vy)) * len

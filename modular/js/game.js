@@ -228,7 +228,7 @@
                 bulletWidth: 1.8,
                 atk: 1.5,
                 range: 320,
-                attackSpeed: 4,
+                attackSpeed: 10,
                 bulletSpeedMult: 0.8,
                 bulletCount: 1,
                 pierceCount: 0,
@@ -256,7 +256,7 @@
                 bulletWidth: 2,
                 atk: 0.8,
                 range: 360,
-                attackSpeed: 14,
+                attackSpeed: 24,
                 bulletSpeedMult: 1,
                 bulletCount: 1,
                 pierceCount: 0,
@@ -272,7 +272,7 @@
                 hitDecay: 7,
                 hitVolume: 0.35,
                 gunType: 'gatling',
-                magSize: 70,
+                magSize: 120,
                 reloadTime: 2.5,
                 barrelCount: 7,
             }, {
@@ -1269,11 +1269,13 @@
                         tmpAngles.push({ angle: baseAngle, ox: 0, oy: 0 })
                     }
                     for (const b of tmpAngles) {
+                        // 冲锋枪：精准连射（±1.5° 微小散布）
+                        const sa = b.angle + rand(-0.026, 0.026)
                         state.projectiles.push({
                             x: gx + (b.ox || 0),
                             y: gy + (b.oy || 0),
-                            vx: Math.cos(b.angle) * currentSpeed,
-                            vy: Math.sin(b.angle) * currentSpeed,
+                            vx: Math.cos(sa) * currentSpeed,
+                            vy: Math.sin(sa) * currentSpeed,
                             length: p.bulletLength || 14,
                             width: p.bulletWidth || 1.8,
                             damage: p.atk,
@@ -1294,7 +1296,7 @@
                     return
                 }
 
-                // ---- 加特林：连续单发（1 攻速 tick = 1 颗），多枪口轮转，每发扣 1 弹药 ----
+                // ---- 加特林：火花喷射（每次射击喷出 4 颗小火花，面状散布 ±5°，单颗伤害低） ----
                 if (p.gunType === 'gatling') {
                     const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 7
                     const bi = p.gatlingBarrel % barrels
@@ -1303,27 +1305,31 @@
                     const bR = p.radius + 6
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
-                    state.projectiles.push({
-                        x: sgx,
-                        y: sgy,
-                        vx: dirX * currentSpeed,
-                        vy: dirY * currentSpeed,
-                        length: p.bulletLength || 16,
-                        width: p.bulletWidth || 2,
-                        damage: p.atk,
-                        life: 2.5,
-                        isHoming: false,
-                        isChild: false,
-                        splitRemain: p.splitLevel,
-                        pierceRemain: p.pierceCount,
-                        hitEnemies: new Set(),
-                        radius: 5,
-                        ricochetRemain: p.ricochetCount,
-                        _trailTimer: 0,
-                    })
+                    for (let s = 0; s < 4; s++) {
+                        const a = baseAngle + rand(-0.087, 0.087)
+                        const spd = currentSpeed * (0.9 + Math.random() * 0.25)
+                        state.projectiles.push({
+                            x: sgx,
+                            y: sgy,
+                            vx: Math.cos(a) * spd,
+                            vy: Math.sin(a) * spd,
+                            length: rand(2, 5),
+                            width: 1,
+                            damage: r2(p.atk * 0.25),
+                            life: 1.2,
+                            isHoming: false,
+                            isChild: true,
+                            splitRemain: 0,
+                            pierceRemain: p.pierceCount,
+                            hitEnemies: new Set(),
+                            radius: 2.5,
+                            ricochetRemain: p.ricochetCount,
+                            _trailTimer: 0,
+                        })
+                    }
                     p.attackDirection.x = -Math.cos(baseAngle)
                     p.attackDirection.y = -Math.sin(baseAngle)
-                    p.attackEffectTimer = 0.06
+                    p.attackEffectTimer = 0.05
                     return
                 }
 

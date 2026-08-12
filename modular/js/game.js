@@ -163,7 +163,7 @@
             let GUNS = [{
                 id: 'pistol',
                 name: '手枪',
-                desc: '平衡型，单发精准',
+                desc: '平衡型，单发精准（无限弹药）',
                 icon: '🔫',
                 color: '#88ddff',
                 bulletLength: 12,
@@ -185,6 +185,124 @@
                 hitDuration: 0.2,
                 hitDecay: 6,
                 hitVolume: 0.4,
+                gunType: 'pistol',
+                magSize: 0,
+                reloadTime: 0,
+            }, {
+                id: 'shotgun',
+                name: '散弹枪',
+                desc: '扇形喷发射线，距离越近伤害越高',
+                icon: '💥',
+                color: '#ff9d5c',
+                bulletLength: 12,
+                bulletWidth: 1.5,
+                atk: 2,
+                range: 240,
+                attackSpeed: 1.6,
+                bulletSpeedMult: 1.2,
+                bulletCount: 1,
+                pierceCount: 0,
+                extraAttackCount: 0,
+                firePattern: 'single',
+                spreadAngle: 0,
+                burstCount: 0,
+                burstDelay: 0.06,
+                shootDuration: 0.06,
+                shootDecay: 8,
+                shootVolume: 0.3,
+                hitDuration: 0.2,
+                hitDecay: 6,
+                hitVolume: 0.4,
+                gunType: 'shotgun',
+                magSize: 8,
+                reloadTime: 1.2,
+                pelletCount: 9,
+                spreadDeg: 50,
+            }, {
+                id: 'smg',
+                name: '冲锋枪',
+                desc: '连续单发，弹夹25，换弹快',
+                icon: '🔫',
+                color: '#6fd8ff',
+                bulletLength: 14,
+                bulletWidth: 1.8,
+                atk: 1.5,
+                range: 320,
+                attackSpeed: 8,
+                bulletSpeedMult: 0.8,
+                bulletCount: 1,
+                pierceCount: 0,
+                extraAttackCount: 0,
+                firePattern: 'single',
+                spreadAngle: 0,
+                burstCount: 0,
+                burstDelay: 0.06,
+                shootDuration: 0.05,
+                shootDecay: 7,
+                shootVolume: 0.18,
+                hitDuration: 0.2,
+                hitDecay: 6,
+                hitVolume: 0.4,
+                gunType: 'smg',
+                magSize: 25,
+                reloadTime: 1.5,
+            }, {
+                id: 'gatling',
+                name: '加特林',
+                desc: '7枪口连射，弹容70，移速-25%',
+                icon: '⚙️',
+                color: '#ffd35c',
+                bulletLength: 16,
+                bulletWidth: 2,
+                atk: 0.8,
+                range: 360,
+                attackSpeed: 14,
+                bulletSpeedMult: 1,
+                bulletCount: 1,
+                pierceCount: 0,
+                extraAttackCount: 0,
+                firePattern: 'single',
+                spreadAngle: 0,
+                burstCount: 0,
+                burstDelay: 0.06,
+                shootDuration: 0.04,
+                shootDecay: 9,
+                shootVolume: 0.16,
+                hitDuration: 0.15,
+                hitDecay: 7,
+                hitVolume: 0.35,
+                gunType: 'gatling',
+                magSize: 70,
+                reloadTime: 2.5,
+                barrelCount: 7,
+            }, {
+                id: 'sniper',
+                name: '狙击枪',
+                desc: '单发高伤，弹速极快，换弹久',
+                icon: '🎯',
+                color: '#ff6b8a',
+                bulletLength: 26,
+                bulletWidth: 2.5,
+                atk: 18,
+                range: 700,
+                attackSpeed: 0.6,
+                bulletSpeedMult: 4,
+                bulletCount: 1,
+                pierceCount: 0,
+                extraAttackCount: 0,
+                firePattern: 'single',
+                spreadAngle: 0,
+                burstCount: 0,
+                burstDelay: 0.06,
+                shootDuration: 0.06,
+                shootDecay: 5,
+                shootVolume: 0.4,
+                hitDuration: 0.25,
+                hitDecay: 4,
+                hitVolume: 0.5,
+                gunType: 'sniper',
+                magSize: 4,
+                reloadTime: 3,
             }, ]
 
             function genId() {
@@ -246,6 +364,17 @@
                     invulnTimer: 0,
                     poisonTimer: 0,
                     poisonDps: 0,
+                    // 弹夹/换弹/移速
+                    gunType: 'pistol',
+                    magSize: 0,
+                    magAmmo: 0,
+                    magSizeBonus: 0,
+                    reloading: false,
+                    reloadTimer: 0,
+                    reloadTimeMult: 1,
+                    speedMul: 1,
+                    shotgunSpread: 50,
+                    gatlingBarrel: 0,
                 },
 
                 enemies: [],
@@ -308,7 +437,7 @@
                 <span class="player-hp-text" id="playerHpText">10/10</span>
               </div>
               <span class="arena-stats">
-                总击杀 <span id="totalKillsDisplay">0</span> ｜ 波次 <span id="waveDisplay">0</span> ｜ 生命 <span id="hpDisplay">10</span>
+                总击杀 <span id="totalKillsDisplay">0</span> ｜ 波次 <span id="waveDisplay">0</span> ｜ 生命 <span id="hpDisplay">10</span> ｜ 弹药 <span id="magDisplay">∞</span>
                 <button id="btnFullscreenHud" title="全屏" style="margin-left:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#888;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:12px;">⛶</button>
               </span>
             </div>
@@ -432,6 +561,7 @@
             const waveDisplay = $('#waveDisplay')
             const totalKillsDisplay = $('#totalKillsDisplay')
             const hpDisplay = $('#hpDisplay')
+            const magDisplay = $('#magDisplay')
             const lvlDisplay = $('#lvlDisplay')
             const controlModeSection = $('#controlModeSection')
             const controlModeList = $('#controlModeList')
@@ -764,12 +894,57 @@
                         state.player.scatterCount = Math.min(state.player.scatterCount + 1, MAX_SCATTER)
                     }
                 }
+            }, {
+                id: 'spreadFocus',
+                label: '🧲 收束扩散',
+                desc: '散弹枪扇形角 -30% (下限 15°)',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    state.player.shotgunSpread = Math.max(15, Math.round((state.player.shotgunSpread || 50) * 0.7))
+                }
+            }, {
+                id: 'magUp',
+                label: '📦 弹药扩充',
+                desc: '弹夹容量 +5 (上限 +20)',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    state.player.magSizeBonus = Math.min(20, (state.player.magSizeBonus || 0) + 5)
+                    state.player.magSize = (state.selectedGun.magSize || 0) + state.player.magSizeBonus
+                    state.player.magAmmo = state.player.magSize
+                }
+            }, {
+                id: 'reloadSpeed',
+                label: '⚡ 换弹加速',
+                desc: '换弹时间 -15% (下限 40%)',
+                weight: 1.0,
+                category: 'special',
+                apply: () => {
+                    state.player.reloadTimeMult = Math.max(0.4, Math.round((state.player.reloadTimeMult || 1) * 0.85 * 100) / 100)
+                }
             }, ]
 
             function getAvailableUpgrades() {
                 const p = state.player
                 const maxRange = Math.min(worldW, worldH)
+                const gtype = p.gunType || 'pistol'
                 return UPGRADE_POOL.filter(item => {
+                    // ---- 按武器类型限制弹道/攻速类属性 ----
+                    // 冲锋枪/加特林/狙击枪：不能选散射
+                    if (item.id === 'scatter' && ['smg', 'gatling', 'sniper'].includes(gtype)) return false
+                    // 散弹枪/加特林：不能选平行弹道
+                    if (item.id === 'parallel' && ['shotgun', 'gatling'].includes(gtype)) return false
+                    // 散弹枪：不能用分裂/弹射（喷发式射线）
+                    if (item.id === 'split' && gtype === 'shotgun') return false
+                    if (item.id === 'ricochet' && gtype === 'shotgun') return false
+                    // 冲锋枪：没有攻击速度概念
+                    if (item.id === 'atkSpeed' && gtype === 'smg') return false
+                    // 收束扩散：散弹枪专属
+                    if (item.id === 'spreadFocus' && gtype !== 'shotgun') return false
+                    // 弹药扩充/换弹加速：无限弹药武器不出现
+                    if ((item.id === 'magUp' || item.id === 'reloadSpeed') && p.magSize <= 0) return false
+
                     if (item.id === 'pierce' && p.pierceCount >= MAX_PIERCE) return false
                     if (item.id === 'extraAttack' && p.extraAttackCount >= MAX_EXTRA_ATTACK) return false
                     if (item.id === 'split' && p.splitLevel >= MAX_SPLIT_LEVEL) return false
@@ -781,6 +956,8 @@
                     if (item.id === 'ricochet' && p.ricochetCount >= MAX_RICOCHET) return false
                     if (item.id === 'atkSpeed' && p.attackSpeed >= MAX_ATTACK_SPEED) return false
                     if (item.id === 'bulletSpeed' && p.bulletSpeedMult >= MAX_BULLET_SPEED_MULT) return false
+                    if (item.id === 'magUp' && (p.magSizeBonus || 0) >= 20) return false
+                    if (item.id === 'reloadSpeed' && (p.reloadTimeMult || 1) <= 0.4) return false
 
                     if (item.id === 'parallel' && p.scatterCount > 0) return false
                     if (item.id === 'scatter' && p.parallelCount > 0) return false
@@ -1005,6 +1182,15 @@
                 const p = state.player
                 if (!target && angle === undefined) return
 
+                // 弹夹机制：无限弹药（magSize=0）不扣；有弹夹则消耗 1 发，弹尽自动进入换弹
+                if (p.magSize > 0) {
+                    p.magAmmo = Math.max(0, p.magAmmo - 1)
+                    if (p.magAmmo <= 0 && !p.reloading) {
+                        p.reloading = true
+                        p.reloadTimer = ((state.selectedGun && state.selectedGun.reloadTime) || 1.5) * (p.reloadTimeMult || 1)
+                    }
+                }
+
                 playShootSound(state.selectedGun)
 
                 // 提供 angle 时朝指定方向射击（键盘模式鼠标瞄准），否则朝目标敌人
@@ -1019,6 +1205,71 @@
                 const dirY = Math.sin(baseAngle)
                 const perpX = -Math.sin(baseAngle)
                 const perpY = Math.cos(baseAngle)
+
+                // ---- 散弹枪：喷发式长短不一射线，扇形从枪口喷出（不能用分裂/弹射/平行） ----
+                if (p.gunType === 'shotgun') {
+                    const spreadRad = (p.shotgunSpread || 50) * Math.PI / 180
+                    const pellets = (state.selectedGun && state.selectedGun.pelletCount) || 9
+                    for (let bi = 0; bi < pellets; bi++) {
+                        const a = baseAngle - spreadRad / 2 + spreadRad * (bi / (pellets - 1)) + rand(-0.02, 0.02)
+                        const spd = currentSpeed * (0.9 + Math.random() * 0.3)
+                        state.projectiles.push({
+                            x: gx,
+                            y: gy,
+                            vx: Math.cos(a) * spd,
+                            vy: Math.sin(a) * spd,
+                            length: rand(60, 150),
+                            width: p.bulletWidth * rand(0.6, 1.1),
+                            damage: r2(p.atk * 0.35),
+                            life: 0.22,
+                            isHoming: false,
+                            isChild: true,
+                            splitRemain: 0,
+                            pierceRemain: 0,
+                            hitEnemies: new Set(),
+                            radius: 3,
+                            ricochetRemain: 0,
+                            _trailTimer: 0,
+                        })
+                    }
+                    p.attackDirection.x = -Math.cos(baseAngle)
+                    p.attackDirection.y = -Math.sin(baseAngle)
+                    p.attackEffectTimer = 0.12
+                    return
+                }
+
+                // ---- 加特林：多枪口轮转单发（不能选散射/平行，分裂/弹射/穿透可用） ----
+                if (p.gunType === 'gatling') {
+                    const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 7
+                    const bi = p.gatlingBarrel % barrels
+                    p.gatlingBarrel++
+                    const bAng = (bi / barrels) * Math.PI * 2
+                    const bR = p.radius + 6
+                    const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
+                    const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
+                    state.projectiles.push({
+                        x: sgx,
+                        y: sgy,
+                        vx: dirX * currentSpeed,
+                        vy: dirY * currentSpeed,
+                        length: p.bulletLength || 16,
+                        width: p.bulletWidth || 2,
+                        damage: p.atk,
+                        life: 2.5,
+                        isHoming: false,
+                        isChild: false,
+                        splitRemain: p.splitLevel,
+                        pierceRemain: p.pierceCount,
+                        hitEnemies: new Set(),
+                        radius: 6,
+                        ricochetRemain: p.ricochetCount,
+                        _trailTimer: 0,
+                    })
+                    p.attackDirection.x = -Math.cos(baseAngle)
+                    p.attackDirection.y = -Math.sin(baseAngle)
+                    p.attackEffectTimer = 0.08
+                    return
+                }
 
                 let angles = []
 
@@ -1059,7 +1310,7 @@
                         width: p.bulletWidth || 1.5,
                         damage: p.atk,
                         life: 2.5,
-                        isHoming: (homing !== undefined) ? homing : true,
+                        isHoming: (p.gunType === 'sniper') ? false : ((homing !== undefined) ? homing : true),
                         isChild: false,
                         splitRemain: p.splitLevel,
                         pierceRemain: p.pierceCount,
@@ -1225,7 +1476,7 @@
 
                 if (state.joyActive && (state.joyDX !== 0 || state.joyDY !== 0)) {
                     // 移动端摇杆：方向 * 速度 持续移动（束缚区域内减速）
-                    const joySpeed = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1)
+                    const joySpeed = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1) * p.speedMul
                     p.x += state.joyDX * joySpeed * dt
                     p.y += state.joyDY * joySpeed * dt
                     // 同步目标点，防止松开摇杆后被拉回
@@ -1241,7 +1492,7 @@
                     if (state.keys.d) mx += 1
                     if (mx !== 0 || my !== 0) {
                         const len = Math.hypot(mx, my)
-                        const mv = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1)
+                        const mv = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1) * p.speedMul
                         p.x += (mx / len) * mv * dt
                         p.y += (my / len) * mv * dt
                     }
@@ -1250,7 +1501,7 @@
                     const dy = state.targetY - p.y
                     const distMove = Math.hypot(dx, dy)
                     if (distMove > 2) {
-                        const moveSpeed = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1)
+                        const moveSpeed = p.speed * speedMult * (state._playerSlowed ? 0.5 : 1) * p.speedMul
                         const step = Math.min(moveSpeed * dt, distMove)
                         p.x += (dx / distMove) * step
                         p.y += (dy / distMove) * step
@@ -1281,12 +1532,22 @@
 
                 if (p.attackEffectTimer > 0) p.attackEffectTimer -= dt
 
+                // 换弹：计时结束补满弹夹，期间不能射击
+                if (p.reloading) {
+                    p.reloadTimer -= dt
+                    if (p.reloadTimer <= 0) {
+                        p.reloading = false
+                        p.magAmmo = p.magSize
+                        spawnFloatText(p.x, p.y - p.radius - 16, '换弹完成', '#88ddff')
+                    }
+                }
+
                 p.attackTimer -= dt
                 if (p.attackTimer <= 0) {
                     if (state.controlMode === 'keyboard') {
                         // 键盘模式：朝鼠标方向射击（按住左键，或勾选自动射击）
                         const wantFire = state.mouseDown || state.autoFire
-                        if (wantFire) {
+                        if (wantFire && !p.reloading) {
                             const aimAngle = Math.atan2(state.targetY - p.y, state.targetX - p.x)
                             fireAttackBatch(null, aimAngle, false)
                             if (p.extraAttackCount > 0) {
@@ -1300,7 +1561,7 @@
                         } else {
                             p.attackTimer = 0.05
                         }
-                    } else if (nearest && nearDist < p.range) {
+                    } else if (nearest && nearDist < p.range && !p.reloading) {
                         fireAttackBatch(nearest)
                         if (p.extraAttackCount > 0) {
                             p._extraPending = p.extraAttackCount
@@ -2553,6 +2814,26 @@
                 ctx.fillStyle = p.gunColor || '#88ddff'
                 ctx.fill()
 
+                // 狙击枪：瞄准线（直线贯穿视口，红色虚线 + 末端准星）
+                if (p.gunType === 'sniper' && !p.reloading) {
+                    const aimLen = Math.hypot(canvasW, canvasH) + 200
+                    const ax = p.x + fd.x * barrelLen
+                    const ay = p.y + fd.y * barrelLen
+                    ctx.beginPath()
+                    ctx.moveTo(ax, ay)
+                    ctx.lineTo(ax + fd.x * aimLen, ay + fd.y * aimLen)
+                    ctx.strokeStyle = 'rgba(255,80,80,0.35)'
+                    ctx.lineWidth = 1
+                    ctx.setLineDash([10, 6])
+                    ctx.stroke()
+                    ctx.setLineDash([])
+                    ctx.beginPath()
+                    ctx.arc(ax + fd.x * aimLen, ay + fd.y * aimLen, 4, 0, Math.PI * 2)
+                    ctx.strokeStyle = 'rgba(255,120,120,0.8)'
+                    ctx.lineWidth = 1.5
+                    ctx.stroke()
+                }
+
                 if (p.attackEffectTimer > 0) {
                     const progress = 1 - p.attackEffectTimer / 0.12
                     const alpha = Math.max(0, 1 - progress * 1.3)
@@ -2725,6 +3006,12 @@
                 // 右上角状态栏：整数显示
                 const hpShown = Math.floor(p.hp)
                 hpDisplay.textContent = `${hpShown}/${p.maxHp}`
+                // 弹药显示：∞ 或 当前/弹容，换弹中显示倒计时
+                if (p.magSize > 0) {
+                    magDisplay.textContent = p.reloading ? `换弹中${Math.ceil(p.reloadTimer)}s` : `${Math.floor(p.magAmmo)}/${p.magSize}`
+                } else {
+                    magDisplay.textContent = '∞'
+                }
                 // 等级显示在血条左侧
                 lvlDisplay.textContent = `Lv.${p.level}`
                 // 左上角血条：显示 2 位小数
@@ -2888,6 +3175,12 @@
                     { key: 'hitDuration', label: '命中时长 (秒)', type: 'number', step: '0.01' },
                     { key: 'hitDecay', label: '命中衰减速度', type: 'number', step: '0.5' },
                     { key: 'hitVolume', label: '命中音量', type: 'number', step: '0.01' },
+                    { key: 'gunType', label: '武器类型 (pistol/shotgun/smg/gatling/sniper)', type: 'select', options: ['pistol', 'shotgun', 'smg', 'gatling', 'sniper'] },
+                    { key: 'magSize', label: '弹夹容量 (0=无限)', type: 'number' },
+                    { key: 'reloadTime', label: '换弹时间 (秒)', type: 'number', step: '0.1' },
+                    { key: 'pelletCount', label: '散弹弹丸数', type: 'number' },
+                    { key: 'spreadDeg', label: '散弹扇形角 (度)', type: 'number' },
+                    { key: 'barrelCount', label: '加特林枪口数', type: 'number' },
                 ]
 
                 let html = ''
@@ -2919,7 +3212,8 @@
                 const fields = ['id', 'name', 'desc', 'icon', 'color', 'bulletLength', 'bulletWidth', 'atk', 'range',
                     'attackSpeed', 'bulletSpeedMult', 'bulletCount', 'pierceCount', 'extraAttackCount', 'firePattern',
                     'spreadAngle', 'burstCount', 'burstDelay', 'shootDuration', 'shootDecay', 'shootVolume',
-                    'hitDuration', 'hitDecay', 'hitVolume'
+                    'hitDuration', 'hitDecay', 'hitVolume', 'gunType', 'magSize', 'reloadTime', 'pelletCount',
+                    'spreadDeg', 'barrelCount'
                 ]
                 const data = {}
                 fields.forEach(key => {
@@ -2987,6 +3281,18 @@
                 p.scatterCount = 0
                 p.ricochetCount = 0
                 p.hurtFlashTimer = 0
+                // 武器类型 + 弹夹初始化
+                p.gunType = gun.gunType || 'pistol'
+                p.magSize = gun.magSize || 0
+                p.magAmmo = p.magSize > 0 ? p.magSize : 0
+                p.magSizeBonus = 0
+                p.reloading = false
+                p.reloadTimer = 0
+                p.reloadTimeMult = 1
+                // 加特林移速 -25%，其余武器不受影响
+                p.speedMul = p.gunType === 'gatling' ? 0.75 : 1
+                p.shotgunSpread = gun.spreadDeg || 50
+                p.gatlingBarrel = 0
 
                 p.totalKills = 0
                 p.currentKills = 0

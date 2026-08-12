@@ -1456,28 +1456,28 @@
                     return
                 }
 
-                // ---- 奥特曼：等距长方长条形射线（沿直线等距排布的长条粒子，不锥形不追进） ----
+                // ---- 奥特曼：直线粒子射线（大量小粒子沿直线飞行，速度差异逐段追进，不锥形扩散） ----
                 if (p.gunType === 'ultraman') {
                     const beams = 1 + (p.beamDouble || 0)
                     const boost = 1 + (p.beamBoost || 0)
                     const rangeMult = 1 + (p.beamRange || 0)
-                    const beamLife = 0.6 * rangeMult
-                    const beamDmg = r2(p.atk * 0.25 * boost)
+                    const beamLife = 0.45 * rangeMult
+                    const beamDmg = r2(p.atk * 0.18 * boost)
                     for (let b = 0; b < beams; b++) {
-                        const off = (b - (beams - 1) / 2) * 20
+                        const off = (b - (beams - 1) / 2) * 16
                         const sgx2 = p.x + Math.cos(baseAngle) * barrelLen - Math.sin(baseAngle) * off
                         const sgy2 = p.y + Math.sin(baseAngle) * barrelLen + Math.cos(baseAngle) * off
-                        // 每 tick 3 颗长条粒子，沿方向等距错开 20px（= tick 间距），等速前进组成等距长条射线
-                        for (let s = 0; s < 3; s++) {
-                            const a = baseAngle + rand(-0.01, 0.01)
-                            const o2 = s * 20
+                        // 大量小粒子（每 tick 6 颗），方向严格直线（±0.7°），速度差异形成追进感
+                        for (let s = 0; s < 6; s++) {
+                            const a = baseAngle + rand(-0.012, 0.012)
+                            const spd = currentSpeed * rand(0.6, 1.4)
                             state.projectiles.push({
-                                x: sgx2 + Math.cos(a) * o2,
-                                y: sgy2 + Math.sin(a) * o2,
-                                vx: Math.cos(a) * currentSpeed * 0.5,
-                                vy: Math.sin(a) * currentSpeed * 0.5,
-                                length: rand(12, 16),
-                                width: 2,
+                                x: sgx2,
+                                y: sgy2,
+                                vx: Math.cos(a) * spd,
+                                vy: Math.sin(a) * spd,
+                                length: rand(2, 4),
+                                width: 1,
                                 sparkLine: true,
                                 sparkColor: '#8fe8ff',
                                 damage: beamDmg,

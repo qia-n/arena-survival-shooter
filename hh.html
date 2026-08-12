@@ -2651,17 +2651,17 @@
                     const bR = p.radius + 6
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
-                    for (let s = 0; s < 2; s++) {
-                        // 真实加特林火力线：弹头等距均匀排布（组内 25px ≈ tick 间距 20px），连续火线不连条
+                    for (let s = 0; s < 3; s++) {
+                        // 小火花密集火线：细碎火花（2-5px）沿直线均匀排布，高速喷涌有压制感
                         const a = baseAngle + rand(-0.009, 0.009)
-                        const off = s * 25
+                        const off = s * 8
                         state.projectiles.push({
                             x: sgx + Math.cos(a) * off,
                             y: sgy + Math.sin(a) * off,
                             vx: Math.cos(a) * currentSpeed,
                             vy: Math.sin(a) * currentSpeed,
-                            length: rand(10, 14),
-                            width: 1.2,
+                            length: rand(2, 5),
+                            width: 1,
                             damage: r2(p.atk * 0.25),
                             life: 1.2,
                             isHoming: false,

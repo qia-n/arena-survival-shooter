@@ -590,16 +590,27 @@
                     let cleared = 0
                     for (let i = state.enemies.length - 1; i >= 0; i--) {
                         const e = state.enemies[i]
+                        // 清场与正常击杀一致：母体孵化小怪不计入统计（防刷）
                         if (!e.isBoss) {
                             spawnDeathPowder(e.x, e.y, 55)
                             state.enemies.splice(i, 1)
-                            cleared++
+                            if (!e.isMotherMinion) cleared++
                         }
                     }
                     if (cleared > 0) {
                         const p = state.player
                         p.totalKills += cleared
                         p.currentKills += cleared
+                        // 清场击杀也触发攻击吸取（与普通击杀一致）
+                        const stealChance = p.stealLevel > 0 ? STEAL_CHANCES[p.stealLevel] : 0
+                        if (stealChance > 0) {
+                            for (let si = 0; si < cleared; si++) {
+                                if (Math.random() < stealChance) {
+                                    p.atk = r2(p.atk + STEAL_ATK_BONUS)
+                                    spawnFloatText(p.x, p.y - p.radius - 12, '+' + STEAL_ATK_BONUS.toFixed(1), '#ffd700')
+                                }
+                            }
+                        }
                         checkUpgradeAndBoss()
                     }
                 }
@@ -1406,8 +1417,30 @@
                                 let da = Math.abs(hitAng - faceAng)
                                 if (da > Math.PI) da = Math.PI * 2 - da
                                 if (da < Math.PI / 2) hitDmg = hitDmg * 0.5
+                            } else if (e.type === 'charger' && e.chargeState === 'dash') {
+                                // 冲锋怪冲锋中：正面（冲锋方向）减伤 50%，背后可打全额
+                                const hitAng = Math.atan2(proj.y - e.y, proj.x - e.x)
+                                let da = Math.abs(hitAng - e.chargeAngle)
+                                if (da > Math.PI) da = Math.PI * 2 - da
+                                if (da < Math.PI / 2) hitDmg = hitDmg * 0.5
                             }
-                            e.hp = r2(e.hp - hitDmg)
+                            if (e.isBoss) {
+                                // Boss 霸体：不受击退；有霸体时 40% 伤害转为霸体消耗（减伤），霸体耗尽进入破防静止
+                                if (e.armor > 0) {
+                                    e.hp = r2(e.hp - hitDmg * 0.6)
+                                    e.armor = r2(e.armor - hitDmg * 0.4)
+                                    if (e.armor <= 0 && e.armorBreakTimer <= 0) {
+                                        e.armor = 0
+                                        e.armorBreakTimer = 2.5
+                                        spawnFloatText(e.x, e.y - e.radius - 20, '💥 破防！', '#ffcc00')
+                                        state.attackFx.push({ type: 'blast', x: e.x, y: e.y, angle: 0, life: 0.3, maxLife: 0.3 })
+                                    }
+                                } else {
+                                    e.hp = r2(e.hp - hitDmg)
+                                }
+                            } else {
+                                e.hp = r2(e.hp - hitDmg)
+                            }
                             e.flashTimer = 0.2
                             playHitSound(state.selectedGun)
                             spawnHitParticles(proj.x, proj.y, 16)
@@ -1418,10 +1451,13 @@
                                 spawnFloatText(p.x, p.y - p.radius - 12, '+' + p.lifeSteal.toFixed(1), '#7CFC00')
                             }
 
-                            const knockbackStrength = 30 + proj.damage * 5
-                            const angle = Math.atan2(proj.vy, proj.vx)
-                            e.knockbackX = Math.cos(angle) * knockbackStrength
-                            e.knockbackY = Math.sin(angle) * knockbackStrength
+                            if (!e.isBoss) {
+                                // Boss 霸体免疫击退；普通敌人正常击退
+                                const knockbackStrength = 30 + proj.damage * 5
+                                const angle = Math.atan2(proj.vy, proj.vx)
+                                e.knockbackX = Math.cos(angle) * knockbackStrength
+                                e.knockbackY = Math.sin(angle) * knockbackStrength
+                            }
 
                             const shouldSplit = (proj.splitRemain > 0 && proj.damage > 0.3)
                             if (shouldSplit) {
@@ -2154,6 +2190,22 @@
                     }
 
                     if (e.isBoss) {
+                        // 霸体视觉：有霸体时金色细环；破防静止时黄色闪烁
+                        if (e.armor > 0) {
+                            const ar = e.radius + 6 + 2 * Math.sin(performance.now() / 300)
+                            ctx.beginPath()
+                            ctx.arc(e.x, e.y, ar, 0, Math.PI * 2)
+                            ctx.strokeStyle = 'rgba(255,215,80,0.5)'
+                            ctx.lineWidth = 1.5
+                            ctx.stroke()
+                        } else if (e.armorBreakTimer > 0) {
+                            const fp = 0.5 + 0.5 * Math.sin(performance.now() / 80)
+                            ctx.beginPath()
+                            ctx.arc(e.x, e.y, e.radius + 6, 0, Math.PI * 2)
+                            ctx.strokeStyle = 'rgba(255,220,120,' + (0.4 + 0.4 * fp).toFixed(3) + ')'
+                            ctx.lineWidth = 2
+                            ctx.stroke()
+                        }
                         const cy = e.y - e.radius - 12
                         const cw = 20
                         ctx.beginPath()
@@ -2179,15 +2231,31 @@
                         ctx.lineWidth = 2
                         ctx.stroke()
                     }
-                    if (e.type === 'charger' && e.chargeState === 'windup') {
+                    if (e.type === 'charger' && (e.chargeState === 'windup' || e.chargeState === 'dash')) {
+                        // 冲锋预警/冲锋过程持续显示冲刺通道（windup 蓄力、dash 跟随冲锋怪移动）
+                        const w = e.chargeState === 'dash' ? 0.14 : 0.12
                         ctx.save()
                         ctx.translate(e.x, e.y)
                         ctx.rotate(e.chargeAngle)
-                        ctx.fillStyle = 'rgba(255,170,60,0.12)'
-                        ctx.strokeStyle = 'rgba(255,190,80,0.55)'
+                        ctx.fillStyle = 'rgba(255,170,60,' + w.toFixed(2) + ')'
+                        ctx.strokeStyle = 'rgba(255,190,80,' + (e.chargeState === 'dash' ? 0.65 : 0.55).toFixed(2) + ')'
                         ctx.lineWidth = 1.5
                         ctx.fillRect(0, -e.radius - 5, e.chargeDist, (e.radius + 5) * 2)
                         ctx.strokeRect(0, -e.radius - 5, e.chargeDist, (e.radius + 5) * 2)
+                        ctx.restore()
+                    }
+                    if (e.type === 'charger' && e.chargeState === 'dash') {
+                        // 冲锋正面减伤护盾（面朝方向半圆弧）
+                        ctx.save()
+                        ctx.translate(e.x, e.y)
+                        ctx.rotate(e.chargeAngle)
+                        ctx.beginPath()
+                        ctx.arc(e.radius, 0, e.radius + 4, -Math.PI / 2, Math.PI / 2)
+                        ctx.strokeStyle = 'rgba(255,220,120,0.9)'
+                        ctx.lineWidth = 2.5
+                        ctx.stroke()
+                        ctx.fillStyle = 'rgba(255,210,100,0.18)'
+                        ctx.fill()
                         ctx.restore()
                     }
                     if (e.type === 'healer') {

@@ -2643,14 +2643,15 @@
                     const sgx = p.x + Math.cos(baseAngle) * bR + Math.cos(bAng + baseAngle) * 12
                     const sgy = p.y + Math.sin(baseAngle) * bR + Math.sin(bAng + baseAngle) * 12
                     for (let s = 0; s < 4; s++) {
-                        const a = baseAngle + rand(-0.087, 0.087)
-                        const spd = currentSpeed * (0.9 + Math.random() * 0.25)
+                        // 长条形火花流：散布极小（±0.7°），速度差异拉出前后延伸的拖尾
+                        const a = baseAngle + rand(-0.012, 0.012)
+                        const spd = currentSpeed * (0.7 + Math.random() * 0.5)
                         state.projectiles.push({
                             x: sgx,
                             y: sgy,
                             vx: Math.cos(a) * spd,
                             vy: Math.sin(a) * spd,
-                            length: rand(2, 5),
+                            length: rand(3, 8),
                             width: 1,
                             damage: r2(p.atk * 0.25),
                             life: 1.2,

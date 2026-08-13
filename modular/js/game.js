@@ -3996,6 +3996,12 @@
             btnFullscreenHud.addEventListener('click', toggleFullscreen)
 
             btnManageGuns.addEventListener('click', () => {
+                // 武器管理：需解锁奥特曼武器后才能使用
+                const ultraGun = GUNS.find(g => g.id === 'ultraman')
+                if (ultraGun && !isGunUnlocked(ultraGun)) {
+                    alert('🔒 需要先解锁奥特曼武器，才能使用武器管理功能')
+                    return
+                }
                 homeOverlay.style.display = 'none'
                 manageOverlay.style.display = 'flex'
                 renderManageList()

@@ -236,6 +236,16 @@
             border-radius: 2px;
             transition: width 0.1s linear;
         }
+        /* 新武器解锁提示条 */
+        .unlock-tip {
+            background: rgba(255, 215, 80, 0.15);
+            border: 1px solid rgba(255, 215, 80, 0.5);
+            color: #ffd700;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: center;
+        }
         .arena-overlay {
             position: absolute;
             top: 0;
@@ -922,6 +932,7 @@
                 reloadTime: 1.2,
                 pelletCount: 9,
                 spreadDeg: 50,
+                unlock: { kills: 100 },
             }, {
                 id: 'smg',
                 name: '冲锋枪',
@@ -950,6 +961,7 @@
                 gunType: 'smg',
                 magSize: 25,
                 reloadTime: 1.5,
+                unlock: { kills: 200 },
             }, {
                 id: 'gatling',
                 name: '加特林',
@@ -979,6 +991,7 @@
                 magSize: 500,
                 reloadTime: 2.5,
                 barrelCount: 7,
+                unlock: { kills: 500, wave: 25 },
             }, {
                 id: 'sniper',
                 name: '狙击枪',
@@ -1007,6 +1020,7 @@
                 gunType: 'sniper',
                 magSize: 4,
                 reloadTime: 3,
+                unlock: { kills: 350 },
             }, {
                 id: 'ultraman',
                 name: '奥特曼',
@@ -1036,6 +1050,7 @@
                 magSize: 0,
                 reloadTime: 0,
                 barrelCount: 16,
+                unlock: { kills: 700, wave: 30 },
             }, ]
 
             function genId() {
@@ -5317,9 +5332,29 @@
             }
 
             /* ---- 枪械管理 ---- */
+            // 武器解锁判定（击杀数 + 波数，无 unlock 字段的武器默认解锁）
+            function isGunUnlocked(gun) {
+                if (!gun.unlock) return true
+                if (state.player.totalKills < (gun.unlock.kills || 0)) return false
+                if (state.highestWave < (gun.unlock.wave || 0)) return false
+                return true
+            }
+
             function renderHomeList() {
                 gunList.innerHTML = ''
-                GUNS.forEach(gun => {
+                // 未解锁武器直接隐藏
+                const unlockedGuns = GUNS.filter(isGunUnlocked)
+                // 新解锁提示（本次会话首次出现）
+                if (!state._seenUnlocks) state._seenUnlocks = new Set()
+                const newly = unlockedGuns.filter(g => g.unlock && !state._seenUnlocks.has(g.id))
+                newly.forEach(g => state._seenUnlocks.add(g.id))
+                if (newly.length > 0) {
+                    const tip = document.createElement('div')
+                    tip.className = 'unlock-tip'
+                    tip.textContent = '🔓 新武器解锁：' + newly.map(g => g.name).join('、')
+                    gunList.prepend(tip)
+                }
+                unlockedGuns.forEach(gun => {
                     const card = document.createElement('div')
                     card.className = 'gun-card'
                     if (state.homeSelectedGun && state.homeSelectedGun.id === gun.id) card.classList.add('selected')
@@ -5345,11 +5380,15 @@
                     })
                     gunList.appendChild(card)
                 })
-                // 默认选中第一把枪
-                if (!state.homeSelectedGun && GUNS.length > 0) {
-                    state.homeSelectedGun = GUNS[0]
-                    const first = gunList.querySelector('.gun-card')
-                    if (first) first.classList.add('selected')
+                // 默认选中第一把已解锁的枪（防止选中未解锁武器）
+                if (!state.homeSelectedGun || !isGunUnlocked(state.homeSelectedGun)) {
+                    if (unlockedGuns.length > 0) {
+                        state.homeSelectedGun = unlockedGuns[0]
+                        const first = gunList.querySelector('.gun-card')
+                        if (first) first.classList.add('selected')
+                    } else {
+                        state.homeSelectedGun = null
+                    }
                 }
             }
 

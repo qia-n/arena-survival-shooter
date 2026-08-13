@@ -459,10 +459,20 @@
             /* ─── 持久化 ──────────────────────────── */
             function saveRecord() {
                 try {
+                    // 合并 localStorage 中已有的解锁列表（防止控制台手动添加/其他页面写入的解锁被覆盖）
+                    let existing = []
+                    try {
+                        const saved = localStorage.getItem(STORAGE_KEY)
+                        if (saved) {
+                            const d = JSON.parse(saved)
+                            existing = d.unlockedGuns || []
+                        }
+                    } catch (_) {}
+                    const merged = Array.from(new Set([...existing, ...state._unlockedGuns]))
                     localStorage.setItem(STORAGE_KEY, JSON.stringify({
                         highestWave: state.highestWave,
                         highestKills: state.highestKills,
-                        unlockedGuns: Array.from(state._unlockedGuns || []),
+                        unlockedGuns: merged,
                     }))
                 } catch (_) { /* ignore */ }
             }

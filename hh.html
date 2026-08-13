@@ -2125,7 +2125,9 @@
 
             function startArtillerySkill(e) {
                 const pl = state.player
-                if (e.skillIndex === 0) {
+                // 编辑器预览支持锁定技能（游戏内 lockSkillIndex 不存在，行为不变）
+                const si = e.lockSkillIndex !== undefined ? e.lockSkillIndex : e.skillIndex
+                if (si === 0) {
                     // 技能1：扇形散射 1-3 波
                     e.skillState = 'skill1'
                     e.skillAngle = Math.atan2(pl.y - e.y, pl.x - e.x)
@@ -2148,7 +2150,8 @@
 
             function finishArtillerySkill(e) {
                 e.skillState = 'idle'
-                e.skillIndex = (e.skillIndex + 1) % 3
+                // 编辑器预览锁定技能时保持；游戏内 lockSkillIndex 不存在 → 正常轮询
+                e.skillIndex = e.lockSkillIndex !== undefined ? e.lockSkillIndex : (e.skillIndex + 1) % 3
                 // 技能间隔按阶段频率档位（普通形态更慢 / 狂暴更快）
                 e.skillTimer = ARTY.skillInterval / bossStageF(e).freq
                 e.warn = null

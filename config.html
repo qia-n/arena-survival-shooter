@@ -3,77 +3,137 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>敌人 / Boss 配置管理</title>
+<title>敌人 / Boss 低代码配置台</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0d1117; color: #e6edf3; font-family: system-ui, "Microsoft YaHei", sans-serif; }
-  header { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: #161b22; border-bottom: 1px solid #30363d; flex-wrap: wrap; }
-  header h1 { font-size: 16px; margin-right: 8px; }
+  header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #161b22; border-bottom: 1px solid #30363d; flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin-right: 6px; }
+  .spacer { flex: 1; }
   button, .btn { background: #21262d; color: #e6edf3; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; }
   button:hover, .btn:hover { background: #30363d; }
   #btnSave { background: #238636; border-color: #2ea043; }
-  .status { color: #7ee787; font-size: 12px; margin-left: auto; }
-  .layout { display: grid; grid-template-columns: 200px 1fr 320px; gap: 0; min-height: calc(100vh - 53px); }
-  .sidebar { border-right: 1px solid #30363d; padding: 10px; overflow-y: auto; max-height: calc(100vh - 53px); }
-  .grp-title { font-size: 12px; color: #8b949e; margin: 8px 2px 4px; }
-  .item { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-radius: 6px; cursor: pointer; margin-bottom: 2px; font-size: 13px; }
-  .item:hover { background: #21262d; }
-  .item.active { background: #1f6feb33; color: #79c0ff; }
-  .item.off { opacity: 0.45; }
-  .item .del { color: #f85149; cursor: pointer; padding: 0 4px; font-size: 12px; }
-  .add { width: 100%; margin-top: 10px; font-size: 12px; }
-  .panel { padding: 14px; overflow-y: auto; max-height: calc(100vh - 53px); }
-  .panel h2 { font-size: 15px; margin-bottom: 4px; color: #79c0ff; }
-  .panel .desc { font-size: 12px; color: #8b949e; margin-bottom: 12px; }
-  .field { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .field label { width: 210px; font-size: 13px; color: #c9d1d9; text-align: right; flex-shrink: 0; }
-  .field input[type=number] { width: 110px; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 5px; padding: 4px 8px; font-size: 13px; }
-  .field input[type=checkbox] { width: 16px; height: 16px; }
-  .field .unit { font-size: 11px; color: #8b949e; }
-  .field.enabled-row { background: #161b22; padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; }
-  .field.enabled-row label { width: auto; font-weight: 600; }
+  .hidden { display: none !important; }
+  .status { color: #7ee787; font-size: 12px; }
+  main { padding: 14px 16px; max-width: 1280px; margin: 0 auto; }
+  /* ---- 列表 ---- */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+  #searchInput { flex: 1; min-width: 220px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 7px 12px; font-size: 13px; }
+  .table { border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+  .thead, .row { display: grid; grid-template-columns: 1.4fr 1fr 2fr 70px 150px; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; }
+  .thead { background: #161b22; color: #8b949e; font-size: 12px; }
+  .row { border-top: 1px solid #21262d; cursor: pointer; }
+  .row:hover { background: #161b22; }
+  .row.off .nm { opacity: 0.4; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; background: #21262d; color: #79c0ff; }
+  .tag.boss { background: #3d2c00; color: #ffd700; }
+  .tag.offline { background: #2d1b1b; color: #f85149; }
+  .row .ops button { padding: 3px 8px; font-size: 12px; margin-right: 4px; }
+  .row .ops button.del { color: #f85149; }
+  .switch { width: 34px; height: 18px; border-radius: 9px; background: #30363d; position: relative; cursor: pointer; transition: .2s; }
+  .switch.on { background: #2ea043; }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: .2s; }
+  .switch.on::after { left: 18px; }
+  /* ---- 详情 ---- */
+  #btnBack { display: inline-flex; align-items: center; }
+  .detail { display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
+  .detail h2 { font-size: 16px; color: #79c0ff; margin-bottom: 4px; }
+  .d-sub { font-size: 12px; color: #8b949e; margin-bottom: 10px; }
   .stats { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #c9d1d9; margin-bottom: 12px; line-height: 1.7; }
   .stats span { margin-right: 10px; white-space: nowrap; }
   .stats b { color: #7ee787; }
-  .preview { border-left: 1px solid #30363d; display: flex; flex-direction: column; }
-  .pv-head { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid #30363d; }
+  .sec { margin-bottom: 14px; }
+  .sec-title { font-size: 13px; font-weight: 600; color: #c9d1d9; margin-bottom: 8px; padding-left: 8px; border-left: 3px solid #1f6feb; }
+  .field { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .field label { width: 180px; font-size: 12.5px; color: #c9d1d9; text-align: right; flex-shrink: 0; }
+  .field input[type=number] { width: 100px; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 5px; padding: 3px 7px; font-size: 13px; }
+  .field .unit { font-size: 11px; color: #8b949e; }
+  .en-row { background: #161b22; padding: 6px 10px; border-radius: 6px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .en-row label { font-weight: 600; }
+  .en-row input[type=checkbox] { width: 16px; height: 16px; }
+  /* ---- 技能卡 ---- */
+  .skill-card { border: 1px solid #30363d; border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: #10151d; }
+  .skill-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; user-select: none; }
+  .skill-head:hover { background: #161b22; }
+  .skill-head input[type=checkbox] { width: 15px; height: 15px; }
+  .skill-name { font-size: 13px; flex: 1; }
+  .skill-head .pv-btn { padding: 3px 10px; font-size: 12px; background: #1f6feb; border-color: #388bfd; color: #fff; }
+  .skill-head .pv-btn:hover { background: #388bfd; }
+  .skill-body { padding: 8px 12px 10px 38px; border-top: 1px solid #21262d; display: none; }
+  .skill-card.open .skill-body { display: block; }
+  .skill-body .field label { width: 170px; }
+  .skill-body .field input[type=number] { width: 92px; }
+  .skill-off { opacity: 0.45; }
+  .hint { font-size: 11px; color: #8b949e; padding: 4px 0 8px; }
+  /* ---- 预览 ---- */
+  .pv-box { border: 1px solid #30363d; border-radius: 8px; overflow: hidden; align-self: start; position: sticky; top: 14px; }
+  .pv-head { display: flex; align-items: center; gap: 8px; padding: 9px 10px; background: #161b22; border-bottom: 1px solid #30363d; flex-wrap: wrap; }
   #pvName { font-size: 13px; color: #79c0ff; flex: 1; }
-  canvas { display: block; background: #0a0e14; }
+  .pv-head button { padding: 4px 9px; font-size: 12px; }
+  canvas { display: block; background: #0a0e14; width: 100%; }
   .pv-hint { font-size: 11px; color: #8b949e; padding: 6px 10px; }
-  .msg { position: fixed; top: 60px; right: 20px; background: #238636; color: #fff; padding: 8px 14px; border-radius: 6px; font-size: 13px; z-index: 99; transition: opacity .4s; }
+  .msg { position: fixed; top: 60px; right: 20px; background: #238636; color: #fff; padding: 8px 14px; border-radius: 6px; font-size: 13px; z-index: 99; }
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .modal { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 18px; width: 380px; }
+  .modal h3 { font-size: 15px; margin-bottom: 12px; }
+  .modal .m-item { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 6px; border: 1px solid #30363d; background: #21262d; margin-bottom: 8px; cursor: pointer; font-size: 13px; }
+  .modal .m-item:hover { background: #30363d; }
+  .modal input[type=text] { width: 100%; padding: 7px 10px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #e6edf3; margin-bottom: 8px; font-size: 13px; }
+  .modal .m-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>⚙ 敌人 / Boss 配置管理</h1>
+  <h1>⚙ 敌人 / Boss 低代码配置台</h1>
+  <button id="btnBack" class="hidden">← 返回列表</button>
+  <div class="spacer"></div>
   <button id="btnSave">💾 保存到游戏</button>
-  <button id="btnExport">📤 导出 JSON</button>
-  <button id="btnImport">📥 导入 JSON</button>
+  <button id="btnExport">📤 导出</button>
+  <button id="btnImport">📥 导入</button>
   <button id="btnReset">↺ 恢复默认</button>
-  <a class="btn" href="hh.html" target="_blank">▶ 打开游戏测试</a>
+  <a class="btn" href="hh.html" target="_blank">▶ 打开游戏</a>
   <span class="status" id="status"></span>
 </header>
-<div class="layout">
-  <aside class="sidebar">
-    <div class="grp-title">普通敌人</div>
-    <div id="listEnemies"></div>
-    <div class="grp-title">大型 Boss</div>
-    <div id="listBosses"></div>
-    <div class="grp-title">全局参数</div>
-    <div class="item" data-unit="global">⚙ 全局参数</div>
-    <button class="add" id="btnAddEnemy">+ 新增敌人（复制模板）</button>
-  </aside>
-  <main class="panel" id="form"></main>
-  <section class="preview">
-    <div class="pv-head">
-      <span id="pvName">选择左侧单位进行预览</span>
-      <button id="pvPlay">▶ 沙盒演示</button>
-      <button id="pvStop">⏹ 停止</button>
+<main>
+  <section id="listView">
+    <div class="toolbar">
+      <input id="searchInput" placeholder="🔍 搜索敌人 / Boss（名称 / 类型）…">
+      <button id="btnAddEnemy">+ 新增敌人</button>
+      <button id="btnAddBoss">+ 新增 Boss</button>
     </div>
-    <canvas id="pv" width="320" height="380"></canvas>
-    <div class="pv-hint">沙盒：真实 AI 运行（预警/攻击/技能），白点 = 假玩家自动移动；敌人 AI 基于本页配置</div>
+    <div class="table">
+      <div class="thead"><span>名称</span><span>类型</span><span>关键数值</span><span>启用</span><span>操作</span></div>
+      <div id="tableBody"></div>
+    </div>
   </section>
-</div>
+  <section id="detailView" class="hidden">
+    <div class="detail">
+      <div class="detail-left">
+        <h2 id="dTitle"></h2>
+        <div class="d-sub" id="dSub"></div>
+        <div class="stats" id="dStats"></div>
+        <div class="sec">
+          <div class="sec-title">📋 基础属性</div>
+          <div id="dProps"></div>
+        </div>
+        <div class="sec" id="dSkillsSec">
+          <div class="sec-title">🎯 技能绑定（仅编辑器内生效）</div>
+          <div class="hint">勾选 = 该 Boss 可使用的技能；点击技能名展开参数；▶ 单独预览该技能（无假玩家）</div>
+          <div id="dSkills"></div>
+        </div>
+      </div>
+      <div class="pv-box">
+        <div class="pv-head">
+          <span id="pvName">未预览</span>
+          <button id="pvPlay">▶ AI 演示</button>
+          <button id="pvStop">⏹ 停止</button>
+        </div>
+        <canvas id="pv" width="360" height="400"></canvas>
+        <div class="pv-hint">AI 演示：带自动走位假玩家，真实 AI 全流程；技能卡上的 ▶ 可单独预览单技能</div>
+      </div>
+    </div>
+  </section>
+</main>
 <input type="file" id="fileInput" accept=".json" style="display:none">
 
 <script src="modular/js/constants.js"></script>
@@ -81,33 +141,32 @@
 <script src="modular/js/enemies.js"></script>
 <script>
 (function () {
-  const KEY = 'enemy_config_v2'
   const $ = id => document.getElementById(id)
   const deepCopy = o => JSON.parse(JSON.stringify(o))
-  // G 是 enemy-config.js 的局部名，挂在 window 上的是 ENEMY_CFG/ENEMY_CONFIG
   const cfgDefault = () => deepCopy(window.ENEMY_CFG || window.ENEMY_CONFIG)
+  const KEY = 'enemy_config_v2'
+  const SKILL_KEY = 'enemy_editor_skills'
 
-  // 当前编辑配置（从 localStorage 读；无则默认）
+  // ---- 配置加载（localStorage 覆盖 + 结构兜底） ----
   let cfg = null
-  try {
-    const saved = localStorage.getItem(KEY)
-    cfg = saved ? JSON.parse(saved) : null
-  } catch (_) {}
-  if (!cfg) cfg = cfgDefault()
-  else cfg = Object.assign(cfgDefault(), cfg) // 结构兜底
+  try { const s = localStorage.getItem(KEY); cfg = s ? JSON.parse(s) : null } catch (_) {}
+  if (!cfg) cfg = cfgDefault(); else cfg = Object.assign(cfgDefault(), cfg)
+  // 编辑器技能绑定（仅编辑器侧，不影响游戏）
+  let bind = {}
+  try { bind = JSON.parse(localStorage.getItem(SKILL_KEY) || '{}') } catch (_) {}
+  function saveBind() { try { localStorage.setItem(SKILL_KEY, JSON.stringify(bind)) } catch (_) {} }
 
-  // 编辑单元列表
   const ENEMY_TYPES = ['melee', 'ranged', 'bomber', 'splitter', 'charger', 'healer', 'sniper', 'shield']
   const ENEMY_NAMES = { melee: '近战怪', ranged: '远程怪', bomber: '自爆怪', splitter: '分裂怪', charger: '冲锋怪', healer: '治疗怪', sniper: '狙击怪', shield: '护盾怪' }
   const ENEMY_COLORS = { melee: '#e8e8e8', ranged: '#7fd4ff', bomber: '#ff6a50', splitter: '#c792ea', charger: '#ffa040', healer: '#5fd06a', sniper: '#5fd6d6', shield: '#6f9dff' }
   const BOSS_LIST = [
-    { key: 'normalBoss', name: '普通 Boss' },
-    { key: 'meleeBoss', name: '大型近战 Boss' },
-    { key: 'artilleryBoss', name: '大型远程 Boss' },
-    { key: 'motherBoss', name: '母体 Boss' },
+    { key: 'normalBoss', name: '普通 Boss', color: '#ffd700' },
+    { key: 'meleeBoss', name: '大型近战 Boss', color: '#ff8a50' },
+    { key: 'artilleryBoss', name: '大型远程 Boss', color: '#7fb4ff' },
+    { key: 'motherBoss', name: '母体 Boss', color: '#7fe08a' },
   ]
 
-  // 字段 schema：[中文标签, min, max, step, 单位]
+  // 字段 schema：[中文标签, min, max, step]
   const SCHEMAS = {
     global: {
       enemyRadius: ['敌人半径', 5, 40, 1], bossRadius: ['普通 Boss 半径', 10, 80, 1],
@@ -125,477 +184,525 @@
     meleeAttack: { radius: ['范围半径', 50, 600, 5], len: ['长度', 50, 800, 5], halfW: ['半宽', 10, 300, 5], halfAngle: ['扇形半角(弧度)', 0.1, 3.1, 0.05] },
     artillery: {
       radius: ['体型半径', 10, 120, 1], hpBase: ['基础生命', 10, 500, 5], dmgBase: ['基础伤害', 1, 50, 1], speed: ['移速', 5, 80, 1],
-      preferredDist: ['保持距离', 100, 800, 10], skillInterval: ['技能间隔(秒)', 0.5, 10, 0.5], windup: ['技能预警(秒)', 0.2, 3, 0.1],
-      fanCount: ['扇形子弹数', 3, 60, 1], fanSpeed: ['扇形弹速', 100, 800, 10], fanRadius: ['扇形预警半径', 200, 1000, 20],
+      preferredDist: ['保持距离', 100, 800, 10], skillInterval: ['技能间隔(秒)', 0.5, 10, 0.5],
+      fanCount: ['扇形子弹数', 3, 60, 1], fanSpeed: ['扇形弹速', 100, 800, 10], fanRadius: ['扇形预警半径', 200, 1000, 20], windup: ['技能预警(秒)', 0.2, 3, 0.1],
       radialCount: ['全屏子弹数', 12, 300, 4], radialSpeed: ['全屏弹速', 100, 800, 10], radialRadius: ['全屏预警半径', 200, 1200, 20],
-      bombMin: ['轰炸最少点数', 5, 40, 1], bombMax: ['轰炸最多点数', 5, 40, 1], bombBlastRadius: ['轰炸爆炸半径', 20, 150, 5],
-      bombSpeed: ['轰炸下落速度', 400, 3000, 100], cannonSpeed: ['炮弹速度', 50, 400, 10], cannonRadius: ['炮弹半径', 8, 30, 1],
-      cannonFuse: ['炮弹引信(秒)', 0.3, 4, 0.1], normalInterval: ['普通攻击间隔(秒)', 0.5, 8, 0.5],
+      bombMin: ['轰炸最少点数', 5, 40, 1], bombMax: ['轰炸最多点数', 5, 40, 1], bombBlastRadius: ['轰炸爆炸半径', 20, 150, 5], bombSpeed: ['轰炸下落速度', 400, 3000, 100],
+      cannonSpeed: ['炮弹速度', 50, 400, 10], cannonRadius: ['炮弹半径', 8, 30, 1], cannonFuse: ['炮弹引信(秒)', 0.3, 4, 0.1], normalInterval: ['普通攻击间隔(秒)', 0.5, 8, 0.5],
     },
     mother: {
-      radius: ['体型半径', 10, 120, 1], hpBase: ['基础生命', 10, 500, 5], dmgBase: ['基础伤害', 1, 50, 1], speed: ['移速', 5, 80, 1], keepDist: ['保持距离', 100, 800, 10],
+      radius: ['体型半径', 10, 120, 1], hpBase: ['基础生命', 10, 500, 5], dmgBase: ['基础伤害', 1, 50, 1], speed: ['移速', 5, 80, 1],
       venomDmgMul: ['毒液伤害倍率', 0.1, 3, 0.05], venomSpeed: ['毒液弹速', 50, 400, 10], venomCooldown: ['毒液间隔(秒)', 0.5, 6, 0.5],
-      venomCooldownEnraged: ['狂暴毒液间隔(秒)', 0.3, 5, 0.1], venomPoisonTime: ['中毒时长(秒)', 1, 8, 0.5], venomPoisonDps: ['中毒每秒伤害', 0.5, 6, 0.1],
-      spawnInterval: ['孵化间隔(秒)', 2, 15, 0.5], spawnIntervalEnraged: ['狂暴孵化间隔(秒)', 1, 10, 0.5],
-      spawnMin: ['孵化最少', 1, 8, 1], spawnMax: ['孵化最多', 1, 8, 1], spawnMinEnraged: ['狂暴孵化最少', 1, 10, 1], spawnMaxEnraged: ['狂暴孵化最多', 1, 10, 1],
-      spawnMaxMinions: ['小怪上限', 1, 20, 1], spawnWarnTime: ['孵化预警(秒)', 0.3, 3, 0.1],
-      webCooldown: ['毒雾间隔(秒)', 3, 20, 1], webCooldownEnraged: ['狂暴毒雾间隔(秒)', 2, 15, 1], webRadius: ['毒雾半径', 40, 200, 5],
-      webLife: ['毒雾持续(秒)', 1, 8, 0.5], webPoisonTime: ['毒雾中毒时长(秒)', 1, 8, 0.5], webPoisonDps: ['毒雾每秒伤害', 0.3, 5, 0.1],
-      shockCooldown: ['冲击波间隔(秒)', 3, 20, 1], shockCooldownEnraged: ['狂暴冲击波间隔(秒)', 2, 15, 1],
-      shockCount: ['冲击波弹数', 4, 40, 2], shockCountEnraged: ['狂暴冲击波弹数', 4, 60, 2], shockSpeed: ['冲击波弹速', 50, 400, 10],
-      minionRadius: ['小怪半径', 4, 25, 1], minionSpeedBase: ['小怪速度', 30, 250, 5], minionHpMul: ['小怪血量倍率', 0.2, 3, 0.05], minionDmgMul: ['小怪伤害倍率', 0.2, 3, 0.05],
-      enrageHpRatio: ['狂暴血量比例', 0.2, 0.9, 0.05], enrageRadiusMul: ['狂暴体型倍率', 1, 2, 0.05],
+      venomPoisonTime: ['中毒时长(秒)', 1, 8, 0.5], venomPoisonDps: ['中毒每秒伤害', 0.5, 6, 0.1],
+      spawnInterval: ['孵化间隔(秒)', 2, 15, 0.5], spawnMin: ['孵化最少', 1, 8, 1], spawnMax: ['孵化最多', 1, 8, 1], spawnMaxMinions: ['小怪上限', 1, 20, 1],
+      webRadius: ['毒雾半径', 40, 200, 5], webLife: ['毒雾持续(秒)', 1, 8, 0.5], webCooldown: ['毒雾间隔(秒)', 3, 20, 1],
+      shockCount: ['冲击波弹数', 4, 40, 2], shockSpeed: ['冲击波弹速', 50, 400, 10], shockCooldown: ['冲击波间隔(秒)', 3, 20, 1],
     },
   }
-  // 近战技能名
-  const ATTACK_NAMES = { fan: '扇形横摆', slam: '方形拍击', charge: '长条冲击', dash: '冲刺', nova: '圆形冲击波' }
-  // 各单元路径与 schema
-  function unitPath(u) {
-    if (u.type === 'global') return ['cfg', null]
-    if (u.type === 'enemy') return ['cfg.enemyStats.' + u.key, 'enabled.' + u.key]
-    if (u.type === 'special') return ['cfg.specialTypes.' + u.key, 'enabled.' + u.key]
-    if (u.type === 'boss') return [null, 'enabled.' + u.key]
-    if (u.type === 'attack') return ['cfg.meleeAttacks.' + u.key, null]
-    if (u.type === 'artillery') return ['cfg.artillery', 'enabled.artilleryBoss']
-    if (u.type === 'mother') return ['cfg.mother', 'enabled.motherBoss']
-    return [null, null]
-  }
-  function resolve(obj, path) {
-    if (!path) return null
-    return path.split('.').reduce((o, k) => (o == null ? null : o[k]), obj)
-  }
-  function setPath(obj, path, val) {
-    if (!path) return
-    const keys = path.split('.')
-    const last = keys.pop()
-    let o = obj
-    keys.forEach(k => { o = o[k] })
-    o[last] = val
-  }
 
-  // ---- 列表渲染 ----
+  // ---- 技能绑定定义：id / 名称 / 参数(配置路径) / 预览锁定 ----
+  const SKILL_DEFS = {
+    normalBoss: [
+      { id: 'slam', name: '方形拍击', params: { meleeAttacks: ['len', 'halfW'] }, lock: e => { e.meleeSkills = ['slam'] } },
+      { id: 'dash', name: '冲刺', params: { meleeAttacks: ['len', 'halfW'] }, lock: e => { e.meleeSkills = ['dash'] } },
+    ],
+    meleeBoss: [
+      { id: 'fan', name: '扇形横摆', params: { meleeAttacks: ['radius', 'halfAngle'] }, lock: e => { e.meleeSkills = ['fan'] } },
+      { id: 'slam', name: '方形拍击', params: { meleeAttacks: ['len', 'halfW'] }, lock: e => { e.meleeSkills = ['slam'] } },
+      { id: 'charge', name: '长条冲击', params: { meleeAttacks: ['len', 'halfW'] }, lock: e => { e.meleeSkills = ['charge'] } },
+      { id: 'dash', name: '冲刺', params: { meleeAttacks: ['len', 'halfW'] }, lock: e => { e.meleeSkills = ['dash'] } },
+      { id: 'nova', name: '圆形冲击波', params: { meleeAttacks: ['radius'] }, lock: e => { e.meleeSkills = ['nova'] } },
+    ],
+    artilleryBoss: [
+      { id: 'fan', name: '扇形散射', params: { artillery: ['fanCount', 'fanSpeed', 'fanRadius', 'windup'] }, lock: e => { e.lockSkillIndex = 0 } },
+      { id: 'radial', name: '全屏散射', params: { artillery: ['radialCount', 'radialSpeed', 'radialRadius', 'windup'] }, lock: e => { e.lockSkillIndex = 1 } },
+      { id: 'bomb', name: '连续轰炸', params: { artillery: ['bombMin', 'bombMax', 'bombBlastRadius', 'bombSpeed'] }, lock: e => { e.lockSkillIndex = 2 } },
+      { id: 'normal', name: '普通炮弹', params: { artillery: ['cannonSpeed', 'cannonRadius', 'cannonFuse', 'normalInterval'] }, lock: e => { e.lockSkillIndex = 0; e.skillTimer = 9999; e.normalTimer = 0.3 } },
+    ],
+    motherBoss: [
+      { id: 'venom', name: '毒液弹', params: { mother: ['venomDmgMul', 'venomSpeed', 'venomCooldown'] }, lock: e => { e.venomCooldown = 0.6; e.spawnCooldown = 9999; e.webCooldown = 9999; e.shockCooldown = 9999 } },
+      { id: 'spawn', name: '孵化虫群', params: { mother: ['spawnInterval', 'spawnMin', 'spawnMax', 'spawnMaxMinions'] }, lock: e => { e.spawnCooldown = 1; e.venomCooldown = 9999; e.webCooldown = 9999; e.shockCooldown = 9999 } },
+      { id: 'web', name: '毒雾区', params: { mother: ['webRadius', 'webLife', 'webCooldown'] }, lock: e => { e.webCooldown = 1.5; e.venomCooldown = 9999; e.spawnCooldown = 9999; e.shockCooldown = 9999 } },
+      { id: 'shock', name: '虫群冲击波', params: { mother: ['shockCount', 'shockSpeed', 'shockCooldown'] }, lock: e => { e.shockCooldown = 1.5; e.venomCooldown = 9999; e.spawnCooldown = 9999; e.webCooldown = 9999 } },
+    ],
+  }
+  const DEFAULT_BIND = {}
+  Object.keys(SKILL_DEFS).forEach(k => { DEFAULT_BIND[k] = {}; SKILL_DEFS[k].forEach(s => { DEFAULT_BIND[k][s.id] = true }) })
+  bind = Object.assign({}, DEFAULT_BIND, bind)
+  Object.keys(DEFAULT_BIND).forEach(k => { bind[k] = Object.assign({}, DEFAULT_BIND[k], bind[k] || {}) })
+
+  function resolve(o, path) { if (!path) return null; return path.split('.').reduce((a, k) => (a == null ? null : a[k]), o) }
+  function setPath(o, path, val) { if (!path) return; const ks = path.split('.'); const last = ks.pop(); let t = o; ks.forEach(k => { t = t[k] }); t[last] = val }
+  function num(v, min, max, d) { let n = parseFloat(v); if (isNaN(n)) n = 0; return Math.max(min, Math.min(max, n)) }
+
+  // ================= 列表视图 =================
   let activeUnit = null
+  function unitFor(type, key) { return { type, key } }
+  function unitLabel(u) {
+    if (u.type === 'enemy') return ENEMY_NAMES[u.key] || u.key
+    if (u.type === 'boss') return (BOSS_LIST.find(b => b.key === u.key) || {}).name || u.key
+    return u.key
+  }
+  function unitEnabled(u) {
+    const key = u.type === 'enemy' ? u.key : u.key
+    return cfg.enabled[key] !== false
+  }
+  function setEnabled(u, on) { setPath(cfg, 'enabled.' + u.key, on) }
+
   function renderList() {
-    const le = $('listEnemies')
-    le.innerHTML = ''
-    ENEMY_TYPES.forEach(t => {
-      const on = cfg.enabled[t] !== false
-      const d = document.createElement('div')
-      d.className = 'item' + (activeUnit && activeUnit.type === 'enemy' && activeUnit.key === t ? ' active' : '') + (on ? '' : ' off')
-      d.innerHTML = `<span>${ENEMY_NAMES[t]}</span><span class="del" data-del="${t}">✕</span>`
-      d.onclick = () => selectUnit({ type: 'enemy', key: t })
-      d.querySelector('[data-del]').onclick = (e) => { e.stopPropagation(); delEnemy(t) }
-      le.appendChild(d)
+    const q = ($('searchInput').value || '').trim().toLowerCase()
+    const body = $('tableBody')
+    body.innerHTML = ''
+    const rows = []
+    ENEMY_TYPES.forEach(t => rows.push({ u: unitFor('enemy', t) }))
+    BOSS_LIST.forEach(b => rows.push({ u: unitFor('boss', b.key) }))
+    rows.forEach(r => {
+      const u = r.u
+      const nm = unitLabel(u)
+      if (q && nm.toLowerCase().indexOf(q) === -1 && u.key.toLowerCase().indexOf(q) === -1) return
+      const on = unitEnabled(u)
+      const tr = document.createElement('div')
+      tr.className = 'row' + (on ? '' : ' off')
+      tr.innerHTML = `<span class="nm">${u.type === 'boss' ? '<span class="tag boss">Boss</span> ' : ''}${nm}</span>` +
+        `<span><span class="tag">${u.type === 'boss' ? '大型' : '普通'}</span></span>` +
+        `<span class="sum">${sumText(u)}</span>` +
+        `<span><span class="switch ${on ? 'on' : ''}" data-sw></span></span>` +
+        `<span class="ops"><button data-edit>编辑</button><button data-pv>预览</button><button class="del" data-del>删除</button></span>`
+      tr.querySelector('[data-sw]').onclick = e => { e.stopPropagation(); setEnabled(u, !unitEnabled(u)); renderList(); flash('已' + (unitEnabled(u) ? '启用' : '禁用') + '「' + nm + '」（需保存后生效）') }
+      tr.querySelector('[data-edit]').onclick = e => { e.stopPropagation(); openDetail(u) }
+      tr.querySelector('[data-pv]').onclick = e => { e.stopPropagation(); openDetail(u); pvPlayFull(u) }
+      tr.querySelector('[data-del]').onclick = e => { e.stopPropagation(); delUnit(u) }
+      tr.onclick = () => openDetail(u)
+      body.appendChild(tr)
     })
-    const lb = $('listBosses')
-    lb.innerHTML = ''
-    BOSS_LIST.forEach(b => {
-      const on = cfg.enabled[b.key] !== false
-      const d = document.createElement('div')
-      d.className = 'item' + (activeUnit && activeUnit.type === 'boss' && activeUnit.key === b.key ? ' active' : '') + (on ? '' : ' off')
-      d.textContent = b.name
-      d.onclick = () => selectUnit({ type: 'boss', key: b.key })
-      lb.appendChild(d)
-    })
-    // 近战技能入口
-    const div = document.createElement('div')
-    div.innerHTML = `<div class="grp-title">近战 Boss 技能</div>`
-    lb.prepend(div)
-    Object.keys(ATTACK_NAMES).forEach(k => {
-      const d = document.createElement('div')
-      d.className = 'item' + (activeUnit && activeUnit.type === 'attack' && activeUnit.key === k ? ' active' : '')
-      d.textContent = '⚔ ' + ATTACK_NAMES[k]
-      d.onclick = () => selectUnit({ type: 'attack', key: k })
-      lb.appendChild(d)
-    })
-    const d2 = document.createElement('div')
-    d2.className = 'item' + (activeUnit && activeUnit.type === 'artillery' ? ' active' : '')
-    d2.textContent = '🎯 远程 Boss 参数'
-    d2.onclick = () => selectUnit({ type: 'artillery' })
-    lb.appendChild(d2)
-    const d3 = document.createElement('div')
-    d3.className = 'item' + (activeUnit && activeUnit.type === 'mother' ? ' active' : '')
-    d3.textContent = '🦠 母体参数'
-    d3.onclick = () => selectUnit({ type: 'mother' })
-    lb.appendChild(d3)
+    if (!body.children.length) body.innerHTML = '<div class="row"><span style="color:#8b949e">无匹配结果</span></div>'
   }
-
-  function selectUnit(u) {
-    activeUnit = u
-    renderList()
-    renderForm(u)
-  }
-
-  function delEnemy(type) {
-    if (!confirm('删除敌人「' + ENEMY_NAMES[type] + '」？删除后该类型不再生成。')) return
-    delete cfg.enemyStats[type]
-    delete cfg.specialTypes[type]
-    cfg.enabled[type] = false
-    renderList()
-    renderForm(activeUnit)
-    flash('已删除（enabled=false，防止恢复默认配置时重新出现）')
-  }
-
-  // ---- 表单渲染 ----
-  function renderForm(u) {
-    const form = $('form')
-    if (!u) { form.innerHTML = '<div class="desc">← 从左侧选择要编辑的敌人 / Boss / 全局参数</div>'; return }
-    form.innerHTML = ''
-    // 标题
-    let title = '', desc = ''
-    if (u.type === 'global') { title = '⚙ 全局参数'; desc = '所有敌人的公共参数与普通敌人节奏' }
-    else if (u.type === 'enemy') { title = ENEMY_NAMES[u.key]; desc = '基础敌人：属性倍率' }
-    else if (u.type === 'special') { title = ENEMY_NAMES[u.key]; desc = '特殊敌人：解锁波次与每波上限' }
-    else if (u.type === 'boss') { title = BOSS_LIST.find(b => b.key === u.key).name; desc = '是否出场' }
-    else if (u.type === 'attack') { title = '⚔ ' + ATTACK_NAMES[u.key]; desc = '近战 Boss 技能范围参数' }
-    else if (u.type === 'artillery') { title = '🎯 大型远程 Boss'; desc = '技能与普通攻击参数' }
-    else if (u.type === 'mother') { title = '🦠 母体 Boss'; desc = '毒液 / 孵化 / 毒雾 / 冲击波 / 小怪参数' }
-    const h2 = document.createElement('h2'); h2.textContent = title; form.appendChild(h2)
-    const dp = document.createElement('div'); dp.className = 'desc'; dp.textContent = desc; form.appendChild(dp)
-    // 当前数值摘要（只读）
-    const st = document.createElement('div'); st.className = 'stats'; st.innerHTML = buildStats(u); form.appendChild(st)
-    // 启用开关
-    const [p, ep] = unitPath(u)
-    if (ep) {
-      const row = document.createElement('div'); row.className = 'field enabled-row'
-      row.innerHTML = `<label>启用（关闭后完全不出场）</label><input type="checkbox" id="f_enabled" ${resolve(cfg, ep) !== false ? 'checked' : ''}>`
-      row.querySelector('#f_enabled').onchange = e => setPath(cfg, ep, e.target.checked)
-      form.appendChild(row)
-    }
-    // 字段（敌人单元 = 属性倍率 + 出场配置两段）
-    const sections = []
+  function sumText(u) {
     if (u.type === 'enemy') {
-      sections.push({ path: 'cfg.enemyStats.' + u.key, schema: SCHEMAS.enemyStats })
-      if (resolve(cfg, 'cfg.specialTypes.' + u.key)) sections.push({ path: 'cfg.specialTypes.' + u.key, schema: SCHEMAS.specialType })
-    } else {
-      sections.push({ path: p, schema: SCHEMAS[u.type] || SCHEMAS.global })
+      const st = cfg.enemyStats[u.key] || {}
+      const hp = Math.floor(6 * (st.hpMul || 1)), dmg = Math.floor(8 * (st.dmgMul || 1)), spd = Math.round(45 * (st.spdMul || 1))
+      return `生命 ${hp} · 伤害 ${dmg} · 移速 ${spd}`
     }
-    sections.forEach(sec => {
-      if (!sec.path) return
-      Object.keys(sec.schema).forEach(k => {
-        const [label, min, max, step] = sec.schema[k]
-        const val = resolve(cfg, sec.path + '.' + k)
-        const row = document.createElement('div'); row.className = 'field'
-        row.innerHTML = `<label>${label}</label><input type="number" min="${min}" max="${max}" step="${step}" value="${val != null ? val : ''}" data-key="${k}"><span class="unit">${min}~${max}</span>`
-        row.querySelector('input').onchange = e => {
-          let v = parseFloat(e.target.value)
-          if (isNaN(v)) v = 0
-          v = Math.max(min, Math.min(max, v))
-          setPath(cfg, sec.path + '.' + k, v)
-          e.target.value = v
-        }
-        form.appendChild(row)
-      })
-    })
-    // 预览
-    $('pvName').textContent = '预览：' + title
-    currentPreviewUnit = u
+    if (u.key === 'normalBoss') return `半径 ${cfg.bossRadius} · 生命 ${Math.floor(6 * (cfg.enemyStats.melee.hpMul || 1))}`
+    if (u.key === 'meleeBoss') return `半径 ${cfg.meleeBossRadius} · 蓄力 ${cfg.meleeBossWindup}s`
+    if (u.key === 'artilleryBoss') return `生命 ${cfg.artillery.hpBase} · 伤害 ${cfg.artillery.dmgBase}`
+    if (u.key === 'motherBoss') return `生命 ${cfg.mother.hpBase} · 伤害 ${cfg.mother.dmgBase}`
+    return ''
+  }
+  function delUnit(u) {
+    const nm = unitLabel(u)
+    if (!confirm('删除「' + nm + '」？（= 置为禁用，不再出场）')) return
+    setEnabled(u, false)
+    renderList()
+    flash('已禁用「' + nm + '」')
   }
 
-  // ---- 当前数值摘要（基于当前配置 + wave 10 估算，供快速查看初始数值） ----
+  // ================= 详情视图 =================
+  function openDetail(u) {
+    activeUnit = u
+    $('listView').classList.add('hidden')
+    $('detailView').classList.remove('hidden')
+    $('btnBack').classList.remove('hidden')
+    renderDetail()
+  }
+  function backToList() {
+    $('detailView').classList.add('hidden')
+    $('listView').classList.remove('hidden')
+    $('btnBack').classList.add('hidden')
+    stopPreview()
+    activeUnit = null
+    renderList()
+  }
+  $('btnBack').onclick = backToList
+
+  function renderDetail() {
+    const u = activeUnit
+    const nm = unitLabel(u)
+    $('dTitle').textContent = (u.type === 'boss' ? '👑 ' : '👾 ') + nm
+    $('dSub').textContent = u.type === 'boss' ? '大型 Boss · 技能绑定仅编辑器内生效（游戏出招不变）' : '普通敌人 · 属性倍率随波次缩放'
+    $('dStats').innerHTML = buildStats(u)
+    // 基础属性
+    const props = $('dProps'); props.innerHTML = ''
+    const enRow = document.createElement('div'); enRow.className = 'en-row'
+    enRow.innerHTML = `<label>启用（关闭后完全不出场）</label><input type="checkbox" id="d_enabled" ${unitEnabled(u) ? 'checked' : ''}>`
+    enRow.querySelector('#d_enabled').onchange = e => { setEnabled(u, e.target.checked); renderList(); flash('已' + (e.target.checked ? '启用' : '禁用')) }
+    props.appendChild(enRow)
+    if (u.type === 'enemy') {
+      renderFields(props, 'cfg.enemyStats.' + u.key, SCHEMAS.enemyStats)
+      if (resolve(cfg, 'cfg.specialTypes.' + u.key)) {
+        const st = document.createElement('div'); st.className = 'sec-title'; st.style.cssText = 'margin-top:10px;border-color:#2ea043'; st.textContent = '📅 出场配置'
+        props.appendChild(st)
+        renderFields(props, 'cfg.specialTypes.' + u.key, SCHEMAS.specialType)
+      }
+    } else if (u.key === 'normalBoss') {
+      const h = document.createElement('div'); h.className = 'hint'
+      h.innerHTML = '普通 Boss 复用「近战怪」属性倍率（可回列表编辑近战怪）'
+      props.appendChild(h)
+    } else if (u.key === 'meleeBoss') {
+      renderFields(props, 'cfg', { meleeBossRadius: SCHEMAS.global.meleeBossRadius, meleeBossWindup: SCHEMAS.global.meleeBossWindup, meleeBossRecover: SCHEMAS.global.meleeBossRecover, dashSpeed: SCHEMAS.global.dashSpeed })
+    } else if (u.key === 'artilleryBoss') {
+      renderFields(props, 'cfg.artillery', { radius: SCHEMAS.artillery.radius, hpBase: SCHEMAS.artillery.hpBase, dmgBase: SCHEMAS.artillery.dmgBase, speed: SCHEMAS.artillery.speed, preferredDist: SCHEMAS.artillery.preferredDist, skillInterval: SCHEMAS.artillery.skillInterval })
+    } else if (u.key === 'motherBoss') {
+      renderFields(props, 'cfg.mother', { radius: SCHEMAS.mother.radius, hpBase: SCHEMAS.mother.hpBase, dmgBase: SCHEMAS.mother.dmgBase, speed: SCHEMAS.mother.speed })
+    }
+    // 技能绑定
+    const skillsSec = $('dSkillsSec')
+    const defs = SKILL_DEFS[u.key]
+    if (defs && defs.length) {
+      skillsSec.classList.remove('hidden')
+      renderSkills(defs)
+    } else {
+      skillsSec.classList.add('hidden')
+    }
+    $('pvName').textContent = '预览：' + nm
+    stopPreview()
+  }
+
+  function renderFields(parent, path, schema) {
+    Object.keys(schema).forEach(k => {
+      const [label, min, max, step] = schema[k]
+      const val = resolve(cfg, path + '.' + k)
+      const row = document.createElement('div'); row.className = 'field'
+      row.innerHTML = `<label>${label}</label><input type="number" min="${min}" max="${max}" step="${step}" value="${val != null ? val : ''}"><span class="unit">${min}~${max}</span>`
+      row.querySelector('input').onchange = e => { const v = num(e.target.value, min, max, step); setPath(cfg, path + '.' + k, v); e.target.value = v; refreshStats() }
+      parent.appendChild(row)
+    })
+  }
+
+  function renderSkills(defs) {
+    const box = $('dSkills'); box.innerHTML = ''
+    defs.forEach(s => {
+      const on = bind[activeUnit.key][s.id]
+      const card = document.createElement('div')
+      card.className = 'skill-card' + (on ? '' : ' skill-off')
+      const params = Object.entries(s.params).map(([sec, ks]) => {
+        const schema = {}
+        ks.forEach(k => { schema[k] = SCHEMAS[sec][k] })
+        return { sec, schema }
+      })
+      card.innerHTML = `
+        <div class="skill-head">
+          <input type="checkbox" data-chk ${on ? 'checked' : ''}>
+          <span class="skill-name">${s.name}</span>
+          <button class="pv-btn" data-pv>▶ 预览此技能</button>
+        </div>
+        <div class="skill-body"></div>`
+      const body = card.querySelector('.skill-body')
+      params.forEach(p => { Object.keys(p.schema).forEach(k => {
+        const [label, min, max, step] = p.schema[k]
+        const val = resolve(cfg, 'cfg.' + p.sec + '.' + k)
+        const row = document.createElement('div'); row.className = 'field'
+        row.innerHTML = `<label>${label}</label><input type="number" min="${min}" max="${max}" step="${step}" value="${val != null ? val : ''}"><span class="unit">${min}~${max}</span>`
+        row.querySelector('input').onchange = e => { const v = num(e.target.value, min, max, step); setPath(cfg, 'cfg.' + p.sec + '.' + k, v); e.target.value = v; refreshStats() }
+        body.appendChild(row)
+      }) })
+      card.querySelector('[data-chk]').onchange = e => {
+        bind[activeUnit.key][s.id] = e.target.checked
+        saveBind()
+        card.classList.toggle('skill-off', !e.target.checked)
+        flash('已' + (e.target.checked ? '绑定' : '取消') + '「' + s.name + '」')
+      }
+      card.querySelector('.skill-head').onclick = e => { if (e.target.closest('button') || e.target.type === 'checkbox') return; card.classList.toggle('open') }
+      card.querySelector('[data-pv]').onclick = e => { e.stopPropagation(); pvPlaySkill(activeUnit, s) }
+      box.appendChild(card)
+    })
+  }
+
+  function refreshStats() { if (activeUnit) $('dStats').innerHTML = buildStats(activeUnit) }
+
+  // ---- 当前数值摘要 ----
   function buildStats(u) {
-    if (!u) return ''
     const kv = arr => arr.map(([k, v]) => `<span>${k}: <b>${v}</b></span>`).join('')
     if (u.type === 'enemy') {
       const st = cfg.enemyStats[u.key] || {}
-      const hp = Math.max(1, Math.floor(3 * (1 + 10 * 0.1) * (st.hpMul || 1)))
-      const dmg = Math.max(1, Math.floor(4 * (1 + 10 * 0.1) * (st.dmgMul || 1)))
-      const spd = Math.round(45 * (st.spdMul || 1))
+      const hp = Math.max(1, Math.floor(6 * (st.hpMul || 1))), dmg = Math.max(1, Math.floor(8 * (st.dmgMul || 1))), spd = Math.round(45 * (st.spdMul || 1))
       const sp = cfg.specialTypes[u.key]
-      const extra = sp ? ` · 解锁波次 <b>${sp.wave}</b> · 每波上限 <b>${sp.max}</b>` : ''
+      const extra = sp ? ` · 解锁波次 <b>${sp.wave}</b> · 上限 <b>${sp.max}</b>` : ''
       return `<b>当前数值</b>（wave 10 估算）：生命 <b>${hp}</b> · 伤害 <b>${dmg}</b> · 移速 <b>${spd}</b>${extra}`
     }
-    if (u.type === 'boss' && u.key === 'normalBoss') {
-      const st = cfg.enemyStats.melee || {}
-      const hp = Math.max(1, Math.floor(3 * (1 + 10 * 0.1) * (st.hpMul || 1)))
-      const dmg = Math.max(1, Math.floor(4 * (1 + 10 * 0.1) * (st.dmgMul || 1)))
-      return `<b>当前数值</b>（wave 10 估算）：半径 <b>${cfg.bossRadius}</b> · 生命 <b>${hp}</b> · 伤害 <b>${dmg}</b>`
-    }
-    if (u.type === 'boss' && u.key === 'meleeBoss') {
-      return `<b>当前数值</b>：半径 <b>${cfg.meleeBossRadius}</b> · 蓄力 <b>${cfg.meleeBossWindup}s</b> · 后摇 <b>${cfg.meleeBossRecover}s</b> · 冲刺速度 <b>${cfg.dashSpeed}</b>`
-    }
-    if (u.type === 'boss' && u.key === 'artilleryBoss') return buildStats({ type: 'artillery' })
-    if (u.type === 'boss' && u.key === 'motherBoss') return buildStats({ type: 'mother' })
-    if (u.type === 'attack') {
-      const a = cfg.meleeAttacks[u.key] || {}
-      return `<b>技能范围</b>：${kv(Object.entries(a).map(([k, v]) => [k, typeof v === 'number' ? (Math.abs(v) > 2 ? Math.round(v) : v) : v]))}`
-    }
-    if (u.type === 'artillery') {
-      const a = cfg.artillery || {}
-      return `<b>当前数值</b>：半径 <b>${a.radius}</b> · 基础生命 <b>${a.hpBase}</b> · 基础伤害 <b>${a.dmgBase}</b> · 移速 <b>${a.speed}</b> · 技能间隔 <b>${a.skillInterval}s</b> · 扇形弹 <b>${a.fanCount}颗</b> · 全屏弹 <b>${a.radialCount}颗</b> · 轰炸 <b>${a.bombMin}~${a.bombMax}点</b>`
-    }
-    if (u.type === 'mother') {
-      const a = cfg.mother || {}
-      return `<b>当前数值</b>：半径 <b>${a.radius}</b> · 基础生命 <b>${a.hpBase}</b> · 基础伤害 <b>${a.dmgBase}</b> · 移速 <b>${a.speed}</b> · 毒液间隔 <b>${a.venomCooldown}s</b> · 孵化上限 <b>${a.spawnMaxMinions}只</b> · 毒雾半径 <b>${a.webRadius}</b>`
-    }
-    if (u.type === 'global') return '<b>全局参数</b>：见下方各字段（敌人半径 / Boss 半径 / 敌人子弹速度等）'
+    if (u.key === 'normalBoss') { const st = cfg.enemyStats.melee || {}; return `<b>当前数值</b>（wave 10 估算）：半径 <b>${cfg.bossRadius}</b> · 生命 <b>${Math.floor(6 * (st.hpMul || 1))}</b> · 伤害 <b>${Math.floor(8 * (st.dmgMul || 1))}</b>` }
+    if (u.key === 'meleeBoss') return `<b>当前数值</b>：半径 <b>${cfg.meleeBossRadius}</b> · 蓄力 <b>${cfg.meleeBossWindup}s</b> · 后摇 <b>${cfg.meleeBossRecover}s</b> · 冲刺 <b>${cfg.dashSpeed}</b>`
+    if (u.key === 'artilleryBoss') { const a = cfg.artillery; return `<b>当前数值</b>：半径 <b>${a.radius}</b> · 生命 <b>${a.hpBase}</b> · 伤害 <b>${a.dmgBase}</b> · 移速 <b>${a.speed}</b> · 扇形 <b>${a.fanCount}颗</b> · 全屏 <b>${a.radialCount}颗</b> · 轰炸 <b>${a.bombMin}~${a.bombMax}点</b>` }
+    if (u.key === 'motherBoss') { const a = cfg.mother; return `<b>当前数值</b>：半径 <b>${a.radius}</b> · 生命 <b>${a.hpBase}</b> · 伤害 <b>${a.dmgBase}</b> · 毒液 <b>${a.venomCooldown}s</b> · 孵化上限 <b>${a.spawnMaxMinions}只</b> · 毒雾半径 <b>${a.webRadius}</b>` }
     return ''
   }
 
-  // ---- 保存 / 导出 / 导入 / 重置 ----
-  function flash(msg) {
-    const s = $('status'); s.textContent = msg
-    setTimeout(() => { s.textContent = '' }, 3000)
-  }
-  $('btnSave').onclick = () => {
-    try { localStorage.setItem(KEY, JSON.stringify(cfg)) } catch (e) { alert('保存失败：' + e); return }
-    flash('✅ 已保存到游戏（localStorage: ' + KEY + '），刷新游戏页面生效')
-  }
-  $('btnExport').onclick = () => {
-    const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob); a.download = 'enemy-config.json'; a.click()
-  }
-  $('btnImport').onclick = () => $('fileInput').click()
-  $('fileInput').onchange = e => {
-    const f = e.target.files[0]
-    if (!f) return
-    const r = new FileReader()
-    r.onload = () => { try { cfg = Object.assign(cfgDefault(), JSON.parse(r.result)); renderList(); renderForm(activeUnit); flash('✅ 已导入') } catch (err) { alert('JSON 解析失败：' + err) } }
-    r.readAsText(f)
-    e.target.value = ''
-  }
-  $('btnReset').onclick = () => {
-    if (!confirm('恢复默认配置？当前配置将被清除。')) return
-    localStorage.removeItem(KEY)
-    cfg = cfgDefault()
-    renderList(); renderForm(activeUnit)
-    flash('↺ 已恢复默认（需在游戏中生效需刷新）')
-  }
-  // 新增敌人（复制 melee 模板）
-  $('btnAddEnemy').onclick = () => {
-    const id = 'custom' + Date.now().toString().slice(-5)
-    cfg.enemyStats[id] = deepCopy(cfg.enemyStats.melee || { hpMul: 1, dmgMul: 1, spdMul: 1 })
-    cfg.specialTypes[id] = { wave: 3, max: 2 }
-    cfg.enabled[id] = true
-    ENEMY_TYPES.push(id)
-    ENEMY_NAMES[id] = '自定义怪' + id.slice(-3)
-    ENEMY_COLORS[id] = '#c8a2c8'
-    renderList()
-    selectUnit({ type: 'enemy', key: id })
-    flash('✅ 已新增敌人（记得在全局里给 specialTypes 配置出场）')
-  }
-
-  // ===== 沙盒预览 =====
-  let currentPreviewUnit = null
-  const canvas = $('pv')
-  const ctx = canvas.getContext('2d')
-  // 初始化 EnemySystem（注入 mock 依赖 + 沙盒 state）
+  // ================= 沙盒预览 =================
+  const canvas = $('pv'); const ctx = canvas.getContext('2d')
   const sand = {
     enemies: [], enemyProjectiles: [], cannonballs: [], webZones: [],
     attackFx: [], motherWarns: [], particles: [], floatTexts: [], ghosts: [],
     player: null, wave: 10, flashRed: 0, shakeTimer: 0, _playerSlowed: false,
   }
   EnemySystem.init({
-    state: sand,
-    worldW: 320,
-    worldH: 380,
-    view: () => ({ camX: 0, camY: 0, canvasW: 320, canvasH: 380 }),
+    state: sand, worldW: 360, worldH: 400,
+    view: () => ({ camX: 0, camY: 0, canvasW: 360, canvasH: 400 }),
     gameOver: () => {},
     spawnHitParticles: () => {},
     spawnDeathPowder: () => {},
     spawnFloatText: () => {},
     spawnPlayerHitParticles: (x, y, n) => {
       for (let i = 0; i < (n || 8); i++) {
-        const a = Math.random() * Math.PI * 2
-        const sp = 40 + Math.random() * 90
+        const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 90
         sand.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.3, size: 2.5, color: '#ffcc44' })
       }
     },
   })
-  let pvRunning = false
-  let pvRaf = 0
-  let pvLast = 0
-  const PVP = { x: 160, y: 190, radius: 12, hp: 100, maxHp: 100, facingAngle: 0, facingDir: { x: 1, y: 0 } }
+  let pvRunning = false, pvRaf = 0, pvLast = 0, pvSkillMode = false
+  const PVP = { x: 180, y: 200, radius: 12, hp: 100, maxHp: 100, facingAngle: 0, facingDir: { x: 1, y: 0 } }
   let pvAngle = 0
-  sand.player = PVP // 让 EnemySystem 在第一帧就能读到玩家
+  sand.player = PVP
 
-  // 构造指定类型敌人（参照 spawnEnemy，读配置；字段兜底防 AI 报错）
   function buildEnemy(type) {
     const st = cfg.enemyStats[type] || cfg.enemyStats.melee
-    const hp = Math.max(1, Math.floor(3 * (1 + sand.wave * 0.1) * (st.hpMul || 1)))
-    const damage = Math.max(1, Math.floor(4 * (1 + sand.wave * 0.1) * (st.dmgMul || 1)))
-    const speed = 45 * (st.spdMul || 1)
-    const base = {
-      x: 40 + Math.random() * 240, y: 60 + Math.random() * 240, radius: cfg.enemyRadius || 16,
+    const hp = Math.max(1, Math.floor(6 * (st.hpMul || 1))), damage = Math.max(1, Math.floor(8 * (st.dmgMul || 1))), speed = 45 * (st.spdMul || 1)
+    return {
+      x: 40 + Math.random() * 280, y: 60 + Math.random() * 280, radius: cfg.enemyRadius || 16,
       hp, maxHp: hp, speed, damage, type, isBoss: false, isMotherMinion: false,
       attackCooldown: 0, attackInterval: 2.0, windupTimer: 0, rangedCooldown: 0, preferredDist: type === 'ranged' ? 260 : 40,
       flashTimer: 0, waveId: 1, knockbackX: 0, knockbackY: 0, ghostTimer: 0,
       chargeState: 'idle', chargeState2: 'idle', chargeAngle: 0, chargeDist: 0, chargeWarnTimer: 0, chargeTimer: 0,
       stunTimer: 0, healTimer: 0, sniperWarnTimer: 0, bomberWarnTimer: 0, splitTimer: 0, splitState: 'idle',
       shieldAngle: 0, dashCooldown: 0,
-      // Boss/近战 AI 状态（普通怪分支不使用；普通 Boss 预览需要）
       attackState: 'idle', attackTimer: 0, attackAngle: 0, dashTimer: 0, recoverTimer: 0,
       windupTimer: 0, skillScale: 1, phaseMode: null, enraged: false, stage2: false,
     }
-    return base
   }
-  function spawnPreview() {
-    sand.enemies = []; sand.enemyProjectiles = []; sand.cannonballs = []; sand.webZones = []; sand.motherWarns = []; sand.attackFx = []; sand.particles = []; sand.floatTexts = []
-    const u = currentPreviewUnit
-    if (!u) return
-    const px = 160, py = 190
-    if (u.type === 'enemy') {
-      sand.enemies.push(buildEnemy(u.key))
-    } else if (u.type === 'boss') {
-      if (u.key === 'normalBoss') {
-        const e = buildEnemy('melee'); e.isBoss = true; e.bossName = '👑 首领'; e.radius = cfg.bossRadius; e.isMeleeBoss = true; e.meleeSkills = ['slam', 'dash']
-        sand.enemies.push(e)
-      } else if (u.key === 'meleeBoss') {
-        sand.state = sand; EnemySystem.spawnMeleeBoss()
-        if (sand.enemies.length) { const b = sand.enemies[sand.enemies.length - 1]; b.x = px; b.y = py; b.phaseMode = null }
-      } else if (u.key === 'artilleryBoss') {
-        sand.state = sand; EnemySystem.spawnArtilleryBoss()
-        if (sand.enemies.length) { const b = sand.enemies[sand.enemies.length - 1]; b.x = px; b.y = py; b.phaseMode = null }
-      } else if (u.key === 'motherBoss') {
-        sand.state = sand; EnemySystem.spawnMotherBoss()
-        if (sand.enemies.length) { const b = sand.enemies[sand.enemies.length - 1]; b.x = px; b.y = py; b.phaseMode = null }
-      }
-    } else if (u.type === 'artillery') {
-      sand.state = sand; EnemySystem.spawnArtilleryBoss()
-      if (sand.enemies.length) { const b = sand.enemies[sand.enemies.length - 1]; b.x = px; b.y = py; b.phaseMode = null }
-    } else if (u.type === 'mother') {
-      sand.state = sand; EnemySystem.spawnMotherBoss()
-      if (sand.enemies.length) { const b = sand.enemies[sand.enemies.length - 1]; b.x = px; b.y = py; b.phaseMode = null }
-    } else if (u.type === 'attack') {
-      sand.state = sand; EnemySystem.spawnMeleeBoss()
-      if (sand.enemies.length) { const b = sand.enemies[sand.enemies.length - 1]; b.x = px; b.y = py; b.phaseMode = null; b.meleeSkills = [u.key] }
-    } else if (u.type === 'global') {
-      sand.enemies.push(buildEnemy('melee')); sand.enemies.push(buildEnemy('sniper'))
-    }
+  function spawnPreviewTarget(u) {
+    sand.enemies = []; sand.enemyProjectiles = []; sand.cannonballs = []; sand.webZones = []; sand.motherWarns = []; sand.attackFx = []; sand.particles = []; sand.floatTexts = []; sand.ghosts = []
+    const cx = 180, cy = 200
+    if (u.type === 'enemy') { sand.enemies.push(buildEnemy(u.key)) }
+    else if (u.key === 'normalBoss') { const e = buildEnemy('melee'); e.isBoss = true; e.bossName = '👑 首领'; e.radius = cfg.bossRadius; e.isMeleeBoss = true; e.meleeSkills = ['slam', 'dash']; sand.enemies.push(e) }
+    else if (u.key === 'meleeBoss') { EnemySystem.spawnMeleeBoss(); fixBossPos() }
+    else if (u.key === 'artilleryBoss') { EnemySystem.spawnArtilleryBoss(); fixBossPos() }
+    else if (u.key === 'motherBoss') { EnemySystem.spawnMotherBoss(); fixBossPos() }
   }
+  function fixBossPos() { const b = sand.enemies[sand.enemies.length - 1]; if (b) { b.x = 180; b.y = 200; b.phaseMode = null } }
+  function spawnGhostTarget() { sand.enemies.forEach(e => { sand._pvTargets = sand._pvTargets || {}; sand._pvTargets[e.type || 'boss'] = e }) }
 
-  // 假玩家绕圈
-  function updatePlayer(dt) {
-    pvAngle += dt * 0.45
-    PVP.x = 160 + Math.cos(pvAngle) * 80
-    PVP.y = 190 + Math.sin(pvAngle) * 55
-    PVP.facingAngle = Math.atan2(0 - PVP.y, 0 - PVP.x)
-    PVP.facingDir = { x: Math.cos(PVP.facingAngle), y: Math.sin(PVP.facingAngle) }
+  function pvPlayFull(u) { startPv(u, false, null) }
+  function pvPlaySkill(u, skill) { startPv(u, true, skill) }
+  function startPv(u, skillMode, skill) {
+    stopPreview()
+    spawnPreviewTarget(u)
+    pvSkillMode = skillMode
+    // 隐形目标：技能模式不渲染玩家，但 AI 需要 player
+    if (skillMode && sand.enemies.length) {
+      const e = sand.enemies[0]
+      const ex = e.x + (u.type === 'enemy' ? 80 : 150)
+      PVP.x = ex; PVP.y = e.y
+      sand.player = { x: PVP.x, y: PVP.y, radius: 12, hp: 100, maxHp: 100, facingAngle: 0, facingDir: { x: 1, y: 0 } }
+      if (skill && skill.lock) { try { skill.lock(e) } catch (_) {} }
+      if (u.type === 'enemy') { e.attackInterval = 0.6 }
+      // 敌人类型：靠近隐形目标展示攻击
+    } else {
+      PVP.x = 180; PVP.y = 200
+      sand.player = PVP
+      pvAngle = 0
+    }
+    $('pvName').textContent = (skillMode ? '▶ 单技能预览：' : '▶ AI 演示：') + unitLabel(u) + (skill ? ' · ' + skill.name : '')
+    pvRunning = true; pvLast = performance.now()
+    pvRaf = requestAnimationFrame(pvLoop)
   }
-  // 子弹移动
-  function updateSand(dt) {
-    sand.player = PVP
-    for (let i = sand.enemyProjectiles.length - 1; i >= 0; i--) {
-      const b = sand.enemyProjectiles[i]
-      b.x += b.vx * dt; b.y += b.vy * dt
-      b.life -= dt
-      if (b.life <= 0 || b.x < -50 || b.x > 370 || b.y < -50 || b.y > 430) sand.enemyProjectiles.splice(i, 1)
-    }
-    for (let i = sand.particles.length - 1; i >= 0; i--) {
-      const p = sand.particles[i]
-      p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt
-      if (p.life <= 0) sand.particles.splice(i, 1)
-    }
-    if (sand.attackFx && sand.attackFx.length) {
-      sand.attackFx = sand.attackFx.filter(fx => { fx.life -= dt; return fx.life > 0 })
-    }
-    if (sand.webZones) { for (let i = sand.webZones.length - 1; i >= 0; i--) { sand.webZones[i].life -= dt; if (sand.webZones[i].life <= 0) sand.webZones.splice(i, 1) } }
-    if (sand.motherWarns) { for (let i = sand.motherWarns.length - 1; i >= 0; i--) { sand.motherWarns[i].timer -= dt; if (sand.motherWarns[i].timer <= 0) sand.motherWarns.splice(i, 1) } }
-  }
-
-  function renderSand() {
+  function stopPreview() {
+    pvRunning = false
+    if (pvRaf) cancelAnimationFrame(pvRaf)
+    pvRaf = 0
+    sand.enemies = []; sand.enemyProjectiles = []; sand.cannonballs = []; sand.webZones = []; sand.attackFx = []; sand.particles = []; sand.floatTexts = []; sand.ghosts = []; sand.motherWarns = []
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    // 网格
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1
-    for (let x = 0; x < canvas.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke() }
-    for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke() }
-    // 毒雾
-    if (sand.webZones) sand.webZones.forEach(z => {
-      ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(60,180,90,0.2)'; ctx.fill()
-      ctx.strokeStyle = 'rgba(60,180,90,0.5)'; ctx.stroke()
-    })
-    // 预警（Boss warn / motherWarns 简化）
-    sand.enemies.forEach(e => {
-      if (e.warn) {
-        ctx.save(); ctx.translate(e.x, e.y)
-        if (e.warn.type === 'fan') { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, e.warn.radius, e.warn.angle - 0.6, e.warn.angle + 0.6); ctx.closePath(); ctx.fillStyle = 'rgba(255,80,60,0.15)'; ctx.fill() }
-        else if (e.warn.type === 'ring') { ctx.beginPath(); ctx.arc(0, 0, e.warn.radius, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,80,60,0.12)'; ctx.fill() }
-        else if (e.warn.rect) { ctx.fillStyle = 'rgba(255,80,60,0.12)'; ctx.fillRect(e.warn.rect[0], e.warn.rect[1], e.warn.rect[2], e.warn.rect[3]) }
-        ctx.restore()
-      }
-      if (e.motherWarns) e.motherWarns.forEach(w => {
-        if (w.kind === 'web') { ctx.beginPath(); ctx.arc(w.x, w.y, 60, 0, Math.PI * 2); ctx.fillStyle = 'rgba(60,200,90,0.15)'; ctx.fill() }
-      })
-      if (e.attackState === 'windup' && e.attackType) {
-        ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.attackAngle || 0)
-        ctx.fillStyle = 'rgba(255,90,60,0.15)'
-        if (e.attackType === 'slam') ctx.fillRect(0, -(cfg.meleeAttacks.slam.halfW), cfg.meleeAttacks.slam.len, cfg.meleeAttacks.slam.halfW * 2)
-        if (e.attackType === 'charge' || e.attackType === 'dash') ctx.fillRect(0, -(cfg.meleeAttacks.charge.halfW), cfg.meleeAttacks.charge.len, cfg.meleeAttacks.charge.halfW * 2)
-        if (e.attackType === 'fan') { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, cfg.meleeAttacks.fan.radius, -cfg.meleeAttacks.fan.halfAngle, cfg.meleeAttacks.fan.halfAngle); ctx.closePath(); ctx.fill() }
-        if (e.attackType === 'nova') { ctx.beginPath(); ctx.arc(0, 0, cfg.meleeAttacks.nova.radius, 0, Math.PI * 2); ctx.fill() }
-        ctx.restore()
-      }
-    })
-    // 粒子
-    sand.particles.forEach(p => {
-      ctx.globalAlpha = Math.max(0, p.life / 0.3)
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI * 2)
-      ctx.fillStyle = p.color || '#ffcc44'; ctx.fill()
-      ctx.globalAlpha = 1
-    })
-    // 敌人子弹
-    sand.enemyProjectiles.forEach(b => {
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.radius || 4, 0, Math.PI * 2)
-      ctx.fillStyle = '#ff8855'; ctx.fill()
-    })
-    // 敌人
-    sand.enemies.forEach(e => {
-      ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
-      ctx.fillStyle = (ENEMY_COLORS[e.type] || '#eee') + '33'
-      ctx.fill()
-      ctx.strokeStyle = ENEMY_COLORS[e.type] || '#eee'; ctx.lineWidth = 2
-      ctx.stroke()
-      if (e.isBoss) {
-        ctx.font = '11px sans-serif'; ctx.fillStyle = '#ffd700'
-        ctx.fillText(e.bossName || 'Boss', e.x - 22, e.y - e.radius - 8)
-        // 血条
-        const w = e.radius * 2
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(e.x - w / 2, e.y - e.radius - 4, w, 4)
-        ctx.fillStyle = '#ff5555'; ctx.fillRect(e.x - w / 2, e.y - e.radius - 4, w * Math.max(0, e.hp / e.maxHp), 4)
-      }
-    })
-    // 玩家
-    ctx.beginPath(); ctx.arc(PVP.x, PVP.y, PVP.radius, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill()
-    ctx.font = '10px sans-serif'; ctx.fillStyle = '#888'
-    ctx.fillText('假玩家', PVP.x - 20, PVP.y - PVP.radius - 6)
+    $('pvName').textContent = '未预览'
   }
+  $('pvPlay').onclick = () => { if (activeUnit) pvPlayFull(activeUnit) }
+  $('pvStop').onclick = stopPreview
 
   function pvLoop(ts) {
     if (!pvRunning) return
     const dt = Math.min(0.05, (ts - pvLast) / 1000 || 0.016)
     pvLast = ts
-    updatePlayer(dt)
-    sand.player = PVP
-    try {
-      sand.state = sand
-      EnemySystem.updateEnemyAI(dt, 1)
-    } catch (err) { console.error(err) }
-    updateSand(dt)
+    if (!pvSkillMode) {
+      pvAngle += dt * 0.45
+      PVP.x = 180 + Math.cos(pvAngle) * 80; PVP.y = 200 + Math.sin(pvAngle) * 55
+      PVP.facingAngle = Math.atan2(0 - PVP.y, 0 - PVP.x)
+      PVP.facingDir = { x: Math.cos(PVP.facingAngle), y: Math.sin(PVP.facingAngle) }
+      sand.player = PVP
+    }
+    try { sand.state = sand; EnemySystem.updateEnemyAI(dt, 1) } catch (err) { console.error(err) }
+    // 子弹 / 粒子 / 区域更新
+    for (let i = sand.enemyProjectiles.length - 1; i >= 0; i--) {
+      const b = sand.enemyProjectiles[i]; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt
+      if (b.life <= 0 || b.x < -60 || b.x > 420 || b.y < -60 || b.y > 460) sand.enemyProjectiles.splice(i, 1)
+    }
+    for (let i = sand.particles.length - 1; i >= 0; i--) {
+      const p = sand.particles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt
+      if (p.life <= 0) sand.particles.splice(i, 1)
+    }
+    if (sand.attackFx && sand.attackFx.length) sand.attackFx = sand.attackFx.filter(fx => { fx.life -= dt; return fx.life > 0 })
+    if (sand.webZones) for (let i = sand.webZones.length - 1; i >= 0; i--) { sand.webZones[i].life -= dt; if (sand.webZones[i].life <= 0) sand.webZones.splice(i, 1) }
+    if (sand.motherWarns) for (let i = sand.motherWarns.length - 1; i >= 0; i--) { sand.motherWarns[i].timer -= dt; if (sand.motherWarns[i].timer <= 0) sand.motherWarns.splice(i, 1) }
+    if (sand.ghosts) for (let i = sand.ghosts.length - 1; i >= 0; i--) { sand.ghosts[i].life -= dt; if (sand.ghosts[i].life <= 0) sand.ghosts.splice(i, 1) }
     renderSand()
     pvRaf = requestAnimationFrame(pvLoop)
   }
-  $('pvPlay').onclick = () => {
-    if (pvRunning) return
-    spawnPreview()
-    pvRunning = true
-    pvLast = performance.now()
-    pvRaf = requestAnimationFrame(pvLoop)
-    $('pvPlay').textContent = '▶ 演示中…'
-  }
-  $('pvStop').onclick = () => {
-    pvRunning = false
-    cancelAnimationFrame(pvRaf)
-    $('pvPlay').textContent = '▶ 沙盒演示'
-    sand.enemies = []; sand.enemyProjectiles = []; sand.cannonballs = []; sand.webZones = []; sand.attackFx = []; sand.particles = []; sand.motherWarns = []
+
+  function renderSand() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1
+    for (let x = 0; x < canvas.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke() }
+    for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke() }
+    if (sand.webZones) sand.webZones.forEach(z => {
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(60,180,90,0.2)'; ctx.fill(); ctx.strokeStyle = 'rgba(60,180,90,0.5)'; ctx.stroke()
+    })
+    sand.enemies.forEach(e => {
+      if (e.warn) {
+        ctx.save(); ctx.translate(e.x, e.y)
+        if (e.warn.type === 'fan') { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, e.warn.radius, e.warn.angle - 0.6, e.warn.angle + 0.6); ctx.closePath(); ctx.fillStyle = 'rgba(255,80,60,0.15)'; ctx.fill() }
+        else if (e.warn.type === 'ring') { ctx.beginPath(); ctx.arc(0, 0, e.warn.radius, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,80,60,0.12)'; ctx.fill() }
+        ctx.restore()
+      }
+      if (e.motherWarns) e.motherWarns.forEach(w => { if (w.kind === 'web') { ctx.beginPath(); ctx.arc(w.x, w.y, 60, 0, Math.PI * 2); ctx.fillStyle = 'rgba(60,200,90,0.15)'; ctx.fill() } })
+      if (e.attackState === 'windup' && e.attackType) {
+        ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.attackAngle || 0)
+        ctx.fillStyle = 'rgba(255,90,60,0.15)'
+        const a = cfg.meleeAttacks[e.attackType] || {}
+        if (e.attackType === 'slam') ctx.fillRect(0, -(a.halfW || 40), a.len || 120, (a.halfW || 40) * 2)
+        if (e.attackType === 'charge' || e.attackType === 'dash') ctx.fillRect(0, -(a.halfW || 40), a.len || 300, (a.halfW || 40) * 2)
+        if (e.attackType === 'fan') { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, a.radius || 160, -(a.halfAngle || 0.9), a.halfAngle || 0.9); ctx.closePath(); ctx.fill() }
+        if (e.attackType === 'nova') { ctx.beginPath(); ctx.arc(0, 0, a.radius || 200, 0, Math.PI * 2); ctx.fill() }
+        ctx.restore()
+      }
+    })
+    sand.particles.forEach(p => { ctx.globalAlpha = Math.max(0, p.life / 0.3); ctx.beginPath(); ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI * 2); ctx.fillStyle = p.color || '#ffcc44'; ctx.fill(); ctx.globalAlpha = 1 })
+    sand.enemyProjectiles.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, b.radius || 4, 0, Math.PI * 2); ctx.fillStyle = '#ff8855'; ctx.fill() })
+    if (sand.ghosts) sand.ghosts.forEach(g => { ctx.globalAlpha = Math.max(0, g.life / 0.35) * 0.4; ctx.beginPath(); ctx.arc(g.x, g.y, g.radius, 0, Math.PI * 2); ctx.fillStyle = g.color || '#88ddff'; ctx.fill(); ctx.globalAlpha = 1 })
+    sand.enemies.forEach(e => {
+      const col = ENEMY_COLORS[e.type] || '#eee'
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
+      ctx.fillStyle = col + '33'; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke()
+      if (e.isBoss) {
+        ctx.font = '11px sans-serif'; ctx.fillStyle = '#ffd700'
+        ctx.fillText(e.bossName || 'Boss', e.x - 24, e.y - e.radius - 8)
+        const w = e.radius * 2
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(e.x - w / 2, e.y - e.radius - 4, w, 4)
+        ctx.fillStyle = '#ff5555'; ctx.fillRect(e.x - w / 2, e.y - e.radius - 4, w * Math.max(0, e.hp / e.maxHp), 4)
+      }
+    })
+    // 隐形目标模式不渲染玩家；AI 演示模式渲染假玩家
+    if (!pvSkillMode) {
+      ctx.beginPath(); ctx.arc(PVP.x, PVP.y, PVP.radius, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill()
+      ctx.font = '10px sans-serif'; ctx.fillStyle = '#888'
+      ctx.fillText('假玩家', PVP.x - 20, PVP.y - PVP.radius - 6)
+    } else if (sand.enemies.length) {
+      // 技能模式：提示隐形目标位置（虚线小圆）
+      const t = sand.player
+      if (t) { ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(t.x, t.y, 10, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.stroke(); ctx.setLineDash([]) }
+    }
+  }
+
+  // ================= 保存 / 导出 / 导入 / 新增 =================
+  function flash(msg) { const s = $('status'); s.textContent = msg; setTimeout(() => { s.textContent = '' }, 3000) }
+  $('btnSave').onclick = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)) } catch (e) { alert('保存失败：' + e); return } flash('✅ 已保存到游戏，刷新 hh.html / modular 生效') }
+  $('btnExport').onclick = () => { const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'enemy-config.json'; a.click() }
+  $('btnImport').onclick = () => $('fileInput').click()
+  $('fileInput').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { cfg = Object.assign(cfgDefault(), JSON.parse(r.result)); renderList(); if (activeUnit) renderDetail(); flash('✅ 已导入') } catch (err) { alert('JSON 解析失败：' + err) } }; r.readAsText(f); e.target.value = '' }
+  $('btnReset').onclick = () => { if (!confirm('恢复默认配置？当前配置将被清除。')) return; localStorage.removeItem(KEY); cfg = cfgDefault(); renderList(); if (activeUnit) renderDetail(); flash('↺ 已恢复默认') }
+  $('btnAddEnemy').onclick = () => {
+    const id = 'custom' + Date.now().toString().slice(-5)
+    cfg.enemyStats[id] = deepCopy(cfg.enemyStats.melee || { hpMul: 1, dmgMul: 1, spdMul: 1 })
+    cfg.specialTypes[id] = { wave: 3, max: 2 }
+    cfg.enabled[id] = true
+    ENEMY_TYPES.push(id); ENEMY_NAMES[id] = '自定义怪' + id.slice(-3); ENEMY_COLORS[id] = '#c8a2c8'
+    renderList(); openDetail(unitFor('enemy', id)); flash('✅ 已新增敌人')
+  }
+  $('btnAddBoss').onclick = () => {
+    const mask = document.createElement('div'); mask.className = 'modal-mask'
+    mask.innerHTML = `<div class="modal"><h3>➕ 新增 Boss（复制模板）</h3>
+      <button class="m-item" data-t="meleeBoss">⚔ 大型近战 Boss（拍击/横摆/冲击/冲刺）</button>
+      <button class="m-item" data-t="artilleryBoss">🎯 大型远程 Boss（扇形/全屏/轰炸）</button>
+      <button class="m-item" data-t="motherBoss">🦠 母体 Boss（毒液/孵化/毒雾/冲击波）</button>
+      <div class="m-actions"><button data-close>取消</button></div></div>`
+    document.body.appendChild(mask)
+    mask.querySelector('[data-close]').onclick = () => mask.remove()
+    mask.onclick = e => { if (e.target === mask) mask.remove() }
+    mask.querySelectorAll('[data-t]').forEach(btn => btn.onclick = () => {
+      const t = btn.dataset.t
+      const id = 'boss_' + t + '_' + Date.now().toString().slice(-4)
+      cfg.enabled[id] = true
+      cfg.customBosses = cfg.customBosses || {}
+      cfg.customBosses[id] = { template: t, name: '自定义' + (BOSS_LIST.find(b => b.key === t) || {}).name }
+      bind[id] = deepCopy(DEFAULT_BIND[t])
+      BOSS_LIST.push({ key: id, name: cfg.customBosses[id].name, color: '#ff9d9d' })
+      mask.remove()
+      renderList(); openDetail(unitFor('boss', id)); flash('✅ 已新增 Boss（编辑器内可编辑/预览；游戏内需在 hh.html 波次路由接入才出场）')
+    })
+  }
+  // 自定义 Boss 在详情中的技能定义 = 模板技能的浅拷贝
+  function skillsFor(u) {
+    if (SKILL_DEFS[u.key]) return SKILL_DEFS[u.key]
+    const cb = cfg.customBosses && cfg.customBosses[u.key]
+    if (cb && SKILL_DEFS[cb.template]) return SKILL_DEFS[cb.template]
+    return null
+  }
+
+  // 覆盖 renderSkills 使用 skillsFor（自定义 Boss 也支持技能卡）
+  const _renderSkills = renderSkills
+  renderSkills = defs => _renderSkills(defs)
+  // renderDetail 用 skillsFor
+  const _renderDetail = renderDetail
+  renderDetail = function () {
+    const u = activeUnit
+    const nm = unitLabel(u)
+    $('dTitle').textContent = (u.type === 'boss' ? '👑 ' : '👾 ') + nm
+    $('dSub').textContent = u.type === 'boss' ? '大型 Boss · 技能绑定仅编辑器内生效（游戏出招不变）' : '普通敌人 · 属性倍率随波次缩放'
+    $('dStats').innerHTML = buildStats(u)
+    const props = $('dProps'); props.innerHTML = ''
+    const enRow = document.createElement('div'); enRow.className = 'en-row'
+    enRow.innerHTML = `<label>启用（关闭后完全不出场）</label><input type="checkbox" id="d_enabled" ${unitEnabled(u) ? 'checked' : ''}>`
+    enRow.querySelector('#d_enabled').onchange = e => { setEnabled(u, e.target.checked); renderList() }
+    props.appendChild(enRow)
+    const isCustom = u.type === 'boss' && cfg.customBosses && cfg.customBosses[u.key]
+    if (u.type === 'enemy') {
+      renderFields(props, 'cfg.enemyStats.' + u.key, SCHEMAS.enemyStats)
+      if (resolve(cfg, 'cfg.specialTypes.' + u.key)) {
+        const st = document.createElement('div'); st.className = 'sec-title'; st.style.cssText = 'margin-top:10px;border-color:#2ea043'; st.textContent = '📅 出场配置'
+        props.appendChild(st)
+        renderFields(props, 'cfg.specialTypes.' + u.key, SCHEMAS.specialType)
+      }
+    } else if (u.key === 'normalBoss' || (isCustom && cfg.customBosses[u.key].template === 'meleeBoss')) {
+      renderFields(props, 'cfg', { meleeBossRadius: SCHEMAS.global.meleeBossRadius, meleeBossWindup: SCHEMAS.global.meleeBossWindup, meleeBossRecover: SCHEMAS.global.meleeBossRecover, dashSpeed: SCHEMAS.global.dashSpeed })
+    } else if (u.key === 'artilleryBoss' || (isCustom && cfg.customBosses[u.key].template === 'artilleryBoss')) {
+      renderFields(props, 'cfg.artillery', { radius: SCHEMAS.artillery.radius, hpBase: SCHEMAS.artillery.hpBase, dmgBase: SCHEMAS.artillery.dmgBase, speed: SCHEMAS.artillery.speed, preferredDist: SCHEMAS.artillery.preferredDist, skillInterval: SCHEMAS.artillery.skillInterval })
+    } else if (u.key === 'motherBoss' || (isCustom && cfg.customBosses[u.key].template === 'motherBoss')) {
+      renderFields(props, 'cfg.mother', { radius: SCHEMAS.mother.radius, hpBase: SCHEMAS.mother.hpBase, dmgBase: SCHEMAS.mother.dmgBase, speed: SCHEMAS.mother.speed })
+    } else if (u.key === 'meleeBoss') {
+      renderFields(props, 'cfg', { meleeBossRadius: SCHEMAS.global.meleeBossRadius, meleeBossWindup: SCHEMAS.global.meleeBossWindup, meleeBossRecover: SCHEMAS.global.meleeBossRecover, dashSpeed: SCHEMAS.global.dashSpeed })
+    }
+    const defs = skillsFor(u)
+    const skillsSec = $('dSkillsSec')
+    if (defs && defs.length) { skillsSec.classList.remove('hidden'); renderSkills(defs) } else { skillsSec.classList.add('hidden') }
+    $('pvName').textContent = '预览：' + nm
+    stopPreview()
+  }
+
+  // 自定义 Boss 预览：用模板 spawn
+  const _spawnPreviewTarget = spawnPreviewTarget
+  spawnPreviewTarget = function (u) {
+    sand.enemies = []; sand.enemyProjectiles = []; sand.cannonballs = []; sand.webZones = []; sand.motherWarns = []; sand.attackFx = []; sand.particles = []; sand.floatTexts = []; sand.ghosts = []
+    if (u.type === 'enemy') { sand.enemies.push(buildEnemy(u.key)); return }
+    if (u.key === 'normalBoss') { const e = buildEnemy('melee'); e.isBoss = true; e.bossName = '👑 首领'; e.radius = cfg.bossRadius; e.isMeleeBoss = true; e.meleeSkills = ['slam', 'dash']; sand.enemies.push(e); return }
+    const cb = cfg.customBosses && cfg.customBosses[u.key]
+    const t = cb ? cb.template : u.key
+    if (t === 'meleeBoss') EnemySystem.spawnMeleeBoss()
+    else if (t === 'artilleryBoss') EnemySystem.spawnArtilleryBoss()
+    else if (t === 'motherBoss') EnemySystem.spawnMotherBoss()
+    fixBossPos()
   }
 
   // 初始化
+  $('searchInput').oninput = renderList
   renderList()
-  renderForm(null)
+  backToList()
   window.addEventListener('beforeunload', () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)) } catch (_) {} })
 })()
 </script>

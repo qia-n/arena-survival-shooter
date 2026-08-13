@@ -277,7 +277,7 @@
                 magSize: 500,
                 reloadTime: 2.5,
                 barrelCount: 7,
-                unlock: { kills: 500, wave: 25 },
+                unlock: { kills: 1500, wave: 35 },
             }, {
                 id: 'sniper',
                 name: '狙击枪',
@@ -306,7 +306,7 @@
                 gunType: 'sniper',
                 magSize: 4,
                 reloadTime: 3,
-                unlock: { kills: 350 },
+                unlock: { kills: 800, wave: 25 },
             }, {
                 id: 'ultraman',
                 name: '奥特曼',
@@ -336,7 +336,7 @@
                 magSize: 0,
                 reloadTime: 0,
                 barrelCount: 16,
-                unlock: { kills: 700, wave: 30 },
+                unlock: { kills: 2500, wave: 45 },
             }, ]
 
             function genId() {

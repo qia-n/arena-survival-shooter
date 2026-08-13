@@ -413,11 +413,8 @@
                     gatlingBarrel: 0,
                     gatlingSpin: 0,
                     // 奥特曼专属强化
-                    beamBoost: 0,
                     beamDouble: 0,
-                    beamPierce: 0,
                     beamBurn: 0,
-                    beamRange: 0,
                 },
 
                 enemies: [],
@@ -978,15 +975,6 @@
                     state.player.reloadTimeMult = Math.max(0.4, Math.round((state.player.reloadTimeMult || 1) * 0.85 * 100) / 100)
                 }
             }, {
-                id: 'beamBoost',
-                label: '🌟 光束强化',
-                desc: '射线伤害 +30%',
-                weight: 1.0,
-                category: 'special',
-                apply: () => {
-                    state.player.beamBoost = Math.round(((state.player.beamBoost || 0) + 0.3) * 100) / 100
-                }
-            }, {
                 id: 'beamDouble',
                 label: '🌟 双束射线',
                 desc: '射线分裂为平行双束 (上限 3 束)',
@@ -996,15 +984,6 @@
                     state.player.beamDouble = Math.min(2, (state.player.beamDouble || 0) + 1)
                 }
             }, {
-                id: 'beamPierce',
-                label: '🌟 贯穿射线',
-                desc: '射线穿透 +1 (上限 3)',
-                weight: 1.0,
-                category: 'special',
-                apply: () => {
-                    state.player.beamPierce = Math.min(3, (state.player.beamPierce || 0) + 1)
-                }
-            }, {
                 id: 'beamBurn',
                 label: '🌟 灼烧射线',
                 desc: '命中附带 2s 灼烧持续伤害 (上限 3)',
@@ -1012,15 +991,6 @@
                 category: 'special',
                 apply: () => {
                     state.player.beamBurn = Math.min(3, (state.player.beamBurn || 0) + 1)
-                }
-            }, {
-                id: 'beamRange',
-                label: '🌟 射线延长',
-                desc: '射线射程 +30%',
-                weight: 1.0,
-                category: 'special',
-                apply: () => {
-                    state.player.beamRange = Math.round(((state.player.beamRange || 0) + 0.3) * 100) / 100
                 }
             }, ]
 
@@ -1033,7 +1003,7 @@
                     if (gtype === 'ultraman') {
                         if (['atkSpeed', 'bulletSpeed', 'parallel', 'scatter', 'extraAttack', 'ricochet', 'split', 'magUp', 'reloadSpeed', 'spreadFocus'].includes(item.id)) return false
                         if (item.id === 'atk' || item.id === 'hp' || item.id === 'range' || item.id === 'lifeSteal' || item.id === 'atkSteal' || item.id === 'pierce') return true
-                        if (['beamBoost', 'beamDouble', 'beamPierce', 'beamBurn', 'beamRange'].includes(item.id)) return true
+                        if (['beamDouble', 'beamBurn'].includes(item.id)) return true
                         return false
                     }
                     // ---- 按武器类型限制弹道/攻速类属性 ----
@@ -1478,10 +1448,8 @@
                 // ---- 奥特曼：多射击口粒子射线（10 个环形枪口随机轮流发射，每颗速度随机，直线不锥形） ----
                 if (p.gunType === 'ultraman') {
                     const beams = 1 + (p.beamDouble || 0)
-                    const boost = 1 + (p.beamBoost || 0)
-                    const rangeMult = 1 + (p.beamRange || 0)
-                    const beamLife = 0.45 * rangeMult
-                    const beamDmg = r2(p.atk * 0.1 * boost)
+                    const beamLife = 0.45
+                    const beamDmg = r2(p.atk * 0.1)
                     const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 16
                     const barrelSpacing = 4
                     const totalW = (barrels - 1) * barrelSpacing
@@ -1513,7 +1481,7 @@
                                 isHoming: false,
                                 isChild: true,
                                 splitRemain: 0,
-                                pierceRemain: p.pierceCount + (p.beamPierce || 0),
+                                pierceRemain: p.pierceCount,
                                 burn: (p.beamBurn || 0) > 0,
                                 hitEnemies: new Set(),
                                 radius: 3,
@@ -3693,11 +3661,8 @@
                 p.gatlingBarrel = 0
                 p.gatlingSpin = 0
                 // 奥特曼专属强化重置
-                p.beamBoost = 0
                 p.beamDouble = 0
-                p.beamPierce = 0
                 p.beamBurn = 0
-                p.beamRange = 0
 
                 p.totalKills = 0
                 p.currentKills = 0

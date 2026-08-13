@@ -1,24 +1,3 @@
-/* ============================================================
- *  enemies.js — 敌人 / Boss 生成与 AI 逻辑（模块化）
- *  加载顺序：第三个（依赖 constants.js / enemy-config.js）
- *  主文件通过 EnemySystem.init(deps) 注入依赖：
- *    state, worldW, worldH, view(), 特效/音效函数, gameOver
- *  以后调整敌人行为只需改本文件；调整数值只需改 enemy-config.js
- * ============================================================ */
-(function () {
-  const G = typeof window !== 'undefined' ? window : globalThis
-
-  // ---- 依赖（由主文件 init 注入） ----
-  let state = null
-  let worldW = 0
-  let worldH = 0
-  const D = {}
-
-  // ---- 特效转发桥（主游戏注入；未注入时静默，避免沙盒/模块环境报错） ----
-  const spawnPlayerHitParticles = (x, y, n) => { if (D.spawnPlayerHitParticles) D.spawnPlayerHitParticles(x, y, n) }
-
-  // ===== 敌人 / Boss 逻辑（从主文件抽取，函数体保持原样） =====
-
 // 按波次选择敌人类型：特殊怪逐波解锁，且每种每波不超过上限（禁用类型完全不出场）
             function pickEnemyType(wave, counts) {
                 const available = []
@@ -1286,30 +1265,3 @@ function startArtillerySkill(e) {
                     }
             }
             }
-
-  // ===== 结束 =====
-
-  G.EnemySystem = {
-    init(deps) {
-      Object.assign(D, deps)
-      state = deps.state
-      worldW = deps.worldW
-      worldH = deps.worldH
-    },
-    setWorld(w, h) {
-      worldW = w
-      worldH = h
-    },
-    getWorld() {
-      return { worldW, worldH }
-    },
-    pickEnemyType,
-    spawnEnemy,
-    spawnBoss,
-    spawnMeleeBoss,
-    spawnArtilleryBoss,
-    spawnMotherBoss,
-    explodeCannonball,
-    updateEnemyAI,
-  }
-})()

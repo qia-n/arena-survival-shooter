@@ -43,7 +43,7 @@ S = S.replace('worldH = canvasH * WORLD_ZOOM', 'worldH = canvasH * WORLD_ZOOM\n 
 
 // 5. setup 尾部注入依赖
 S = S.replace('            resizeCanvas()',
-  '            EnemySystem.init({\n                state,\n                worldW,\n                worldH,\n                view: () => ({ camX, camY, canvasW, canvasH }),\n                spawnFloatText,\n                spawnDeathPowder,\n                spawnHitParticles,\n                gameOver,\n                playShootSound,\n                playHitSound,\n            })\n\n            resizeCanvas()');
+  '            EnemySystem.init({\n                state,\n                worldW,\n                worldH,\n                view: () => ({ camX, camY, canvasW, canvasH }),\n                spawnFloatText,\n                spawnDeathPowder,\n                spawnHitParticles,\n                spawnPlayerHitParticles,\n                gameOver,\n                playShootSound,\n                playHitSound,\n            })\n\n            resizeCanvas()');
 
 fs.writeFileSync('modular/js/game.js', S);
 console.log('game.js 生成:', S.split('\n').length, '行');

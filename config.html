@@ -32,6 +32,9 @@
   .field .unit { font-size: 11px; color: #8b949e; }
   .field.enabled-row { background: #161b22; padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; }
   .field.enabled-row label { width: auto; font-weight: 600; }
+  .stats { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #c9d1d9; margin-bottom: 12px; line-height: 1.7; }
+  .stats span { margin-right: 10px; white-space: nowrap; }
+  .stats b { color: #7ee787; }
   .preview { border-left: 1px solid #30363d; display: flex; flex-direction: column; }
   .pv-head { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid #30363d; }
   #pvName { font-size: 13px; color: #79c0ff; flex: 1; }
@@ -249,6 +252,8 @@
     else if (u.type === 'mother') { title = '🦠 母体 Boss'; desc = '毒液 / 孵化 / 毒雾 / 冲击波 / 小怪参数' }
     const h2 = document.createElement('h2'); h2.textContent = title; form.appendChild(h2)
     const dp = document.createElement('div'); dp.className = 'desc'; dp.textContent = desc; form.appendChild(dp)
+    // 当前数值摘要（只读）
+    const st = document.createElement('div'); st.className = 'stats'; st.innerHTML = buildStats(u); form.appendChild(st)
     // 启用开关
     const [p, ep] = unitPath(u)
     if (ep) {
@@ -285,6 +290,46 @@
     // 预览
     $('pvName').textContent = '预览：' + title
     currentPreviewUnit = u
+  }
+
+  // ---- 当前数值摘要（基于当前配置 + wave 10 估算，供快速查看初始数值） ----
+  function buildStats(u) {
+    if (!u) return ''
+    const kv = arr => arr.map(([k, v]) => `<span>${k}: <b>${v}</b></span>`).join('')
+    if (u.type === 'enemy') {
+      const st = cfg.enemyStats[u.key] || {}
+      const hp = Math.max(1, Math.floor(3 * (1 + 10 * 0.1) * (st.hpMul || 1)))
+      const dmg = Math.max(1, Math.floor(4 * (1 + 10 * 0.1) * (st.dmgMul || 1)))
+      const spd = Math.round(45 * (st.spdMul || 1))
+      const sp = cfg.specialTypes[u.key]
+      const extra = sp ? ` · 解锁波次 <b>${sp.wave}</b> · 每波上限 <b>${sp.max}</b>` : ''
+      return `<b>当前数值</b>（wave 10 估算）：生命 <b>${hp}</b> · 伤害 <b>${dmg}</b> · 移速 <b>${spd}</b>${extra}`
+    }
+    if (u.type === 'boss' && u.key === 'normalBoss') {
+      const st = cfg.enemyStats.melee || {}
+      const hp = Math.max(1, Math.floor(3 * (1 + 10 * 0.1) * (st.hpMul || 1)))
+      const dmg = Math.max(1, Math.floor(4 * (1 + 10 * 0.1) * (st.dmgMul || 1)))
+      return `<b>当前数值</b>（wave 10 估算）：半径 <b>${cfg.bossRadius}</b> · 生命 <b>${hp}</b> · 伤害 <b>${dmg}</b>`
+    }
+    if (u.type === 'boss' && u.key === 'meleeBoss') {
+      return `<b>当前数值</b>：半径 <b>${cfg.meleeBossRadius}</b> · 蓄力 <b>${cfg.meleeBossWindup}s</b> · 后摇 <b>${cfg.meleeBossRecover}s</b> · 冲刺速度 <b>${cfg.dashSpeed}</b>`
+    }
+    if (u.type === 'boss' && u.key === 'artilleryBoss') return buildStats({ type: 'artillery' })
+    if (u.type === 'boss' && u.key === 'motherBoss') return buildStats({ type: 'mother' })
+    if (u.type === 'attack') {
+      const a = cfg.meleeAttacks[u.key] || {}
+      return `<b>技能范围</b>：${kv(Object.entries(a).map(([k, v]) => [k, typeof v === 'number' ? (Math.abs(v) > 2 ? Math.round(v) : v) : v]))}`
+    }
+    if (u.type === 'artillery') {
+      const a = cfg.artillery || {}
+      return `<b>当前数值</b>：半径 <b>${a.radius}</b> · 基础生命 <b>${a.hpBase}</b> · 基础伤害 <b>${a.dmgBase}</b> · 移速 <b>${a.speed}</b> · 技能间隔 <b>${a.skillInterval}s</b> · 扇形弹 <b>${a.fanCount}颗</b> · 全屏弹 <b>${a.radialCount}颗</b> · 轰炸 <b>${a.bombMin}~${a.bombMax}点</b>`
+    }
+    if (u.type === 'mother') {
+      const a = cfg.mother || {}
+      return `<b>当前数值</b>：半径 <b>${a.radius}</b> · 基础生命 <b>${a.hpBase}</b> · 基础伤害 <b>${a.dmgBase}</b> · 移速 <b>${a.speed}</b> · 毒液间隔 <b>${a.venomCooldown}s</b> · 孵化上限 <b>${a.spawnMaxMinions}只</b> · 毒雾半径 <b>${a.webRadius}</b>`
+    }
+    if (u.type === 'global') return '<b>全局参数</b>：见下方各字段（敌人半径 / Boss 半径 / 敌人子弹速度等）'
+    return ''
   }
 
   // ---- 保存 / 导出 / 导入 / 重置 ----
@@ -338,7 +383,7 @@
   // 初始化 EnemySystem（注入 mock 依赖 + 沙盒 state）
   const sand = {
     enemies: [], enemyProjectiles: [], cannonballs: [], webZones: [],
-    attackFx: [], motherWarns: [], particles: [], floatTexts: [],
+    attackFx: [], motherWarns: [], particles: [], floatTexts: [], ghosts: [],
     player: null, wave: 10, flashRed: 0, shakeTimer: 0, _playerSlowed: false,
   }
   EnemySystem.init({
@@ -350,12 +395,20 @@
     spawnHitParticles: () => {},
     spawnDeathPowder: () => {},
     spawnFloatText: () => {},
+    spawnPlayerHitParticles: (x, y, n) => {
+      for (let i = 0; i < (n || 8); i++) {
+        const a = Math.random() * Math.PI * 2
+        const sp = 40 + Math.random() * 90
+        sand.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.3, size: 2.5, color: '#ffcc44' })
+      }
+    },
   })
   let pvRunning = false
   let pvRaf = 0
   let pvLast = 0
   const PVP = { x: 160, y: 190, radius: 12, hp: 100, maxHp: 100, facingAngle: 0, facingDir: { x: 1, y: 0 } }
   let pvAngle = 0
+  sand.player = PVP // 让 EnemySystem 在第一帧就能读到玩家
 
   // 构造指定类型敌人（参照 spawnEnemy，读配置；字段兜底防 AI 报错）
   function buildEnemy(type) {
@@ -371,6 +424,9 @@
       chargeState: 'idle', chargeState2: 'idle', chargeAngle: 0, chargeDist: 0, chargeWarnTimer: 0, chargeTimer: 0,
       stunTimer: 0, healTimer: 0, sniperWarnTimer: 0, bomberWarnTimer: 0, splitTimer: 0, splitState: 'idle',
       shieldAngle: 0, dashCooldown: 0,
+      // Boss/近战 AI 状态（普通怪分支不使用；普通 Boss 预览需要）
+      attackState: 'idle', attackTimer: 0, attackAngle: 0, dashTimer: 0, recoverTimer: 0,
+      windupTimer: 0, skillScale: 1, phaseMode: null, enraged: false, stage2: false,
     }
     return base
   }
@@ -512,6 +568,7 @@
     const dt = Math.min(0.05, (ts - pvLast) / 1000 || 0.016)
     pvLast = ts
     updatePlayer(dt)
+    sand.player = PVP
     try {
       sand.state = sand
       EnemySystem.updateEnemyAI(dt, 1)

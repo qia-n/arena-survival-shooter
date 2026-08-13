@@ -4158,6 +4158,7 @@
                 spawnFloatText,
                 spawnDeathPowder,
                 spawnHitParticles,
+                spawnPlayerHitParticles,
                 gameOver,
                 playShootSound,
                 playHitSound,

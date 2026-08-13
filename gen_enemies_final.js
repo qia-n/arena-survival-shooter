@@ -25,6 +25,9 @@ const header = `/* ============================================================
   let worldH = 0
   const D = {}
 
+  // ---- 特效转发桥（主游戏注入；未注入时静默，避免沙盒/模块环境报错） ----
+  const spawnPlayerHitParticles = (x, y, n) => { if (D.spawnPlayerHitParticles) D.spawnPlayerHitParticles(x, y, n) }
+
   // ===== 敌人 / Boss 逻辑（从主文件抽取，函数体保持原样） =====
 
 `;

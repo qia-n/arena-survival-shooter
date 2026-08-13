@@ -81,7 +81,8 @@
   const KEY = 'enemy_config_v2'
   const $ = id => document.getElementById(id)
   const deepCopy = o => JSON.parse(JSON.stringify(o))
-  const cfgDefault = () => deepCopy(G.ENEMY_CFG || G.ENEMY_CONFIG)
+  // G 是 enemy-config.js 的局部名，挂在 window 上的是 ENEMY_CFG/ENEMY_CONFIG
+  const cfgDefault = () => deepCopy(window.ENEMY_CFG || window.ENEMY_CONFIG)
 
   // 当前编辑配置（从 localStorage 读；无则默认）
   let cfg = null

@@ -3430,6 +3430,9 @@
 
             function renderHomeList() {
                 gunList.innerHTML = ''
+                // 武器管理按钮：解锁奥特曼武器后才显示
+                const ultraGun = GUNS.find(g => g.id === 'ultraman')
+                btnManageGuns.style.display = (ultraGun && isGunUnlocked(ultraGun)) ? 'inline-block' : 'none'
                 // 未解锁武器直接隐藏
                 const unlockedGuns = GUNS.filter(isGunUnlocked)
                 // 新解锁提示（本次会话首次出现）

@@ -68,8 +68,8 @@
     // ---- 母体 Boss ----
     mother: {
       radius: 38,
-      hpMul: 60,
-      dmgMul: 5,
+      hpBase: 60,
+      dmgBase: 5,
       speed: 22,
       keepDist: 260,
       // 普通攻击：毒液弹
@@ -110,33 +110,87 @@
       enrageHpRatio: 0.5,
       enrageRadiusMul: 1.3,
     },
+
+    // ---- 大型远程 Boss 技能参数 ----
+    artillery: {
+      radius: 34,
+      hpBase: 70,
+      dmgBase: 3,
+      speed: 26,
+      preferredDist: 350,
+      skillInterval: 3.0,
+      windup: 0.7,
+      fanCount: 20,
+      fanSpeed: 280,
+      fanRadius: 520,
+      radialCount: 120,
+      radialSpeed: 300,
+      radialRadius: 640,
+      bombMin: 15,
+      bombMax: 20,
+      bombBlastRadius: 40,
+      bombSpeed: 1200,
+      cannonSpeed: 120,
+      cannonRadius: 14,
+      cannonFuse: 1.2,
+      normalInterval: 3.0,
+    },
+
+    // ---- 启用状态（禁用 = 完全不出场） ----
+    enabled: {
+      melee: true, ranged: true, bomber: true, splitter: true, charger: true,
+      healer: true, sniper: true, shield: true,
+      normalBoss: true, meleeBoss: true, artilleryBoss: true, motherBoss: true,
+    },
   }
 
-  G.ENEMY_CONFIG = CFG
+  // ---- 合并 localStorage 覆盖配置（后台配置页写入 enemy_config_v2） ----
+  let merged = CFG
+  try {
+    const saved = G.localStorage && G.localStorage.getItem('enemy_config_v2')
+    if (saved) {
+      const o = JSON.parse(saved)
+      merged = {
+        ...CFG,
+        ...o,
+        enemyStats: { ...CFG.enemyStats, ...(o.enemyStats || {}) },
+        meleeAttacks: { ...CFG.meleeAttacks, ...(o.meleeAttacks || {}) },
+        specialTypes: { ...CFG.specialTypes, ...(o.specialTypes || {}) },
+        artillery: { ...CFG.artillery, ...(o.artillery || {}) },
+        mother: { ...CFG.mother, ...(o.mother || {}) },
+        enabled: { ...CFG.enabled, ...(o.enabled || {}) },
+      }
+    }
+  } catch (_) {}
 
-  // ---- 顶层别名常量（供模块直接引用） ----
-  G.ENEMY_RADIUS = CFG.enemyRadius
-  G.BOSS_RADIUS = CFG.bossRadius
-  G.MELEE_BOSS_RADIUS = CFG.meleeBossRadius
-  G.MELEE_BOSS_WINDUP = CFG.meleeBossWindup
-  G.MELEE_BOSS_RECOVER = CFG.meleeBossRecover
-  G.MELEE_BOSS_NOVA_WINDUP = CFG.meleeBossNovaWindup
-  G.MELEE_ATTACK_FX_LIFE = CFG.meleeAttackFxLife
-  G.DASH_SPEED = CFG.dashSpeed
-  G.MELEE_ATTACKS = CFG.meleeAttacks
-  G.ENEMY_PROJECTILE_SPEED = CFG.enemyProjectileSpeed
-  G.BOMBER_BLAST_RADIUS = CFG.bomberBlastRadius
-  G.BOMBER_CHARGE_RADIUS = CFG.bomberChargeRadius
-  G.BOMBER_WINDUP = CFG.bomberWindup
-  G.CHARGER_WINDUP = CFG.chargerWindup
-  G.CHARGER_SPEED = CFG.chargerSpeed
-  G.CHARGER_DIST = CFG.chargerDist
-  G.CHARGER_STUN = CFG.chargerStun
-  G.HEALER_RANGE = CFG.healerRange
-  G.HEALER_AMOUNT = CFG.healerAmount
-  G.HEALER_INTERVAL = CFG.healerInterval
-  G.SNIPER_WINDUP = CFG.sniperWindup
-  G.SNIPER_RANGE = CFG.sniperRange
-  G.ENEMY_STATS = CFG.enemyStats
-  G.SPECIAL_TYPES = CFG.specialTypes
+  G.ENEMY_CFG = merged
+  G.ENEMY_CONFIG = merged
+
+  // ---- 顶层别名常量（供模块直接引用，基于合并后的配置） ----
+  G.ENEMY_RADIUS = merged.enemyRadius
+  G.BOSS_RADIUS = merged.bossRadius
+  G.MELEE_BOSS_RADIUS = merged.meleeBossRadius
+  G.MELEE_BOSS_WINDUP = merged.meleeBossWindup
+  G.MELEE_BOSS_RECOVER = merged.meleeBossRecover
+  G.MELEE_BOSS_NOVA_WINDUP = merged.meleeBossNovaWindup
+  G.MELEE_ATTACK_FX_LIFE = merged.meleeAttackFxLife
+  G.DASH_SPEED = merged.dashSpeed
+  G.MELEE_ATTACKS = merged.meleeAttacks
+  G.ENEMY_PROJECTILE_SPEED = merged.enemyProjectileSpeed
+  G.BOMBER_BLAST_RADIUS = merged.bomberBlastRadius
+  G.BOMBER_CHARGE_RADIUS = merged.bomberChargeRadius
+  G.BOMBER_WINDUP = merged.bomberWindup
+  G.CHARGER_WINDUP = merged.chargerWindup
+  G.CHARGER_SPEED = merged.chargerSpeed
+  G.CHARGER_DIST = merged.chargerDist
+  G.CHARGER_STUN = merged.chargerStun
+  G.HEALER_RANGE = merged.healerRange
+  G.HEALER_AMOUNT = merged.healerAmount
+  G.HEALER_INTERVAL = merged.healerInterval
+  G.SNIPER_WINDUP = merged.sniperWindup
+  G.SNIPER_RANGE = merged.sniperRange
+  G.ENEMY_STATS = merged.enemyStats
+  G.SPECIAL_TYPES = merged.specialTypes
+  G.MOTHER = merged.mother
+  G.ARTY = merged.artillery
 })()

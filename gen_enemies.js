@@ -14,7 +14,7 @@ function extract(start, end) {
 }
 
 const parts = [
-  extract('// 按波次选择敌人类型', 'const BOSS_RADIUS = 30'),                 // pickEnemyType
+  extract('// 按波次选择敌人类型', 'const MAX_PIERCE = 5'),                 // pickEnemyType
   extract('function bossHpScale', 'function spawnEdgePos'),        // bossHpScale
   extract('function spawnEdgePos', 'function spawnEnemy'),         // spawnEdgePos
   extract('function spawnEnemy', 'function spawnBoss'),            // spawnEnemy

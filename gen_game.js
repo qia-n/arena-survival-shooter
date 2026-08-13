@@ -14,7 +14,7 @@ function cut(start, end) {
 }
 
 // 1. 删除敌人配置/生成/AI 相关段
-cut('// 按波次选择敌人类型', 'const BOSS_RADIUS = 30');   // pickEnemyType（保留敌人常量供渲染用）
+cut('// 按波次选择敌人类型', 'const MAX_PIERCE = 5');   // pickEnemyType（保留敌人常量供渲染用）
 cut('function bossHpScale', 'const WORLD_ZOOM = 2.5'); // bossHpScale（保留 WORLD_ZOOM）
 cut('function spawnEdgePos', '/* ─── 波次管理');       // spawnEdgePos ~ melee fx 全部
 

@@ -6,59 +6,175 @@
 
         (function() {
 
-            /* ─── 常量 ───────────────────────────── */
-            const PLAYER_RADIUS = 14
-            const ENEMY_RADIUS = 16
+            /* ─── 敌人/Boss 配置（可由后台配置页修改，localStorage: enemy_config_v2 覆盖） ── */
+            const ENEMY_CFG_KEY = 'enemy_config_v2'
+            const DEFAULT_ENEMY_CFG = {
+                // 基础尺寸
+                enemyRadius: 16,
+                bossRadius: 30,
+                meleeBossRadius: 42,
+                // 大型近战 Boss 节奏
+                meleeBossWindup: 0.7,
+                meleeBossRecover: 0.3,
+                meleeBossNovaWindup: 5,
+                meleeAttackFxLife: 0.28,
+                dashSpeed: 900,
+                // 远程弹
+                enemyProjectileSpeed: 250,
+                // 近战技能
+                meleeAttacks: {
+                    fan: { radius: 220, halfAngle: 1.0471975511965976 },
+                    slam: { len: 100, halfW: 110 },
+                    charge: { len: 420, halfW: 45 },
+                    dash: { len: 600, halfW: 50 },
+                    nova: { radius: 200 },
+                },
+                // 特殊普通敌人参数
+                bomberBlastRadius: 110,
+                bomberChargeRadius: 90,
+                bomberWindup: 1.0,
+                chargerWindup: 0.8,
+                chargerSpeed: 260,
+                chargerDist: 900,
+                chargerStun: 2,
+                healerRange: 150,
+                healerAmount: 1.5,
+                healerInterval: 2.5,
+                sniperWindup: 1.0,
+                sniperRange: 750,
+                // 敌人类型属性倍率（血量/伤害/移速）与出场配置
+                enemyStats: {
+                    melee: { hpMul: 1.0, dmgMul: 1.0, spdMul: 0.85 },
+                    ranged: { hpMul: 0.8, dmgMul: 0.9, spdMul: 0.9 },
+                    bomber: { hpMul: 0.85, dmgMul: 1.0, spdMul: 1.15 },
+                    splitter: { hpMul: 1.1, dmgMul: 1.0, spdMul: 1.0 },
+                    charger: { hpMul: 1.3, dmgMul: 1.1, spdMul: 1.05 },
+                    healer: { hpMul: 0.8, dmgMul: 0.5, spdMul: 0.85 },
+                    sniper: { hpMul: 0.7, dmgMul: 1.2, spdMul: 0.8 },
+                    shield: { hpMul: 2.0, dmgMul: 0.8, spdMul: 0.7 },
+                },
+                specialTypes: {
+                    bomber: { wave: 3, max: 4 },
+                    splitter: { wave: 4, max: 4 },
+                    charger: { wave: 5, max: 3 },
+                    sniper: { wave: 6, max: 3 },
+                    shield: { wave: 6, max: 3 },
+                    healer: { wave: 7, max: 2 },
+                },
+                // 大型远程 Boss 技能参数
+                artillery: {
+                    radius: 34,
+                    hpBase: 70,
+                    dmgBase: 3,
+                    speed: 26,
+                    preferredDist: 350,
+                    skillInterval: 3.0,
+                    windup: 0.7,
+                    fanCount: 20,
+                    fanSpeed: 280,
+                    fanRadius: 520,
+                    radialCount: 120,
+                    radialSpeed: 300,
+                    radialRadius: 640,
+                    bombMin: 15,
+                    bombMax: 20,
+                    bombBlastRadius: 40,
+                    bombSpeed: 1200,
+                    cannonSpeed: 120,
+                    cannonRadius: 14,
+                    cannonFuse: 1.2,
+                    normalInterval: 3.0,
+                },
+                // 母体 Boss 参数
+                mother: {
+                    radius: 38,
+                    hpBase: 60,
+                    dmgBase: 5,
+                    speed: 22,
+                    keepDist: 260,
+                    venomDmgMul: 0.5,
+                    venomSpeed: 150,
+                    venomCooldown: 2.5,
+                    venomCooldownEnraged: 1.6,
+                    venomPoisonTime: 4,
+                    venomPoisonDps: 1.5,
+                    spawnInterval: 6,
+                    spawnIntervalEnraged: 3.5,
+                    spawnMin: 2,
+                    spawnMax: 3,
+                    spawnMinEnraged: 3,
+                    spawnMaxEnraged: 4,
+                    spawnMaxMinions: 8,
+                    spawnWarnTime: 1.0,
+                    webCooldown: 8,
+                    webCooldownEnraged: 6,
+                    webRadius: 90,
+                    webLife: 3,
+                    webPoisonTime: 2.5,
+                    webPoisonDps: 1,
+                    shockCooldown: 10,
+                    shockCooldownEnraged: 7,
+                    shockCount: 12,
+                    shockCountEnraged: 16,
+                    shockSpeed: 160,
+                    minionRadius: 11,
+                    minionSpeedBase: 95,
+                    minionHpMul: 0.7,
+                    minionDmgMul: 0.7,
+                    enrageHpRatio: 0.5,
+                    enrageRadiusMul: 1.3,
+                },
+                // 启用状态（禁用 = 完全不出场）
+                enabled: {
+                    melee: true, ranged: true, bomber: true, splitter: true, charger: true,
+                    healer: true, sniper: true, shield: true,
+                    normalBoss: true, meleeBoss: true, artilleryBoss: true, motherBoss: true,
+                },
+            }
+            // 合并 localStorage 覆盖配置
+            let ENEMY_CFG = { ...DEFAULT_ENEMY_CFG }
+            try {
+                const saved = localStorage.getItem(ENEMY_CFG_KEY)
+                if (saved) {
+                    const o = JSON.parse(saved)
+                    ENEMY_CFG = { ...DEFAULT_ENEMY_CFG, ...o }
+                    ENEMY_CFG.enemyStats = { ...DEFAULT_ENEMY_CFG.enemyStats, ...(o.enemyStats || {}) }
+                    ENEMY_CFG.meleeAttacks = { ...DEFAULT_ENEMY_CFG.meleeAttacks, ...(o.meleeAttacks || {}) }
+                    ENEMY_CFG.specialTypes = { ...DEFAULT_ENEMY_CFG.specialTypes, ...(o.specialTypes || {}) }
+                    ENEMY_CFG.artillery = { ...DEFAULT_ENEMY_CFG.artillery, ...(o.artillery || {}) }
+                    ENEMY_CFG.mother = { ...DEFAULT_ENEMY_CFG.mother, ...(o.mother || {}) }
+                    ENEMY_CFG.enabled = { ...DEFAULT_ENEMY_CFG.enabled, ...(o.enabled || {}) }
+                }
+            } catch (_) {}
 
-            // 特殊普通敌人参数
-            const BOMBER_BLAST_RADIUS = 110
-            const BOMBER_CHARGE_RADIUS = 90
-            const BOMBER_WINDUP = 1.0
-            const CHARGER_WINDUP = 0.8
-            const CHARGER_SPEED = 260
-            const CHARGER_DIST = 900
-            const CHARGER_STUN = 2
-            const HEALER_RANGE = 150
-            const HEALER_AMOUNT = 1.5
-            const HEALER_INTERVAL = 2.5
-            const SNIPER_WINDUP = 1.0
-            const SNIPER_RANGE = 750
-
-            // 敌人类型属性倍率（血量/伤害/移速）与出场配置（解锁波次、每波上限）
-            const ENEMY_STATS = {
-                melee: { hpMul: 1.0, dmgMul: 1.0, spdMul: 0.85 },
-                ranged: { hpMul: 0.8, dmgMul: 0.9, spdMul: 0.9 },
-                bomber: { hpMul: 0.85, dmgMul: 1.0, spdMul: 1.15 },
-                splitter: { hpMul: 1.1, dmgMul: 1.0, spdMul: 1.0 },
-                charger: { hpMul: 1.3, dmgMul: 1.1, spdMul: 1.05 },
-                healer: { hpMul: 0.8, dmgMul: 0.5, spdMul: 0.85 },
-                sniper: { hpMul: 0.7, dmgMul: 1.2, spdMul: 0.8 },
-                shield: { hpMul: 2.0, dmgMul: 0.8, spdMul: 0.7 },
-            }
-            const SPECIAL_TYPES = {
-                bomber: { wave: 3, max: 4 },
-                splitter: { wave: 4, max: 4 },
-                charger: { wave: 5, max: 3 },
-                sniper: { wave: 6, max: 3 },
-                shield: { wave: 6, max: 3 },
-                healer: { wave: 7, max: 2 },
-            }
-            const BOSS_RADIUS = 30
-            const MELEE_BOSS_RADIUS = 42
-            const MELEE_BOSS_WINDUP = 0.7
-            const MELEE_BOSS_RECOVER = 0.3
-            const MELEE_ATTACKS = {
-                fan: { radius: 220, halfAngle: Math.PI / 3 },
-                slam: { len: 100, halfW: 110 },
-                charge: { len: 420, halfW: 45 },
-                dash: { len: 600, halfW: 50 },
-                nova: { radius: 200 },
-            }
-            const MELEE_BOSS_NOVA_WINDUP = 5
-            const MELEE_ATTACK_FX_LIFE = 0.28
-            const DASH_SPEED = 900
+            // ---- 派生常量（保持原函数引用不变） ----
+            const ENEMY_RADIUS = ENEMY_CFG.enemyRadius
+            const BOMBER_BLAST_RADIUS = ENEMY_CFG.bomberBlastRadius
+            const BOMBER_CHARGE_RADIUS = ENEMY_CFG.bomberChargeRadius
+            const BOMBER_WINDUP = ENEMY_CFG.bomberWindup
+            const CHARGER_WINDUP = ENEMY_CFG.chargerWindup
+            const CHARGER_SPEED = ENEMY_CFG.chargerSpeed
+            const CHARGER_DIST = ENEMY_CFG.chargerDist
+            const CHARGER_STUN = ENEMY_CFG.chargerStun
+            const HEALER_RANGE = ENEMY_CFG.healerRange
+            const HEALER_AMOUNT = ENEMY_CFG.healerAmount
+            const HEALER_INTERVAL = ENEMY_CFG.healerInterval
+            const SNIPER_WINDUP = ENEMY_CFG.sniperWindup
+            const SNIPER_RANGE = ENEMY_CFG.sniperRange
+            const ENEMY_STATS = ENEMY_CFG.enemyStats
+            const SPECIAL_TYPES = ENEMY_CFG.specialTypes
+            const BOSS_RADIUS = ENEMY_CFG.bossRadius
+            const MELEE_BOSS_RADIUS = ENEMY_CFG.meleeBossRadius
+            const MELEE_BOSS_WINDUP = ENEMY_CFG.meleeBossWindup
+            const MELEE_BOSS_RECOVER = ENEMY_CFG.meleeBossRecover
+            const MELEE_ATTACKS = ENEMY_CFG.meleeAttacks
+            const MELEE_BOSS_NOVA_WINDUP = ENEMY_CFG.meleeBossNovaWindup
+            const MELEE_ATTACK_FX_LIFE = ENEMY_CFG.meleeAttackFxLife
+            const DASH_SPEED = ENEMY_CFG.dashSpeed
+            const ENEMY_PROJECTILE_SPEED = ENEMY_CFG.enemyProjectileSpeed
+            const ARTY = ENEMY_CFG.artillery
+            const MOTHER = ENEMY_CFG.mother
             const PROJECTILE_SPEED_BASE = 600
-            const ENEMY_PROJECTILE_SPEED = 250
             const MAX_PIERCE = 5
             const MAX_EXTRA_ATTACK = 5
             const MAX_SPLIT_LEVEL = 3
@@ -754,16 +870,24 @@
                     }
                 }
                 if (state.wave % 5 === 0 && state.wave % 10 !== 0) {
-                    EnemySystem.spawnBoss()
-                    state.waveSpawned++
+                    if (ENEMY_CFG.enabled.normalBoss !== false) {
+                        EnemySystem.spawnBoss()
+                        state.waveSpawned++
+                    }
                 }
                 if (state.wave % 10 === 0) {
-                    // 大型 Boss：近战 / 远程 / 母体 随机三选一
-                    const br = Math.random()
-                    if (br < 0.34) EnemySystem.spawnMeleeBoss()
-                    else if (br < 0.67) EnemySystem.spawnArtilleryBoss()
-                    else EnemySystem.spawnMotherBoss()
-                    state.waveSpawned++
+                    // 大型 Boss：从启用的类型中随机三选一
+                    const bossPool = []
+                    if (ENEMY_CFG.enabled.meleeBoss !== false) bossPool.push('melee')
+                    if (ENEMY_CFG.enabled.artilleryBoss !== false) bossPool.push('artillery')
+                    if (ENEMY_CFG.enabled.motherBoss !== false) bossPool.push('mother')
+                    if (bossPool.length > 0) {
+                        const pick = bossPool[randInt(0, bossPool.length - 1)]
+                        if (pick === 'melee') EnemySystem.spawnMeleeBoss()
+                        else if (pick === 'artillery') EnemySystem.spawnArtilleryBoss()
+                        else EnemySystem.spawnMotherBoss()
+                        state.waveSpawned++
+                    }
                 }
                 if (isBossWave) {
                     // Boss 出现：清场全部非 Boss 敌人（含所有特殊怪及分裂小怪），
@@ -2186,8 +2310,8 @@
                         spawnPlayerHitParticles(proj.x, proj.y, 18)
                         if (proj.kind === 'venom') {
                             // 毒液弹：附加中毒（4s 持续伤害，主伤害靠毒）
-                            p.poisonTimer = 4
-                            p.poisonDps = proj.poisonDps || 1.5
+                            p.poisonTimer = MOTHER.venomPoisonTime
+                            p.poisonDps = proj.poisonDps || MOTHER.venomPoisonDps
                         }
                         state.enemyProjectiles.splice(i, 1)
                         if (p.hp <= 0) {

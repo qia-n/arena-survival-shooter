@@ -16,10 +16,11 @@
 
   // ===== 敌人 / Boss 逻辑（从主文件抽取，函数体保持原样） =====
 
-// 按波次选择敌人类型：特殊怪逐波解锁，且每种每波不超过上限
+// 按波次选择敌人类型：特殊怪逐波解锁，且每种每波不超过上限（禁用类型完全不出场）
             function pickEnemyType(wave, counts) {
                 const available = []
                 for (const [t, cfg] of Object.entries(SPECIAL_TYPES)) {
+                    if (ENEMY_CFG.enabled[t] === false) continue
                     if (wave >= cfg.wave && (counts[t] || 0) < cfg.max) available.push(t)
                 }
                 // 特殊怪总体出现率随波次提升（最高 50%）
@@ -29,7 +30,11 @@
                     counts[t] = (counts[t] || 0) + 1
                     return t
                 }
-                return Math.random() < 0.3 ? 'ranged' : 'melee'
+                const baseTypes = []
+                if (ENEMY_CFG.enabled.melee !== false) baseTypes.push('melee')
+                if (ENEMY_CFG.enabled.ranged !== false) baseTypes.push('ranged')
+                if (baseTypes.length === 0) return 'melee'
+                return baseTypes[randInt(0, baseTypes.length - 1)]
             }
             
 
@@ -95,6 +100,10 @@ function spawnEnemy(isBoss = false, forcedType = null) {
                     isBoss,
                     bossName: isBoss ? '👑 首领' : undefined,
                     isMeleeBoss: isBoss,
+                    isLargeBoss: false,
+                    armor: isBoss ? Math.floor(hp * 0.4) : 0,
+                    maxArmor: isBoss ? Math.floor(hp * 0.4) : 0,
+                    armorBreakTimer: 0,
                     meleeSkills: isBoss ? ['slam', 'dash'] : undefined,
                     type,
                     attackCooldown: 0,
@@ -151,6 +160,16 @@ function spawnBoss() { spawnEnemy(true) }
                     maxHp: hp,
                     speed: 30,
                     damage,
+                    enraged: false,
+                    skillScale: 1,
+                    isLargeBoss: true,
+                    armor: Math.floor(hp * 0.4),
+                    maxArmor: Math.floor(hp * 0.4),
+                    armorBreakTimer: 0,
+                    stage2: false,
+                    phaseMode: null,
+                    phaseTimer: 0,
+                    baseRadius: MELEE_BOSS_RADIUS,
                     isBoss: true,
                     bossName: '⚔ 近战首领',
                     isMeleeBoss: true,
@@ -188,20 +207,21 @@ function spawnBoss() { spawnEnemy(true) }
                 const ly = -(p.x - e.x) * sinA + (p.y - e.y) * cosA
                 const pad = 10
                 // 判定从 Boss 身体边缘起算（+e.radius），与预警视觉一致
+                const sk = e.skillScale || 1
                 if (e.attackType === 'fan') {
-                    const r = MELEE_ATTACKS.fan.radius + pad + e.radius
+                    const r = MELEE_ATTACKS.fan.radius * sk + pad + e.radius
                     if (Math.hypot(lx, ly) > r) return false
-                    return Math.abs(Math.atan2(ly, lx)) <= MELEE_ATTACKS.fan.halfAngle + 0.15
+                    return Math.abs(Math.atan2(ly, lx)) <= MELEE_ATTACKS.fan.halfAngle * sk + 0.15
                 } else if (e.attackType === 'nova') {
-                    const r = MELEE_ATTACKS.nova.radius + pad + e.radius
+                    const r = MELEE_ATTACKS.nova.radius * sk + pad + e.radius
                     return Math.hypot(lx, ly) <= r
                 } else if (e.attackType === 'slam') {
-                    const len = MELEE_ATTACKS.slam.len + pad + e.radius
-                    const halfW = MELEE_ATTACKS.slam.halfW + pad
+                    const len = MELEE_ATTACKS.slam.len * sk + pad + e.radius
+                    const halfW = MELEE_ATTACKS.slam.halfW * sk + pad
                     return lx >= -pad && lx <= len && Math.abs(ly) <= halfW
                 } else {
-                    const len = MELEE_ATTACKS.charge.len + pad + e.radius
-                    const halfW = MELEE_ATTACKS.charge.halfW + pad
+                    const len = MELEE_ATTACKS.charge.len * sk + pad + e.radius
+                    const halfW = MELEE_ATTACKS.charge.halfW * sk + pad
                     return lx >= -pad && lx <= len && Math.abs(ly) <= halfW
                 }
             }
@@ -251,17 +271,27 @@ function spawnArtilleryBoss() {
                     y = pos.y
 
                 const waveFactor = 1 + state.wave * 0.15
-                const hp = Math.floor(70 * bossHpScale(state.wave))
-                const damage = Math.floor(4 * (1 + state.wave * 0.08))
+                const hp = Math.floor(ARTY.hpBase * bossHpScale(state.wave))
+                const damage = Math.floor(ARTY.dmgBase * (1 + state.wave * 0.08))
 
                 state.enemies.push({
                     x,
                     y,
-                    radius: 34,
+                    radius: ARTY.radius,
                     hp,
                     maxHp: hp,
-                    speed: 26,
+                    speed: ARTY.speed,
                     damage,
+                    enraged: false,
+                    skillScale: 1,
+                    isLargeBoss: true,
+                    armor: Math.floor(hp * 0.4),
+                    maxArmor: Math.floor(hp * 0.4),
+                    armorBreakTimer: 0,
+                    stage2: false,
+                    phaseMode: null,
+                    phaseTimer: 0,
+                    baseRadius: ARTY.radius,
                     isBoss: true,
                     bossName: '🎯 远程首领',
                     isArtilleryBoss: true,
@@ -269,7 +299,7 @@ function spawnArtilleryBoss() {
                     attackCooldown: 0,
                     attackInterval: 1.0,
                     rangedCooldown: 0,
-                    preferredDist: 350,
+                    preferredDist: ARTY.preferredDist,
                     flashTimer: 0,
                     waveId: state.currentWaveId,
                     knockbackX: 0,
@@ -280,7 +310,7 @@ function spawnArtilleryBoss() {
                     skillPhase: 0,
                     skillAngle: 0,
                     normalTimer: 1.5,
-                    normalInterval: 3.0,
+                    normalInterval: ARTY.normalInterval,
                     bombCount: 0,
                     bombPlan: [],
                     bombSpawnTimer: 0,
@@ -300,16 +330,16 @@ function spawnArtilleryBoss() {
                     y = pos.y
 
                 const waveFactor = 1 + state.wave * 0.15
-                const hp = Math.floor(60 * bossHpScale(state.wave))
-                const damage = Math.floor(5 * (1 + state.wave * 0.08))
+                const hp = Math.floor(MOTHER.hpBase * bossHpScale(state.wave))
+                const damage = Math.floor(MOTHER.dmgBase * (1 + state.wave * 0.08))
 
                 state.enemies.push({
                     x,
                     y,
-                    radius: 38,
+                    radius: MOTHER.radius,
                     hp,
                     maxHp: hp,
-                    speed: 22,
+                    speed: MOTHER.speed,
                     damage,
                     isBoss: true,
                     bossName: '🦠 母体',
@@ -318,7 +348,7 @@ function spawnArtilleryBoss() {
                     attackCooldown: 0,
                     attackInterval: 1.0,
                     rangedCooldown: 0,
-                    preferredDist: 300,
+                    preferredDist: MOTHER.keepDist,
                     flashTimer: 0,
                     waveId: state.currentWaveId,
                     knockbackX: 0,
@@ -328,6 +358,14 @@ function spawnArtilleryBoss() {
                     webCooldown: 5.0,
                     shockCooldown: 8.0,
                     enraged: false,
+                    isLargeBoss: true,
+                    armor: Math.floor(hp * 0.4),
+                    maxArmor: Math.floor(hp * 0.4),
+                    armorBreakTimer: 0,
+                    stage2: false,
+                    phaseMode: null,
+                    phaseTimer: 0,
+                    baseRadius: 38,
                     motherWarns: [],
                 })
             }
@@ -359,17 +397,21 @@ function spawnArtilleryBoss() {
                 })
             }
 
-            // 狂暴变化特效：红闪 + 震屏 + 冲击波 + 体型增大 + 警告
-            function triggerMotherEnrage(e) {
-                e.radius = e.radius * 1.3
-                state.flashRed = 0.6
-                state.shakeTimer = 0.5
-                state.shakePower = 11
-                state.enrageWarnTimer = 2.2
-                state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.5, maxLife: 0.5, radius: 280 })
-                state.attackFx.push({ type: 'blast', x: e.x, y: e.y, angle: 0, life: 0.35, maxLife: 0.35 })
-                // 红色粒子爆发
-                for (let k = 0; k < 44; k++) {
+            // Boss 阶段数值档位：[一阶段普通, 一阶段狂暴, 二阶段普通, 二阶段狂暴]
+            // 伤害 / 技能范围 / 技能频率 / 技能后摇
+            function bossStageF(e) {
+                const i = (e.stage2 ? 2 : 0) + (e.enraged ? 1 : 0)
+                return {
+                    dmg: [0.8, 1.3, 1.2, 1.6][i],
+                    range: [1, 1.15, 1.1, 1.3][i],
+                    freq: [0.8, 1.25, 1.15, 1.4][i],
+                    recover: [1.2, 0.7, 0.85, 0.6][i],
+                }
+            }
+
+            // 粒子爆发（变身演出用）
+            function burstBossPhaseParticles(e, n, colors) {
+                for (let k = 0; k < n; k++) {
                     const a = rand(0, Math.PI * 2)
                     const sp = rand(100, 380)
                     state.particles.push({
@@ -379,18 +421,82 @@ function spawnArtilleryBoss() {
                         vy: Math.sin(a) * sp,
                         size: rand(3, 10),
                         life: rand(0.4, 0.9),
-                        color: Math.random() < 0.5 ? '#39ff14' : '#00c853',
+                        color: colors[randInt(0, 1)],
                     })
+                }
+            }
+
+            // 触发 Boss 变身（三过渡统一入口）：enrage1（一阶段狂暴）/ revive（进化二阶段）/ enrage2（二阶段狂暴）
+            // 变身 2.6s：期间 Boss 原地不动、不攻击，可被伤害
+            function startBossPhase(e, mode) {
+                e.phaseMode = mode
+                e.phaseTimer = 2.6
+                e.phaseTotal = 2.6
+                // 清技能残留，防止变身中被旧预警/蓄力干扰
+                e.warn = null
+                e.bombPlan = []
+                e.attackState = 'idle'
+                e.skillState = 'idle'
+                e._pendingSkill = null
+                e.motherWarns = []
+                if (mode === 'revive') {
+                    // 进化二阶段：回满血 + 体型再增，金色/绿色回血粒子
+                    e.stage2 = true
+                    e.hp = e.maxHp
+                    state.flashRed = 0.5
+                    state.shakeTimer = 0.35
+                    state.shakePower = 8
+                    D.spawnFloatText(e.x, e.y - e.radius - 20, '💥 进化！', '#ffd700')
+                    burstBossPhaseParticles(e, 60, ['#7dff9b', '#ffd700'])
+                } else if (mode === 'enrage2') {
+                    // 二阶段狂暴：紫金粒子 + 强震屏 + 更强冲击波
+                    state.flashRed = 0.8
+                    state.shakeTimer = 0.8
+                    state.shakePower = 15
+                    state.enrageWarnTimer = 2.6
+                    state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.6, maxLife: 0.6, radius: 320 })
+                    burstBossPhaseParticles(e, 60, ['#b388ff', '#ffd700'])
+                } else {
+                    // 一阶段狂暴：红闪 + 震屏 + 粒子爆发
+                    state.flashRed = 0.7
+                    state.shakeTimer = 0.6
+                    state.shakePower = 12
+                    state.enrageWarnTimer = 2.6
+                    const cA = e.isMotherBoss ? '#39ff14' : (e.isArtilleryBoss ? '#4dd0ff' : '#ff9d3c')
+                    const cB = e.isMotherBoss ? '#00c853' : (e.isArtilleryBoss ? '#1e88ff' : '#ff5722')
+                    burstBossPhaseParticles(e, 46, [cA, cB])
+                }
+            }
+
+            // 变身进行：倒计时 → 结束时应用对应档位的体型/范围/狂暴状态
+            function bossPhaseTick(e, dt) {
+                e.phaseTimer -= dt
+                if (e.phaseTimer <= 0) {
+                    if (e.phaseMode === 'revive') {
+                        e.enraged = false
+                        e.radius = e.baseRadius * 1.3 * 1.2
+                    } else if (e.phaseMode === 'enrage2') {
+                        e.enraged = true
+                        e.radius = e.baseRadius * 1.3 * 1.2 * 1.35
+                    } else {
+                        e.enraged = true
+                        e.radius = e.baseRadius * 1.3
+                    }
+                    e.skillScale = bossStageF(e).range
+                    e.phaseMode = null
+                    e.attackTimer = 0.5
+                    e.skillTimer = 1.0
+                    state.attackFx.push({ type: 'nova', x: e.x, y: e.y, angle: 0, life: 0.4, maxLife: 0.4, radius: 200 })
                 }
             }
 
             // 母体 AI：慢速周旋 + 毒液弹 + 召唤虫群 + 束缚陷阱 + 冲击波
             function updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult) {
-                // 狂暴被动（hp ≤ 50%）
-                if (!e.enraged && e.hp <= e.maxHp * 0.5) {
-                    e.enraged = true
-                    triggerMotherEnrage(e)
+                // 狂暴被动（hp ≤ 50%）→ 变身演出（二阶段狂暴为 enrage2）
+                if (!e.enraged && !e.phaseMode && e.hp <= e.maxHp * 0.5) {
+                    startBossPhase(e, e.stage2 ? 'enrage2' : 'enrage1')
                 }
+                const sf = bossStageF(e)
 
                 // 慢速周旋：保持中距离（不追击）
                 const preferred = 260
@@ -411,7 +517,7 @@ function spawnArtilleryBoss() {
                 // 普通攻击：毒液弹（狂暴后双发）
                 e.venomCooldown -= dt
                 if (e.venomCooldown <= 0 && d2 < 700) {
-                    const shots = e.enraged ? 2 : 1
+                    const shots = e.stage2 ? (e.enraged ? 3 : 2) : (e.enraged ? 2 : 1)
                     for (let s = 0; s < shots; s++) {
                         const off = shots === 2 ? (s === 0 ? -0.14 : 0.14) : 0
                         const a = Math.atan2(dy2, dx2) + off
@@ -419,23 +525,24 @@ function spawnArtilleryBoss() {
                             x: e.x,
                             y: e.y,
                             kind: 'venom',
-                            vx: Math.cos(a) * 150,
-                            vy: Math.sin(a) * 150,
+                            vx: Math.cos(a) * MOTHER.venomSpeed,
+                            vy: Math.sin(a) * MOTHER.venomSpeed,
                             radius: 7,
-                            damage: Math.max(1, Math.floor(e.damage * 0.5)),
+                            damage: Math.max(1, Math.floor(r2(e.damage * MOTHER.venomDmgMul * sf.dmg))),
+                            poisonDps: r2(MOTHER.venomPoisonDps * sf.dmg),
                             life: 3.5,
                         })
                     }
-                    e.venomCooldown = e.enraged ? 1.6 : 2.5
+                    e.venomCooldown = MOTHER.venomCooldown / sf.freq
                 }
 
                 // 技能1：孵化虫群（预警圈 → 小怪，场上上限 8）
                 e.spawnCooldown -= dt
                 if (e.spawnCooldown <= 0) {
-                    e.spawnCooldown = e.enraged ? 3.5 : 6
+                    e.spawnCooldown = MOTHER.spawnInterval / sf.freq
                     const minions = state.enemies.filter(o => o.isMotherMinion).length
-                    if (minions < 8) {
-                        const count = e.enraged ? randInt(3, 4) : randInt(2, 3)
+                    if (minions < MOTHER.spawnMaxMinions) {
+                        const count = e.stage2 ? randInt(MOTHER.spawnMinEnraged, MOTHER.spawnMaxEnraged) : (e.enraged ? randInt(MOTHER.spawnMinEnraged, MOTHER.spawnMaxEnraged) : randInt(MOTHER.spawnMin, MOTHER.spawnMax))
                         for (let k = 0; k < count; k++) {
                             const a = rand(0, Math.PI * 2)
                             const dist2 = rand(60, 130)
@@ -452,25 +559,25 @@ function spawnArtilleryBoss() {
                 // 技能2：束缚陷阱（玩家脚下，预警后生成减速区域）
                 e.webCooldown -= dt
                 if (e.webCooldown <= 0 && d2 < 600) {
-                    e.webCooldown = e.enraged ? 6 : 8
+                    e.webCooldown = MOTHER.webCooldown / sf.freq
                     e.motherWarns.push({ x: p.x, y: p.y, timer: 1.0, kind: 'web' })
                 }
 
                 // 技能3：虫群冲击波（环形散射）
                 e.shockCooldown -= dt
                 if (e.shockCooldown <= 0) {
-                    e.shockCooldown = e.enraged ? 7 : 10
-                    const n = e.enraged ? 16 : 12
+                    e.shockCooldown = MOTHER.shockCooldown / sf.freq
+                    const n = e.stage2 ? 20 : (e.enraged ? 16 : 12)
                     for (let k = 0; k < n; k++) {
                         const a = (k / n) * Math.PI * 2
                         state.enemyProjectiles.push({
                             x: e.x,
                             y: e.y,
                             kind: 'bug',
-                            vx: Math.cos(a) * 160,
-                            vy: Math.sin(a) * 160,
+                            vx: Math.cos(a) * MOTHER.shockSpeed,
+                            vy: Math.sin(a) * MOTHER.shockSpeed,
                             radius: 5,
-                            damage: Math.max(1, e.damage - 1),
+                            damage: Math.max(1, r2(e.damage * sf.dmg - 1)),
                             life: 2.5,
                         })
                     }
@@ -495,7 +602,7 @@ function spawnArtilleryBoss() {
                     w.timer -= dt
                     if (w.timer <= 0) {
                         if (w.kind === 'web') {
-                            state.webZones.push({ x: w.x, y: w.y, radius: 90, life: 3 })
+                            state.webZones.push({ x: w.x, y: w.y, radius: MOTHER.webRadius, life: MOTHER.webLife, dps: MOTHER.webPoisonDps * sf.dmg })
                         } else {
                             spawnMotherMinion(w.x, w.y, e)
                         }
@@ -513,17 +620,17 @@ function startArtillerySkill(e) {
                     e.skillState = 'skill1'
                     e.skillAngle = Math.atan2(pl.y - e.y, pl.x - e.x)
                     e.skillPhase = randInt(1, 3)
-                    e.skillTimer = 0.7
-                    e.warn = { type: 'fan', x: e.x, y: e.y, angle: e.skillAngle, radius: 520, timer: 0.7 }
+                    e.skillTimer = ARTY.windup
+                    e.warn = { type: 'fan', x: e.x, y: e.y, angle: e.skillAngle, radius: ARTY.fanRadius * bossStageF(e).range, timer: ARTY.windup }
                 } else if (e.skillIndex === 1) {
                     // 技能2：全屏环形散射 16 颗
                     e.skillState = 'skill2'
-                    e.skillTimer = 0.7
-                    e.warn = { type: 'ring', x: e.x, y: e.y, radius: 640, timer: 0.7 }
+                    e.skillTimer = ARTY.windup
+                    e.warn = { type: 'ring', x: e.x, y: e.y, radius: ARTY.radialRadius * bossStageF(e).range, timer: ARTY.windup }
                 } else {
-                    // 技能3：大量轰炸——快速出现 15-20 个预警点，再依次降落
+                    // 技能3：大量轰炸——快速出现预警点，再依次降落（一阶段普通形态 2/3 数量）
                     e.skillState = 'skill3'
-                    e.bombCount = randInt(15, 20)
+                    e.bombCount = (e.stage2 || e.enraged) ? randInt(ARTY.bombMin, ARTY.bombMax) : randInt(Math.round(ARTY.bombMin * 2 / 3), Math.round(ARTY.bombMax * 2 / 3))
                     e.bombPlan = []
                     e.bombSpawnTimer = 0
                 }
@@ -532,7 +639,8 @@ function startArtillerySkill(e) {
             function finishArtillerySkill(e) {
                 e.skillState = 'idle'
                 e.skillIndex = (e.skillIndex + 1) % 3
-                e.skillTimer = 3.0
+                // 技能间隔按阶段频率档位（普通形态更慢 / 狂暴更快）
+                e.skillTimer = ARTY.skillInterval / bossStageF(e).freq
                 e.warn = null
                 e.bombPlan = []
             }
@@ -596,8 +704,51 @@ function startArtillerySkill(e) {
                         dy2 = p.y - e.y,
                         d2 = Math.hypot(dx2, dy2)
 
+                    // ---- 大型 Boss 变身演出（狂暴/二阶段过渡）：原地不动、不攻击，可被伤害 ----
+                    if ((e.isArtilleryBoss || e.isMeleeBoss || e.isMotherBoss) && e.phaseMode) {
+                        bossPhaseTick(e, dt)
+                        if (Math.random() < 0.3) {
+                            const pcol = e.phaseMode === 'revive' ? '#7dff9b' : (e.phaseMode === 'enrage2' ? '#b388ff' : '#ff9d3c')
+                            state.particles.push({
+                                x: e.x + rand(-e.radius, e.radius),
+                                y: e.y + rand(-e.radius, e.radius),
+                                vx: rand(-25, 25),
+                                vy: rand(-90, -15),
+                                size: rand(3, 7),
+                                life: rand(0.4, 0.8),
+                                color: pcol,
+                            })
+                        }
+                        continue
+                    }
+
+                    // ---- Boss 破防静止（霸体耗尽）：不移动不攻击，结束后恢复霸体 ----
+                    if (e.isBoss && e.armorBreakTimer > 0) {
+                        e.armorBreakTimer -= dt
+                        if (e.armorBreakTimer <= 0) {
+                            e.armor = e.maxArmor
+                        } else if (Math.random() < 0.3) {
+                            state.particles.push({
+                                x: e.x + rand(-e.radius, e.radius),
+                                y: e.y - e.radius + rand(-6, 6),
+                                vx: rand(-15, 15),
+                                vy: rand(-60, -20),
+                                size: rand(2, 5),
+                                life: rand(0.3, 0.6),
+                                color: '#ffcc00',
+                            })
+                        }
+                        continue
+                    }
+
                     if (e.isArtilleryBoss) {
                         // ---- 大型远程 Boss：技能状态机 ----
+                        if (!e.enraged && e.hp <= e.maxHp * 0.5) startBossPhase(e, e.stage2 ? 'enrage2' : 'enrage1')
+                        const sf = bossStageF(e)
+                        // 伤害倍率按阶段档位；范围倍率；子弹密度：一阶段普通 2/3，其余满额
+                        const artDmgF = sf.dmg
+                        const artSk = sf.range
+                        const artDensity = (e.stage2 || e.enraged) ? 1 : 2 / 3
                         const keepDist = 320
                         if (e.skillState === 'idle') {
                             // 风筝走位：保持中距离
@@ -624,14 +775,15 @@ function startArtillerySkill(e) {
                                 state.cannonballs.push({
                                     x: e.x,
                                     y: e.y,
-                                    vx: Math.cos(a) * 120,
-                                    vy: Math.sin(a) * 120,
-                                    radius: 14,
-                                    fuse: 1.2,
-                                    damage: e.damage,
+                                    vx: Math.cos(a) * ARTY.cannonSpeed,
+                                    vy: Math.sin(a) * ARTY.cannonSpeed,
+                                    radius: ARTY.cannonRadius,
+                                    fuse: ARTY.cannonFuse,
+                                    damage: r2(e.damage * artDmgF),
                                     life: 6,
                                 })
-                                e.normalTimer = e.normalInterval
+                                // 普通攻击频率按阶段档位
+                                e.normalTimer = e.normalInterval / bossStageF(e).freq
                             }
 
                             // 技能调度：间隔结束 → 远离则位移，否则直接技能
@@ -665,17 +817,17 @@ function startArtillerySkill(e) {
                             // 技能1：扇形散射 1-3 波
                             e.skillTimer -= dt
                             if (e.skillTimer <= 0) {
-                                const halfA = Math.PI / 3
-                                const bulletCount = 20
+                                const halfA = (Math.PI / 3) * artSk
+                                const bulletCount = Math.round(ARTY.fanCount * artDensity)
                                 for (let bi = 0; bi < bulletCount; bi++) {
-                                    const a = e.skillAngle - halfA + (2 * halfA) * (bi / (bulletCount - 1))
+                                    const a = e.skillAngle - halfA + (2 * halfA) * (bi / Math.max(1, bulletCount - 1))
                                     state.enemyProjectiles.push({
                                         x: e.x,
                                         y: e.y,
-                                        vx: Math.cos(a) * 280,
-                                        vy: Math.sin(a) * 280,
+                                        vx: Math.cos(a) * ARTY.fanSpeed,
+                                        vy: Math.sin(a) * ARTY.fanSpeed,
                                         radius: 5,
-                                        damage: Math.max(1, e.damage - 1),
+                                        damage: Math.max(1, r2(e.damage * artDmgF - 1)),
                                         life: 3,
                                     })
                                 }
@@ -690,15 +842,15 @@ function startArtillerySkill(e) {
                             // 技能2：全屏环形散射 16 颗
                             e.skillTimer -= dt
                             if (e.skillTimer <= 0) {
-                                for (let bi = 0; bi < 120; bi++) {
+                                for (let bi = 0; bi < Math.round(ARTY.radialCount * artDensity); bi++) {
                                     const a = (bi / 16) * Math.PI * 2
                                     state.enemyProjectiles.push({
                                         x: e.x,
                                         y: e.y,
-                                        vx: Math.cos(a) * 300,
-                                        vy: Math.sin(a) * 300,
+                                        vx: Math.cos(a) * ARTY.radialSpeed,
+                                        vy: Math.sin(a) * ARTY.radialSpeed,
                                         radius: 5,
-                                        damage: Math.max(1, e.damage - 1),
+                                        damage: Math.max(1, r2(e.damage * artDmgF - 1)),
                                         life: 3,
                                     })
                                 }
@@ -728,10 +880,10 @@ function startArtillerySkill(e) {
                                         x: bp.x,
                                         y: -80,
                                         targetY: bp.y,
-                                        fallSpeed: 1200,
+                                        fallSpeed: ARTY.bombSpeed,
                                         radius: 16,
-                                        blastRadius: 40,
-                                        damage: e.damage,
+                                        blastRadius: ARTY.bombBlastRadius * artSk,
+                                        damage: r2(e.damage * artDmgF),
                                         tail: 0,
                                         life: 4,
                                     })
@@ -777,6 +929,9 @@ function startArtillerySkill(e) {
                         updateMotherBoss(e, p, dx2, dy2, d2, dt, speedMult)
                     } else if (e.isMeleeBoss) {
                         // ---- 大型近战 Boss：攻击状态机 ----
+                        if (e.isLargeBoss && !e.enraged && e.hp <= e.maxHp * 0.5) startBossPhase(e, e.stage2 ? 'enrage2' : 'enrage1')
+                        // 普通 Boss（isMeleeBoss 但非大型）不参与阶段档位缩放
+                        const meleeDmgF = e.isLargeBoss ? bossStageF(e).dmg : 1
                         if (e.attackState === 'idle') {
                             if (d2 > 1) {
                                 const moveSpeed = e.speed * speedMult
@@ -792,11 +947,12 @@ function startArtillerySkill(e) {
                                 const skill = rollMeleeSkill(e)
                                 e.nextSkill = skill
                                 const r = e.radius
+                                const sk = e.skillScale || 1
                                 let cover = 0
-                                if (skill === 'slam') cover = MELEE_ATTACKS.slam.len + 10
-                                else if (skill === 'fan') cover = MELEE_ATTACKS.fan.radius + 10
-                                else if (skill === 'charge') cover = MELEE_ATTACKS.charge.len + 10
-                                else if (skill === 'nova') cover = MELEE_ATTACKS.nova.radius + 10
+                                if (skill === 'slam') cover = MELEE_ATTACKS.slam.len * sk + 10
+                                else if (skill === 'fan') cover = MELEE_ATTACKS.fan.radius * sk + 10
+                                else if (skill === 'charge') cover = MELEE_ATTACKS.charge.len * sk + 10
+                                else if (skill === 'nova') cover = MELEE_ATTACKS.nova.radius * sk + 10
                                 if (skill === 'dash') {
                                     // 抽到冲刺：直接冲刺（技能本身）
                                     startMeleeDash(e)
@@ -821,7 +977,7 @@ function startArtillerySkill(e) {
                                 } else {
                                     spawnMeleeAttackFx(e)
                                     if (meleeBossHitTest(e, p)) {
-                                        const damageAmount = e.damage
+                                        const damageAmount = r2(e.damage * meleeDmgF)
                                         p.hp = r2(p.hp - damageAmount)
                                         p.hurtFlashTimer = 0.2
                                         // 击退玩家
@@ -838,7 +994,7 @@ function startArtillerySkill(e) {
                                         }
                                     }
                                     e.attackState = 'recover'
-                                    e.recoverTimer = MELEE_BOSS_RECOVER
+                                    e.recoverTimer = MELEE_BOSS_RECOVER * (e.isLargeBoss ? bossStageF(e).recover : 1)
                                 }
                             }
                         } else if (e.attackState === 'dash') {
@@ -861,7 +1017,7 @@ function startArtillerySkill(e) {
                                 e.dashCooldown = 2
                                 const reach = Math.hypot(p.x - e.x, p.y - e.y)
                                 if (reach < e.radius + p.radius + 50) {
-                                    const damageAmount = e.damage
+                                    const damageAmount = r2(e.damage * meleeDmgF)
                                     p.hp = r2(p.hp - damageAmount)
                                     p.hurtFlashTimer = 0.2
                                     const kd = reach || 1
@@ -883,7 +1039,7 @@ function startArtillerySkill(e) {
                                     e.recoverTimer = 0.6
                                 } else {
                                     e.attackState = 'recover'
-                                    e.recoverTimer = MELEE_BOSS_RECOVER
+                                    e.recoverTimer = MELEE_BOSS_RECOVER * (e.isLargeBoss ? bossStageF(e).recover : 1)
                                 }
                             }
                         } else if (e.attackState === 'recover') {
@@ -896,7 +1052,7 @@ function startArtillerySkill(e) {
                                     startMeleeWindup(e, s)
                                 } else {
                                     e.attackState = 'idle'
-                                    e.attackTimer = 1.0
+                                    e.attackTimer = e.isLargeBoss ? 1 / bossStageF(e).freq : 1.0
                                 }
                             }
                         }
@@ -955,6 +1111,12 @@ function startArtillerySkill(e) {
                             e.x = clamp(e.x, -50, worldW + 50)
                             e.y = clamp(e.y, -50, worldH + 50)
                             e.chargeDist -= CHARGER_SPEED * dt
+                            // 冲锋拖影
+                            e.ghostTimer -= dt
+                            if (e.ghostTimer <= 0) {
+                                state.ghosts.push({ x: e.x, y: e.y, radius: e.radius, life: 0.3, color: 'rgba(255,170,60,0.55)' })
+                                e.ghostTimer = 0.045
+                            }
                             if (d2 < e.radius + p.radius + 6) {
                                 const dmg = Math.max(1, Math.floor(e.damage * 1.5))
                                 p.hp = r2(p.hp - dmg)

@@ -347,6 +347,8 @@
             const state = {
                 highestWave: 0,
                 highestKills: 0,
+                // 已永久解锁的武器 id（跨局保留）
+                _unlockedGuns: new Set(),
 
                 gameOver: false,
                 paused: false,
@@ -460,6 +462,7 @@
                     localStorage.setItem(STORAGE_KEY, JSON.stringify({
                         highestWave: state.highestWave,
                         highestKills: state.highestKills,
+                        unlockedGuns: Array.from(state._unlockedGuns || []),
                     }))
                 } catch (_) { /* ignore */ }
             }
@@ -3403,12 +3406,16 @@
             }
 
             /* ---- 枪械管理 ---- */
-            // 武器解锁判定（击杀数 + 波数，无 unlock 字段的武器默认解锁）
+            // 武器解锁判定（击杀数 + 波数；解锁过一次即永久记录保留）
             function isGunUnlocked(gun) {
                 if (!gun.unlock) return true
-                if (state.player.totalKills < (gun.unlock.kills || 0)) return false
-                if (state.highestWave < (gun.unlock.wave || 0)) return false
-                return true
+                if (state._unlockedGuns.has(gun.id)) return true
+                if (state.player.totalKills >= (gun.unlock.kills || 0) && state.highestWave >= (gun.unlock.wave || 0)) {
+                    state._unlockedGuns.add(gun.id)
+                    saveRecord()
+                    return true
+                }
+                return false
             }
 
             function renderHomeList() {
@@ -4031,6 +4038,7 @@
                     const data = JSON.parse(saved)
                     state.highestWave = data.highestWave || 0
                     state.highestKills = data.highestKills || 0
+                    state._unlockedGuns = new Set(data.unlockedGuns || [])
                 }
             } catch (_) {}
 

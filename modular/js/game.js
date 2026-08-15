@@ -475,7 +475,7 @@
                 player: {
                     x: 0,
                     y: 0,
-                    radius: PLAYER_RADIUS,
+                    radius: 12,
                     hp: 10,
                     maxHp: 10,
                     atk: 2,
@@ -528,9 +528,6 @@
                     shotgunSpread: 50,
                     gatlingBarrel: 0,
                     gatlingSpin: 0,
-                    // 奥特曼专属强化
-                    beamDouble: 0,
-                    beamBurn: 0,
                 },
 
                 enemies: [],
@@ -1098,24 +1095,6 @@
                 apply: () => {
                     state.player.reloadTimeMult = Math.max(0.4, Math.round((state.player.reloadTimeMult || 1) * 0.85 * 100) / 100)
                 }
-            }, {
-                id: 'beamDouble',
-                label: '🌟 双束射线',
-                desc: '射线分裂为平行双束 (上限 3 束)',
-                weight: 1.0,
-                category: 'special',
-                apply: () => {
-                    state.player.beamDouble = Math.min(2, (state.player.beamDouble || 0) + 1)
-                }
-            }, {
-                id: 'beamBurn',
-                label: '🌟 灼烧射线',
-                desc: '命中附带 2s 灼烧持续伤害 (上限 3)',
-                weight: 1.0,
-                category: 'special',
-                apply: () => {
-                    state.player.beamBurn = Math.min(3, (state.player.beamBurn || 0) + 1)
-                }
             }, ]
 
             function getAvailableUpgrades() {
@@ -1127,7 +1106,6 @@
                     if (gtype === 'ultraman') {
                         if (['atkSpeed', 'bulletSpeed', 'parallel', 'scatter', 'extraAttack', 'ricochet', 'split', 'magUp', 'reloadSpeed', 'spreadFocus'].includes(item.id)) return false
                         if (item.id === 'atk' || item.id === 'hp' || item.id === 'range' || item.id === 'lifeSteal' || item.id === 'atkSteal' || item.id === 'pierce') return true
-                        if (['beamDouble', 'beamBurn'].includes(item.id)) return true
                         return false
                     }
                     // ---- 按武器类型限制弹道/攻速类属性 ----
@@ -1571,7 +1549,7 @@
 
                 // ---- 奥特曼：多射击口粒子射线（10 个环形枪口随机轮流发射，每颗速度随机，直线不锥形） ----
                 if (p.gunType === 'ultraman') {
-                    const beams = 1 + (p.beamDouble || 0)
+                    const beams = 1
                     const beamLife = 0.45
                     const beamDmg = r2(p.atk * 0.1)
                     const barrels = (state.selectedGun && state.selectedGun.barrelCount) || 16
@@ -1606,7 +1584,6 @@
                                 isChild: true,
                                 splitRemain: 0,
                                 pierceRemain: p.pierceCount,
-                                burn: (p.beamBurn || 0) > 0,
                                 hitEnemies: new Set(),
                                 radius: 3,
                                 ricochetRemain: 0,
@@ -3525,18 +3502,8 @@
                 // 武器管理按钮：解锁奥特曼武器后才显示
                 const ultraGun = GUNS.find(g => g.id === 'ultraman')
                 btnManageGuns.style.display = (ultraGun && isGunUnlocked(ultraGun)) ? 'inline-block' : 'none'
-                // 未解锁武器直接隐藏
+                // 未解锁武器直接隐藏（当前默认全部解锁）
                 const unlockedGuns = GUNS.filter(isGunUnlocked)
-                // 新解锁提示（本次会话首次出现）
-                if (!state._seenUnlocks) state._seenUnlocks = new Set()
-                const newly = unlockedGuns.filter(g => g.unlock && !state._seenUnlocks.has(g.id))
-                newly.forEach(g => state._seenUnlocks.add(g.id))
-                if (newly.length > 0) {
-                    const tip = document.createElement('div')
-                    tip.className = 'unlock-tip'
-                    tip.textContent = '🔓 新武器解锁：' + newly.map(g => g.name).join('、')
-                    gunList.prepend(tip)
-                }
                 unlockedGuns.forEach(gun => {
                     const card = document.createElement('div')
                     card.className = 'gun-card'
@@ -3784,9 +3751,6 @@
                 p.shotgunSpread = gun.spreadDeg || 50
                 p.gatlingBarrel = 0
                 p.gatlingSpin = 0
-                // 奥特曼专属强化重置
-                p.beamDouble = 0
-                p.beamBurn = 0
 
                 p.totalKills = 0
                 p.currentKills = 0
@@ -4146,7 +4110,7 @@
                     const data = JSON.parse(saved)
                     state.highestWave = data.highestWave || 0
                     state.highestKills = data.highestKills || 0
-                    state._unlockedGuns = new Set(data.unlockedGuns || [])
+                    state._unlockedGuns = new Set(GUNS.map(g => g.id))
                 }
             } catch (_) {}
 
